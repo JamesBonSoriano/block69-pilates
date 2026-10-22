@@ -50,6 +50,7 @@ Claude Code: update this file at the end of every step. Keep it short.
   - Home page (`src/app/(client)/page.tsx`): hero text from `site_content`, price from `settings`, "Next open sessions" (6) from `get_open_sessions()` with seat badges, What's included + health note. Phone: one column; laptop: two-column hero, 3 sessions per row
   - Checked: `tsc` and `lint` clean, `npm run build` OK (`/` = Partial Prerender: shell revalidates every 1 min, sessions stream live), the built site showed real classes (Fri 23 to Sun 25, "4 left")
   - DB tests made time-of-day proof: `sessionIn()` never pushes a still-running class onto yesterday, new `sessionToday()`, cutoff checks no longer skip near midnight; the Windows `EBUSY` crash when deleting the temp database folder is fixed (`persistent: true` + retrying delete). **157/157 passed at 12:19 AM Manila**, 3 runs in a row
+- **Fix: `AbortError` in the `npm run dev` terminal on Home** (2026-10-23): this was dev-mode noise. Next.js stops an extra check render early, and that cancels the session list's database call. `SessionList` in `src/app/(client)/page.tsx` now passes an `AbortError` on quietly instead of logging it. Real database errors are still logged
 
 ## Next
 - **Phase B, Step 7: Auth**: log in, sign up, forgot password, admin redirect, route protection in `src/proxy.ts`, and the logged-in Header (initials, My Account sub-links, Log out)

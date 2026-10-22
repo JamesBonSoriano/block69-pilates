@@ -139,6 +139,11 @@ async function SessionList() {
     // Next.js uses special "errors" internally to pause rendering until a
     // visitor arrives. Those must be passed on, not treated as real errors.
     unstable_rethrow(error);
+    // In dev mode, Next.js also runs an extra "practice" render of the page
+    // and stops it early. Stopping it cancels our database call with an
+    // "AbortError". That isn't a real problem (the visitor's own render
+    // still loads the classes), so pass it on quietly instead of logging it.
+    if (error instanceof Error && error.name === "AbortError") throw error;
     console.error(error); // shows the real problem in the terminal
     return (
       <Card>
