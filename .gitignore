@@ -1,0 +1,31 @@
+# Files and folders Git should never save (GitHub Desktop will hide these).
+
+# Secret keys: .env.local holds the real keys and must NEVER be committed.
+# (.env.example is safe to commit: it has key names only, no values.)
+.env
+.env.local
+.env*.local
+
+# Installed packages (anyone can re-create them with `npm install`)
+node_modules/
+
+# Next.js build output (re-created by `npm run dev` / `npm run build`)
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# Vercel's local link folder
+.vercel/
+
+# Supabase CLI temporary files (also listed in supabase/.gitignore)
+supabase/.temp/
+supabase/.branches/
+
+# Logs and system junk
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db

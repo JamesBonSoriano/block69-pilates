@@ -266,14 +266,15 @@ src/
     api/               API routes (checkout, paymongo webhook, etc.)
   components/          shared UI (Header, Footer, Button, Card, Badge...)
   lib/
-    mock/              fake data for Phase A (front end)
-    data/              data functions pages call (mock now, Supabase later)
+    data/              functions pages call to read/write Supabase
     supabase/          browser + server Supabase clients
     paymongo.ts        PayMongo helpers (server only)
-    booking-rules.ts   seats left, cutoff, cancellation rules
+    booking-rules.ts   small helpers for showing rules in the UI (real checks are in the database)
   types/               TypeScript types for tables
 supabase/
-  migrations/          SQL files: tables, RLS policies, functions, seed
+  migrations/          SQL files: tables, RLS policies, functions
+  seed.sql             test data (settings, templates, sessions, sample bookings)
+  tests/               SQL test scripts for the booking rules
 docs/
   PROPOSAL.md, PROGRESS.md, designs/
 ```
@@ -282,30 +283,38 @@ docs/
 
 ## 9. Build order (one step at a time)
 
-We build the **whole front end first with fake (mock) data**, then the Supabase database, then connect them.
+We build the **database first**, then the website on top of it. Every page reads **real data** from Supabase as soon as it's built, so there's no fake data to replace later.
 
-**Mock data rule (important):** while building the front end, all fake data lives in **one place**: `src/lib/mock/` (for example `sessions.ts`, `bookings.ts`, `users.ts`). Its shapes must match the tables in section 6, using the types in `src/types/`. Pages never import mock data directly. They call small functions in `src/lib/data/` (for example `getOpenSessions()`, `getMyBookings()`), which return mock data for now. In Phase C we change only those functions to read from Supabase, and the pages stay the same. Rules like seats left, cutoff and cancellation go in `src/lib/booking-rules.ts` from the start, so they work with mock data and with real data.
+**Database rules (important)**
+- Every database change is a SQL file in `supabase/migrations/`, named with a timestamp (for example `20261022000001_tables.sql`). Never change the database only by clicking in the dashboard. The group must be able to rebuild it from these files.
+- Business rules that must never break live **in the database**: the seat check and booking (one Postgres function with a row lock), seats left, and RLS policies. The website calls these functions instead of repeating the logic.
+- Test data (sample sessions and bookings) goes in `supabase/seed.sql`, not in the migrations.
+- Use the Supabase CLI through `npx supabase ...`. If the CLI gives trouble on Windows, give me the SQL to paste into the Supabase **SQL Editor** instead.
 
-**Phase A: front end (mock data)**
-1. **Setup:** Next.js, Tailwind theme tokens, Poppins + Montserrat, shared UI components (Button, Card, Badge, Input), Header with phone menu, Footer, types, mock data and data functions, and a Home page
-2. **Public pages:** Home (full), About Us
-3. **Auth pages (UI only):** Log in, Sign up, Forgot password
-4. **Booking flow UI:** steps 1 to 3, You're booked, Payment expired, Manual transfer
-5. **My Account UI:** Profile, My Bookings (with Cancel and Transfer dialogs using the cancellation rules), Payments, My Vouchers, Notifications
-6. **Admin UI:** layout and sidebar, Dashboard, Bookings, Walk-in, Attendance, Schedule, Pricing & Vouchers, Billings, Content, Users, Communications, Settings
-7. **Front-end check:** every page at 390px and 1440px
+**Phase A: Database (Supabase)**
+1. **Supabase project and CLI setup:** I create the project on supabase.com. Claude Code runs `npx supabase init`, links the project and makes `.env.example`.
+2. **Tables:** all tables from section 6 with types, defaults, foreign keys, status enums, checks and indexes, plus a trigger that creates a `profiles` row when someone signs up.
+3. **Security:** turn on RLS and write policies for every table, plus an `is_admin()` helper.
+4. **Functions:** `seats_left(session_id)`, `book_seat(...)` (seat check, cutoff and 15-minute hold in one locked step), `generate_sessions(weeks)` from the templates, cancel and transfer rules, and the voucher check.
+5. **Seed and test:** default settings, the Thu–Sun templates, 4 weeks of sessions, sample bookings, and one admin. Then a test script that proves overbooking can't happen and the cancellation rules work.
 
-**Phase B: Supabase**
+**Phase B: Website setup**
 
-8. Migrations for all tables, RLS policies, the seat-booking function, seed data, and one admin user
+6. Next.js, Tailwind theme tokens, Poppins + Montserrat, shared components (Button, Card, Badge, Input, Header with phone menu, Footer), Supabase clients, generated TypeScript types (`npx supabase gen types`)
+7. Auth: log in, sign up, forgot password, admin redirect, route protection (middleware)
 
-**Phase C: connect**
+**Phase C: Pages (connected to real data)**
 
-9. Supabase clients and Auth (real login, profile creation, admin redirect, route protection)
-10. Swap each `src/lib/data/` function from mock data to Supabase, page by page
-11. PayMongo: checkout, webhook, the late payment rule, the manual transfer screenshot upload
+8. Home and About Us, with live "next open sessions"
+9. Booking flow: steps 1 to 3 (calls `book_seat`), You're booked, Payment expired
+10. My Account: Profile, My Bookings (cancel and transfer), Payments, My Vouchers, Notifications
+11. Admin: layout, Dashboard, Bookings, Walk-in, Attendance, Schedule, Pricing & Vouchers, Billings, Content, Users, Settings
 
-**Phase D: finish**
+**Phase D: Payments**
 
-12. Emails, pg_cron jobs, optional Google login
-13. Final check on phone and laptop, then deploy to Vercel
+12. PayMongo test mode: checkout, webhook, the late payment rule, the manual transfer backup with screenshot upload
+
+**Phase E: Finish**
+
+13. Emails, pg_cron jobs (create sessions, reminders), Communications page, optional Google login
+14. Final check of every page at 390px and 1440px, then deploy to Vercel
