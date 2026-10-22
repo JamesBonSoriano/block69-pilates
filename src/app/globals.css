@@ -12,6 +12,15 @@
 */
 @import "tailwindcss";
 
+/*
+  Folders Tailwind must NOT read when looking for class names (paths are from
+  this file). docs/ has the HTML mockups and notes, supabase/ has SQL and
+  tests: none of them are website code, and text in them that looks like a
+  class (e.g. in a note) would be built into our CSS, or break the build.
+*/
+@source not "../../docs";
+@source not "../../supabase";
+
 @theme {
   /* ----- Brand colors ----- */
   --color-brown: #43271B;        /* header, footer, admin sidebar, primary buttons, headings */

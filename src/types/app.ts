@@ -126,3 +126,113 @@ export type MyVoucher = Omit<MyVoucherRow, "percent_off" | "amount_off" | "expir
   state: VoucherState;
   used_for_date: string | null; // the class it was used on
 };
+
+// ---------------------------------------------------------------------------
+// Admin pages (migration 9, Step 11 part 1)
+// As above, the generated types say no column is ever empty, so the columns
+// that CAN be empty (walk-ins have no email, unpaid bookings have no payment,
+// ...) are marked here.
+// ---------------------------------------------------------------------------
+
+// Who handled a payment: paymongo, manual (GCash / BPI transfer) or cash.
+export type PaymentProvider = PublicSchema["Enums"]["payment_provider"];
+
+// open / closed / cancelled (a class's status).
+export type SessionStatus = PublicSchema["Enums"]["session_status"];
+
+// The Dashboard numbers (admin_dashboard_summary). Nothing here is ever empty.
+export type AdminDashboardSummary =
+  PublicSchema["Functions"]["admin_dashboard_summary"]["Returns"][number];
+
+// One class for the admin (admin_list_sessions): past ones too, with seats
+// taken / left and how many guests still need Attended / No-show.
+export type AdminSession = PublicSchema["Functions"]["admin_list_sessions"]["Returns"][number];
+
+// One guest in a class (admin_class_rosters): Attendance list, Dashboard.
+type AdminRosterRow = PublicSchema["Functions"]["admin_class_rosters"]["Returns"][number];
+export type AdminRosterItem = Omit<
+  AdminRosterRow,
+  "guest_contact" | "guest_email" | "health_notes" | "drink_choice" | "paid_amount" | "paid_method" | "paid_provider" | "hold_expires_at"
+> & {
+  guest_contact: string | null;
+  guest_email: string | null; // walk-ins have no account, so no email
+  health_notes: string | null;
+  drink_choice: string | null; // null = "decide at the cafe"
+  paid_amount: number | null; // null = not paid (yet)
+  paid_method: PaymentMethod | null;
+  paid_provider: PaymentProvider | null;
+  hold_expires_at: string | null;
+};
+
+// One row of the admin Bookings list (admin_search_bookings).
+type AdminBookingListRow = PublicSchema["Functions"]["admin_search_bookings"]["Returns"][number];
+export type AdminBookingListItem = Omit<
+  AdminBookingListRow,
+  "guest_contact" | "guest_email" | "drink_choice" | "paid_amount" | "paid_method" | "paid_provider"
+> & {
+  guest_contact: string | null;
+  guest_email: string | null;
+  drink_choice: string | null;
+  paid_amount: number | null;
+  paid_method: PaymentMethod | null;
+  paid_provider: PaymentProvider | null;
+};
+
+// One payment inside admin_get_booking's "payments" list (it arrives as JSON).
+export type AdminBookingPayment = {
+  id: string;
+  booking_id: string; // the ORIGINAL booking after a transfer
+  provider: PaymentProvider;
+  method: PaymentMethod | null;
+  amount: number;
+  status: PaymentStatus;
+  paymongo_ref: string | null;
+  has_screenshot: boolean;
+  verified_by_name: string | null; // the admin who recorded or checked it
+  paid_at: string | null;
+  created_at: string;
+};
+
+// One booking with everything about it (admin_get_booking): the admin's
+// booking details page.
+type AdminBookingRow = PublicSchema["Functions"]["admin_get_booking"]["Returns"][number];
+export type AdminBookingDetails = Omit<
+  AdminBookingRow,
+  | "hold_expires_at"
+  | "agreed_at"
+  | "health_notes"
+  | "drink_choice"
+  | "voucher_code"
+  | "voucher_source"
+  | "user_id"
+  | "guest_email"
+  | "guest_contact"
+  | "guest_instagram"
+  | "account_active"
+  | "moved_from_booking_id"
+  | "moved_from_date"
+  | "moved_from_start_time"
+  | "moved_to_booking_id"
+  | "moved_to_date"
+  | "moved_to_start_time"
+  | "payments"
+> & {
+  hold_expires_at: string | null;
+  agreed_at: string | null;
+  health_notes: string | null;
+  drink_choice: string | null;
+  voucher_code: string | null;
+  voucher_source: PublicSchema["Enums"]["voucher_source"] | null;
+  user_id: string | null; // null = walk-in
+  guest_email: string | null;
+  guest_contact: string | null;
+  guest_instagram: string | null;
+  account_active: boolean | null; // null = walk-in (no account)
+  moved_from_booking_id: string | null;
+  moved_from_date: string | null;
+  moved_from_start_time: string | null;
+  moved_to_booking_id: string | null;
+  moved_to_date: string | null;
+  moved_to_start_time: string | null;
+  payments: AdminBookingPayment[];
+};

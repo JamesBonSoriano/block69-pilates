@@ -166,3 +166,21 @@ export function initialsOf(fullName: string, email: string): string {
   const last = words.length > 1 ? words[words.length - 1][0] : "";
   return (first + last).toUpperCase();
 }
+
+// Gives the date in the Philippines for an exact moment.
+// Takes: milliseconds since 1970 (e.g. from nowForThisVisit()).
+// Gives back: "YYYY-MM-DD" in Asia/Manila, e.g. "2026-10-23", the same shape
+// as class dates in the database. ("en-CA" is simply a locale that writes
+// dates as YYYY-MM-DD.)
+export function manilaDateString(ms: number): string {
+  return new Date(ms).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+}
+
+// Moves a date forwards or backwards by whole days.
+// Takes: a date "YYYY-MM-DD" and a number of days (negative = earlier).
+// Gives back: the new date, "YYYY-MM-DD". Worked out in UTC, so no time zone
+// or daylight saving can shift it.
+export function addDays(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}

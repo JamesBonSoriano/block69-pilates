@@ -468,9 +468,148 @@ export type Database = {
     }
     Functions: {
       admin_cancel_session: { Args: { p_session_id: string }; Returns: number }
+      admin_class_rosters: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          booking_id: string
+          created_at: string
+          drink_choice: string
+          first_time: boolean
+          guest_contact: string
+          guest_email: string
+          guest_name: string
+          health_notes: string
+          hold_expires_at: string
+          is_walkin: boolean
+          mat_fee: number
+          mat_rental: boolean
+          moved_here: boolean
+          paid_amount: number
+          paid_method: Database["public"]["Enums"]["payment_method"]
+          paid_provider: Database["public"]["Enums"]["payment_provider"]
+          seat_holding: boolean
+          session_id: string
+          status: Database["public"]["Enums"]["booking_status"]
+          total: number
+        }[]
+      }
+      admin_dashboard_summary: {
+        Args: never
+        Returns: {
+          awaiting_verification: number
+          live_holds: number
+          mats_this_month: number
+          paid_needs_action: number
+          paid_this_month: number
+          paid_this_week: number
+          to_mark: number
+          to_mark_classes: number
+          today: string
+          today_capacity: number
+          today_classes: number
+          today_taken: number
+        }[]
+      }
+      admin_get_booking: {
+        Args: { p_booking_id: string }
+        Returns: {
+          account_active: boolean
+          agreed_at: string
+          booking_id: string
+          can_mark_attendance: boolean
+          capacity: number
+          class_date: string
+          class_fee: number
+          created_at: string
+          discount: number
+          drink_choice: string
+          end_time: string
+          first_time: boolean
+          guest_contact: string
+          guest_email: string
+          guest_instagram: string
+          guest_name: string
+          health_notes: string
+          hold_expires_at: string
+          is_walkin: boolean
+          mat_fee: number
+          mat_rental: boolean
+          moved_from_booking_id: string
+          moved_from_date: string
+          moved_from_start_time: string
+          moved_to_booking_id: string
+          moved_to_date: string
+          moved_to_start_time: string
+          not_pregnant_confirmed: boolean
+          payments: Json
+          seats_left: number
+          session_id: string
+          session_status: Database["public"]["Enums"]["session_status"]
+          shown_status: Database["public"]["Enums"]["booking_status"]
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"]
+          total: number
+          updated_at: string
+          user_id: string
+          voucher_code: string
+          voucher_source: Database["public"]["Enums"]["voucher_source"]
+        }[]
+      }
+      admin_list_sessions: {
+        Args: { p_from_date: string; p_to_date: string }
+        Returns: {
+          booking_closes_at: string
+          capacity: number
+          date: string
+          end_time: string
+          has_ended: boolean
+          has_started: boolean
+          seats_left: number
+          seats_taken: number
+          session_id: string
+          start_time: string
+          status: Database["public"]["Enums"]["session_status"]
+          to_mark: number
+        }[]
+      }
       admin_review_manual_payment: {
         Args: { p_approve: boolean; p_payment_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]
+      }
+      admin_search_bookings: {
+        Args: {
+          p_date?: string
+          p_limit?: number
+          p_search?: string
+          p_start_time?: string
+          p_statuses?: string[]
+          p_when?: string
+        }
+        Returns: {
+          booking_id: string
+          class_date: string
+          created_at: string
+          drink_choice: string
+          end_time: string
+          first_time: boolean
+          guest_contact: string
+          guest_email: string
+          guest_name: string
+          has_health_notes: boolean
+          hold_seconds_left: number
+          is_walkin: boolean
+          mat_rental: boolean
+          moved_here: boolean
+          paid_amount: number
+          paid_method: Database["public"]["Enums"]["payment_method"]
+          paid_provider: Database["public"]["Enums"]["payment_provider"]
+          session_id: string
+          session_status: Database["public"]["Enums"]["session_status"]
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"]
+          total: number
+          total_matches: number
+        }[]
       }
       admin_set_attendance: {
         Args: {

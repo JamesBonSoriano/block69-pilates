@@ -1,7 +1,8 @@
 // Small helpers for SHOWING the booking rules in the page.
 // Where it's used: the session cards (Home), the booking pages (step 1,
 // step 2, the pay page and the "You're booked" page), and the My Account
-// pages (booking, payment and voucher badges, cancel explanations).
+// pages (booking, payment and voucher badges, cancel explanations), and the
+// admin pages (admin booking badges, seats-taken badges).
 //
 // These only decide how things look. The real rules (seat check, cutoff,
 // holds, prices, cancellations) live in the database functions, so nobody can
@@ -9,7 +10,14 @@
 
 import type { BadgeVariant } from "@/components/ui/Badge";
 import { formatManilaDateTime, formatPeso } from "@/lib/format";
-import type { BookingStatus, ChangeRule, PaymentMethod, PaymentStatus, VoucherState } from "@/types/app";
+import type {
+  BookingStatus,
+  ChangeRule,
+  PaymentMethod,
+  PaymentStatus,
+  SessionStatus,
+  VoucherState,
+} from "@/types/app";
 import type { Database } from "@/types/database";
 
 // Who handled a payment: paymongo, manual (GCash / BPI transfer) or cash.
@@ -310,4 +318,52 @@ export function voucherDiscount(classFee: number, percentOff: number | null, amo
 // Gives back: e.g. "R69-7C1D2E3F" (the first 8 characters of the id).
 export function receiptNumber(paymentId: string): string {
   return `R69-${paymentId.slice(0, 8).toUpperCase()}`;
+}
+
+// ---------------------------------------------------------------------------
+// Admin pages
+// ---------------------------------------------------------------------------
+
+// Picks the status badge for one booking on the ADMIN pages. The words are
+// the admin's (e.g. "Awaiting verification"), not the client's ("Checking
+// your payment").
+// Takes: the booking's status, and for an unpaid hold the seconds left.
+// Gives back: the badge text and color, e.g. "Pending payment · 9 min".
+export function adminBookingStatusBadge(
+  status: BookingStatus,
+  holdSecondsLeft = 0,
+): { label: string; variant: BadgeVariant } {
+  const badges: Record<BookingStatus, { label: string; variant: BadgeVariant }> = {
+    pending_payment: {
+      // Round UP, so "0 min" never shows while a few seconds are left
+      label: holdSecondsLeft > 0 ? `Pending payment · ${Math.ceil(holdSecondsLeft / 60)} min` : "Pending payment",
+      variant: "warning",
+    },
+    awaiting_verification: { label: "Awaiting verification", variant: "info" },
+    confirmed: { label: "Confirmed", variant: "success" },
+    paid_needs_action: { label: "Paid, needs action", variant: "error" },
+    expired: { label: "Expired", variant: "error" },
+    transferred: { label: "Transferred", variant: "neutral" },
+    cancelled_with_voucher: { label: "Cancelled with voucher", variant: "neutral" },
+    forfeited: { label: "Forfeited", variant: "error" },
+    no_show: { label: "No-show", variant: "error" },
+    attended: { label: "Attended", variant: "success" },
+  };
+  return badges[status];
+}
+
+// Picks the "seats taken" badge for a class on the admin pages.
+// Takes: seats taken, the capacity and the class status.
+// Gives back: e.g. { label: "3/4", variant: "success" }, "Full 4/4" (red, as
+// in docs/designs/PhoneAdminDashboard.html), "Cancelled" or "Closed · 2/4".
+export function adminSeatsBadge(
+  taken: number,
+  capacity: number,
+  status: SessionStatus,
+): { label: string; variant: BadgeVariant } {
+  if (status === "cancelled") return { label: "Cancelled", variant: "error" };
+  if (status === "closed") return { label: `Closed · ${taken}/${capacity}`, variant: "neutral" };
+  if (taken >= capacity) return { label: `Full ${taken}/${capacity}`, variant: "error" };
+  if (capacity - taken === 1) return { label: `${taken}/${capacity}`, variant: "warning" };
+  return { label: `${taken}/${capacity}`, variant: "success" };
 }

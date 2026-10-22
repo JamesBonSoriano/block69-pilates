@@ -133,7 +133,11 @@ export default async function run(t) {
     guestFns.join(', ') === 'get_open_sessions, is_admin, seats_left', guestFns.join(', '));
   const clientFns = await callable('authenticated');
   const expectedClientFns = [
-    'admin_cancel_session', 'admin_review_manual_payment', 'admin_set_attendance', 'admin_walkin_booking',
+    // migration 9 (admin daily pages) adds admin_class_rosters, admin_dashboard_summary,
+    // admin_get_booking, admin_list_sessions and admin_search_bookings (all read-only)
+    'admin_cancel_session', 'admin_class_rosters', 'admin_dashboard_summary', 'admin_get_booking',
+    'admin_list_sessions', 'admin_review_manual_payment', 'admin_search_bookings', 'admin_set_attendance',
+    'admin_walkin_booking',
     'book_seat', 'cancel_my_booking', 'check_voucher', 'deactivate_my_account', 'generate_sessions',
     // migration 6 (booking pages): read only the caller's own bookings
     // migration 8 (My Account) adds get_my_bookings, get_my_payments, get_my_vouchers

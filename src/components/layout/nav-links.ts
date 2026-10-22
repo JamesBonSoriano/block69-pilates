@@ -1,7 +1,8 @@
 // The list of links in the client navigation (CLAUDE.md section 4:
 // Home, About Us, Book a Class, My Account, plus Log in / Log out).
 // Where it's used: the Header (desktop links and phone menu), the Footer
-// (quick links) and the My Account side menu, so they always show the same pages.
+// (quick links), the My Account side menu and the admin menus
+// (src/components/admin/AdminNav.tsx), so they always show the same pages.
 
 export type NavLink = { href: string; label: string };
 
@@ -33,6 +34,33 @@ export const accountNavLinks: NavLink[] = [
 // The admin area. The header adds it to the links ONLY for admins (and the
 // admin pages check is_admin() on the server anyway).
 export const adminNavLink: NavLink = { href: "/admin", label: "Admin" };
+
+// The admin side menu (src/components/admin/AdminNav.tsx), in order.
+// `soon` = a placeholder page until Step 11 part 2 (Payments, Pricing, Settings).
+// `tab`  = also shown in the phone's bottom tab bar (the 4 pages the counter
+//          uses most; the rest are in the phone menu).
+export type AdminNavLink = NavLink & { soon?: boolean; tab?: boolean; tabLabel?: string };
+
+export const adminNavLinks: AdminNavLink[] = [
+  { href: "/admin", label: "Dashboard", tab: true, tabLabel: "Home" },
+  { href: "/admin/bookings", label: "Bookings", tab: true },
+  { href: "/admin/walk-in", label: "Walk-in booking", tab: true, tabLabel: "Walk-in" },
+  { href: "/admin/attendance", label: "Attendance", tab: true },
+  { href: "/admin/payments", label: "Payments", soon: true },
+  { href: "/admin/pricing", label: "Pricing & Vouchers", soon: true },
+  { href: "/admin/settings", label: "Settings", soon: true },
+];
+
+// Checks if an admin menu link points at the page being shown.
+// Takes: the link's href and the current path (null = not known yet).
+// Gives back: true for the current page. "/admin" (Dashboard) only matches
+// itself; the others also match their sub-pages (/admin/bookings/<id>
+// highlights "Bookings").
+export function isActiveAdminLink(href: string, pathname: string | null): boolean {
+  if (pathname === null) return false;
+  if (href === "/admin") return pathname === "/admin";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 // The login page.
 export const loginHref = "/login";
