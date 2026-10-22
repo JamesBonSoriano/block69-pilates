@@ -145,7 +145,7 @@ These rules are enforced by the code and the database, not just shown as text.
 
 **Seats**
 - One booking = one seat = one person. Friends book separately.
-- **Seats left** = capacity minus the bookings that are `confirmed`, `awaiting_verification`, or `pending_payment` with `hold_expires_at` still in the future.
+- **Seats left** = capacity minus the bookings that are `confirmed`, `awaiting_verification`, `attended`, or `pending_payment` with `hold_expires_at` still in the future. (`attended` counts so a walk-in can't overbook a class after the admin marks people as here.)
 - **15-minute seat hold:** when the client clicks Pay, create the booking as `pending_payment` with `hold_expires_at = now + 15 min`. No timer is needed, because expired holds simply stop counting.
 - **No overbooking:** the seat check and the booking insert happen in **one Postgres function**, which locks the session row (`SELECT ... FOR UPDATE`). Two people can never get the last seat.
 - **Cutoff:** online booking closes at **8:00 AM on class day** (a setting), or when the session is full.

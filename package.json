@@ -1,0 +1,13 @@
+{
+  "name": "block69-pilates",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Block 69 Cafe Mindful Mat Pilates booking and payment website (Group 6 PBL).",
+  "scripts": {
+    "test:db": "node supabase/tests/run.mjs"
+  },
+  "devDependencies": {
+    "embedded-postgres": "17.10.0-beta.17",
+    "pg": "8.23.1"
+  }
+}
