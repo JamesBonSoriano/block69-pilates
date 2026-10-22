@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin Bookings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&amp;family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#43271B}a:hover{color:#273429}
+.pop{font-family:'Poppins',sans-serif}
+.side{width:280px;background:#43271B;color:#E9DCC6;display:flex;flex-direction:column;padding:28px 20px;box-sizing:border-box;gap:4px}
+.mi{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:#E9DCC6;text-decoration:none;font-size:14px}
+.mi.on{background:#E3D2AE;color:#2C1A12;font-weight:600}
+.cnt{margin-left:auto;background:#fff;color:#43271B;border-radius:999px;font-size:11px;font-weight:600;padding:1px 7px}
+.top{background:#FAF7F1;border-bottom:1px solid #ECE3D3;padding:28px 40px;display:flex;justify-content:space-between;align-items:flex-start}
+.ov{font-size:11px;font-weight:600;letter-spacing:.08em;color:#A07850}
+.card{background:#fff;border-radius:16px;border:1px solid #EFE6D6;padding:24px;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;font:600 13px 'Inter',sans-serif;padding:10px 16px;border:1px solid #E3D2AE;background:#fff;color:#2C1A12;cursor:pointer;white-space:nowrap}
+.btn.p{background:#43271B;color:#fff;border-color:#43271B}.btn.sm{padding:6px 10px;font-size:12px}.btn.ok{background:#E7F0E6;border-color:#E7F0E6;color:#2F6B3F}.btn.no{color:#B3261E;border-color:#EBC2BE}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap}
+.ok{background:#E7F0E6;color:#2F6B3F}.warn{background:#FBEBC8;color:#8A5A00}.info{background:#E3E9F2;color:#2F4E7A}.bad{background:#F8DEDA;color:#B3261E}.neu{background:#F1EBDF;color:#6B5B4B}
+.tab{padding:8px 14px;border-radius:999px;font-size:13px;color:#6B5B4B;text-decoration:none;white-space:nowrap}
+.tab.on{background:#43271B;color:#fff;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;color:#8C7D6E;font-weight:600;padding:12px 14px;border-bottom:1px solid #EFE6D6}
+td{padding:12px 14px;border-bottom:1px solid #F3ECE0;vertical-align:middle}
+.sel{border:1px solid #E3D2AE;border-radius:10px;padding:9px 12px;font:13px 'Inter',sans-serif;background:#fff;color:#2C1A12}
+.av{width:32px;height:32px;border-radius:999px;background:#EAE6DA;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#43271B;flex-shrink:0}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1180px; display: flex; font-family: 'Inter', sans-serif; color: #2C1A12; background: #F3EEE4">
+  <aside class="side">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 8px 28px"><span style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #A07850; display: flex; align-items: center; justify-content: center; font-family: 'Poppins'; color: #fff; font-size: 13px">69</span><div><div class="pop" style="color: #fff; font-size: 18px; font-weight: 600">Block 69 Cafe</div><div style="font-size: 10px; letter-spacing: .1em">ADMIN</div></div></div>
+    <div style="font-size: 10px; letter-spacing: .1em; padding: 0 14px 8px; color: #BFA98C">ADMIN MENU</div>
+    <a class="mi" href="#">Dashboard</a>
+    <a class="mi on" href="AdminBookings.dc.html">Bookings<span class="cnt">3</span></a>
+    <a class="mi" href="#">Schedule Management</a>
+    <a class="mi" href="AdminPayments.dc.html">Manage Billings</a>
+    <a class="mi" href="AdminPricing.dc.html">Pricing &amp; Vouchers</a>
+    <a class="mi" href="#">Content Management</a>
+    <a class="mi" href="#">User Management</a>
+    <a class="mi" href="#">Communications</a>
+    <a class="mi" href="AdminSettings.dc.html">Settings</a>
+    <div style="margin-top: auto; border-top: 1px solid #6A4A38; padding: 16px 8px 0; display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 999px; background: #E3D2AE; color: #43271B; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">RE</span><div><div style="color: #fff; font-size: 13px; font-weight: 600">Rheneshia Escalo</div><div style="font-size: 11px">Administrator</div></div></div>
+  </aside>
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+    <div class="top">
+      <div><div class="ov">MAT PILATES ADMIN</div><h1 class="pop" style="margin: 6px 0 4px; font-size: 30px; font-weight: 600">Bookings</h1><div style="font-size: 13px; color: #8C7D6E">One row per seat. PayMongo payments confirm on their own.</div></div>
+      <div style="display: flex; gap: 10px"><a class="btn" href="AdminAttendance.dc.html">Attendance list</a><a class="btn p" href="AdminWalkIn.dc.html">+ Walk-in booking</a></div>
+    </div>
+    <div style="padding: 28px 40px; display: flex; flex-direction: column; gap: 20px">
+      <div class="card" style="border-color: #E7B9B3; background: #FFFBFA; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; justify-content: space-between; align-items: center"><h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">Needs action (3)</h2><span style="font-size: 12px; color: #8C7D6E">Handled items leave this list</span></div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: #fff; border: 1px solid #F1E3DE; border-radius: 12px"><span class="badge info">Awaiting verification</span><span style="flex: 1; font-size: 13px"><b>Rona De Leon</b> · Sat, Nov 7 · Session 2 · BPI transfer ₱500 · screenshot uploaded 7:40 AM</span><button class="btn sm">View screenshot</button><button class="btn sm ok">Approve</button><button class="btn sm no">Reject</button></div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: #fff; border: 1px solid #F1E3DE; border-radius: 12px"><span class="badge bad">Paid, needs action</span><span style="flex: 1; font-size: 13px"><b>Marco Reyes</b> · Sat, Oct 24 · Session 1 · paid ₱500 after the hold ended and the class filled</span><button class="btn sm">Move to another session</button><button class="btn sm no">Refund</button></div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: #fff; border: 1px solid #F1E3DE; border-radius: 12px"><span class="badge neu">Mark attendance</span><span style="flex: 1; font-size: 13px"><b>Thu, Oct 22 · Session 1</b> ended · 4 guests not marked yet</span><a class="btn sm" href="AdminAttendance.dc.html">Open attendance</a></div>
+      </div>
+      <div class="card" style="padding: 0">
+        <div style="display: flex; gap: 6px; padding: 14px 16px 0; flex-wrap: wrap"><a class="tab on" href="#">All</a><a class="tab" href="#">Confirmed</a><a class="tab" href="#">Pending payment</a><a class="tab" href="#">Awaiting verification</a><a class="tab" href="#">Transferred</a><a class="tab" href="#">Cancelled with voucher</a><a class="tab" href="#">Forfeited</a><a class="tab" href="#">No-show</a><a class="tab" href="#">Attended</a></div>
+        <div style="display: flex; gap: 10px; padding: 14px 16px; align-items: center; border-bottom: 1px solid #EFE6D6">
+          <input class="sel" style="width: 240px" placeholder="Search by name" aria-label="Search bookings">
+          <select class="sel" aria-label="Date"><option>Thu, Oct 29 – Sun, Nov 1</option></select>
+          <select class="sel" aria-label="Session"><option>Both sessions</option></select>
+          <span style="margin-left: auto; font-size: 12px; color: #8C7D6E">8 bookings · 32 seats this week</span>
+        </div>
+        <table>
+          <thead><tr><th>CLIENT</th><th>CLASS</th><th>DRINK</th><th>MAT</th><th>PAYMENT</th><th>STATUS</th><th style="text-align: right">ACTIONS</th></tr></thead>
+          <tbody>
+            <tr><td><div style="display: flex; gap: 10px; align-items: center"><span class="av">JS</span><div><div style="font-weight: 600">James Soriano</div><div style="font-size: 11px; color: #8C7D6E">#BK-1048 · first time</div></div></div></td><td>Thu, Oct 29<br><span style="font-size: 11px; color: #8C7D6E">S1 · 9:00 AM</span></td><td>Iced Matcha</td><td>Yes</td><td>₱300 · GCash</td><td><span class="badge ok">Confirmed</span></td><td style="text-align: right"><button class="btn sm">Transfer</button> <button class="btn sm no">Cancel</button></td></tr>
+            <tr><td><div style="display: flex; gap: 10px; align-items: center"><span class="av">KD</span><div><div style="font-weight: 600">Kizzeah Delariman</div><div style="font-size: 11px; color: #8C7D6E">#BK-1046 · note: knee</div></div></div></td><td>Thu, Oct 29<br><span style="font-size: 11px; color: #8C7D6E">S1 · 9:00 AM</span></td><td>Hot Spanish Latte</td><td>Yes</td><td>₱550 · Card</td><td><span class="badge ok">Confirmed</span></td><td style="text-align: right"><button class="btn sm">Transfer</button> <button class="btn sm no">Cancel</button></td></tr>
+            <tr><td><div style="display: flex; gap: 10px; align-items: center"><span class="av">AC</span><div><div style="font-weight: 600">Ana Cruz</div><div style="font-size: 11px; color: #8C7D6E">#BK-1050 · walk-in</div></div></div></td><td>Thu, Oct 29<br><span style="font-size: 11px; color: #8C7D6E">S1 · 9:00 AM</span></td><td>Decide at cafe</td><td>No</td><td>₱500 · Cash</td><td><span class="badge ok">Confirmed</span></td><td style="text-align: right"><button class="btn sm">Transfer</button> <button class="btn sm no">Cancel</button></td></tr>
+            <tr><td><div style="display: flex; gap: 10px; align-items: center"><span class="av">YR</span><div><div style="font-weight: 600">Yuan Realosa</div><div style="font-size: 11px; color: #8C7D6E">#BK-1051</div></div></div></td><td>Thu, Oct 29<br><span style="font-size: 11px; color: #8C7D6E">S2 · 10:15 AM</span></td><td>Iced Matcha</td><td>No</td><td>₱500 · PayMongo</td><td><span class="badge warn">Pending payment · 9 min</span></td><td style="text-align: right"><span style="font-size: 12px; color: #8C7D6E">Waiting on PayMongo</span></td></tr>
+            <tr><td><div style="display: flex; gap: 10px; align-items: center"><span class="av">RD</span><div><div style="font-weight: 600">Rona De Leon</div><div style="font-size: 11px; color: #8C7D6E">#BK-1049</div></div></div></td><td>Sat, Nov 7<br><span style="font-size: 11px; color: #8C7D6E">S2 · 10:15 AM</span></td><td>Decide at cafe</td><td>No</td><td>₱500 · BPI</td><td><span class="badge info">Awaiting verification</span></td><td style="text-align: right"><button class="btn sm ok">Approve</button> <button class="btn sm no">Reject</button></td></tr>
+            <tr><td><div style="display: flex; gap: 10px; align-items: center"><span class="av">ML</span><div><div style="font-weight: 600">Marcus Lee</div><div style="font-size: 11px; color: #8C7D6E">#BK-1039</div></div></div></td><td>Fri, Oct 30<br><span style="font-size: 11px; color: #8C7D6E">S1 · 9:00 AM</span></td><td>Hot Matcha</td><td>No</td><td>₱500 · Maya</td><td><span class="badge info">Transferred from Oct 23</span></td><td style="text-align: right"><button class="btn sm no">Cancel</button></td></tr>
+            <tr><td><div style="display: flex; gap: 10px; align-items: center"><span class="av">SC</span><div><div style="font-weight: 600">Sophia Carter</div><div style="font-size: 11px; color: #8C7D6E">#BK-1033</div></div></div></td><td>Thu, Oct 22<br><span style="font-size: 11px; color: #8C7D6E">S1 · 9:00 AM</span></td><td>Iced Matcha</td><td>Yes</td><td>₱550 · GCash</td><td><span class="badge neu">Class ended</span></td><td style="text-align: right"><button class="btn sm ok">Attended</button> <button class="btn sm">No-show</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

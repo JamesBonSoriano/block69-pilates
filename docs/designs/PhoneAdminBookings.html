@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone Admin Bookings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&amp;family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#43271B}
+.pop{font-family:'Poppins',sans-serif}
+.tb{background:#43271B;height:64px;padding:0 16px;display:flex;align-items:center;gap:12px;box-sizing:border-box;color:#fff}
+.ov{font-size:10px;font-weight:600;letter-spacing:.08em;color:#A07850}
+.card{background:#fff;border-radius:14px;border:1px solid #EFE6D6;padding:16px;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;font:600 12px 'Inter',sans-serif;padding:9px 12px;border:1px solid #E3D2AE;background:#fff;color:#2C1A12}
+.btn.p{background:#43271B;color:#fff;border-color:#43271B}
+.badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:600;white-space:nowrap}
+.ok{background:#E7F0E6;color:#2F6B3F}.warn{background:#FBEBC8;color:#8A5A00}.bad{background:#F8DEDA;color:#B3261E}.neu{background:#F1EBDF;color:#6B5B4B}.info{background:#E3E9F2;color:#2F4E7A}
+.chip{display:inline-flex;border:1px solid #E3D2AE;border-radius:999px;padding:6px 12px;font-size:12px;background:#fff;white-space:nowrap}
+.chip.on{background:#43271B;color:#fff;border-color:#43271B}
+.nav{position:sticky;bottom:0;margin-top:auto;background:#fff;border-top:1px solid #EFE6D6;display:flex;padding:8px 0 14px}
+.nav a{flex:1;text-align:center;font-size:10px;color:#8C7D6E;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:4px}
+.nav a.on{color:#43271B;font-weight:600}
+.nav i{width:22px;height:22px;border-radius:7px;background:#F1EBDF;display:block}
+.nav a.on i{background:#43271B}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1200px; background: #F3EEE4; font-family: 'Inter', sans-serif; color: #2C1A12; display: flex; flex-direction: column">
+<div class="tb"><span style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #A07850; display: flex; align-items: center; justify-content: center; font-family: 'Poppins'; font-size: 12px">69</span><div style="flex: 1"><div class="pop" style="font-size: 15px; font-weight: 600">Block 69 Cafe</div><div style="font-size: 9px; letter-spacing: .1em; color: #E9DCC6">ADMIN</div></div><span style="width: 32px; height: 32px; border-radius: 999px; background: #E3D2AE; color: #43271B; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">RE</span></div>
+<div style="padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 14px">
+  <div style="display: flex; justify-content: space-between; align-items: center"><h1 class="pop" style="margin: 0; font-size: 22px; font-weight: 600">Bookings</h1><a class="btn p" href="AdminWalkIn.dc.html">+ Walk-in</a></div>
+  <input style="width: 100%; box-sizing: border-box; border: 1px solid #E3D2AE; border-radius: 10px; padding: 11px 12px; font: 14px 'Inter',sans-serif; background: #fff" placeholder="Search name or booking no.">
+  <div style="display: flex; gap: 8px; overflow: hidden"><span class="chip on">Needs action 3</span><span class="chip">Confirmed</span><span class="chip">Pending payment</span><span class="chip">Transferred</span></div>
+  <div class="card" style="padding: 14px; display: flex; flex-direction: column; gap: 10px"><div style="display: flex; justify-content: space-between; gap: 8px"><div><div style="font-weight: 600; font-size: 14px">Bianca Reyes</div><div style="font-size: 12px; color: #8C7D6E">Sat, Oct 25 · 9:00 AM · Hot coffee · Mat</div></div><span class="badge warn">Awaiting verification</span></div><div style="display: flex; gap: 8px"><span class="btn p" style="flex: 1">Approve</span><span class="btn" style="flex: 1">Reject</span></div></div>
+  <div class="card" style="padding: 14px; display: flex; flex-direction: column; gap: 10px"><div style="display: flex; justify-content: space-between; gap: 8px"><div><div style="font-weight: 600; font-size: 14px">Carlo Mendoza</div><div style="font-size: 12px; color: #8C7D6E">Fri, Oct 24 · 10:15 AM · Paid after hold ended</div></div><span class="badge bad">Paid, needs action</span></div><div style="display: flex; gap: 8px"><span class="btn p" style="flex: 1">Move</span><span class="btn" style="flex: 1">Refund</span></div></div>
+  <div class="card" style="padding: 14px; display: flex; flex-direction: column; gap: 10px"><div style="display: flex; justify-content: space-between; gap: 8px"><div><div style="font-weight: 600; font-size: 14px">Marcus Lee</div><div style="font-size: 12px; color: #8C7D6E">Thu, Oct 23 · 9:00 AM · Iced coffee · Own mat</div></div><span class="badge ok">Confirmed</span></div><div style="display: flex; gap: 8px"><span class="btn p" style="flex: 1">Transfer</span><span class="btn" style="flex: 1">Cancel</span></div></div>
+  <div style="font-size: 11px; color: #8C7D6E; text-align: center">Swipe the chips for all statuses</div>
+</div><nav class="nav"><a class="" href="PhoneAdminDashboard.dc.html"><i></i>Home</a><a class="on" href="PhoneAdminBookings.dc.html"><i></i>Bookings</a><a class="" href="PhoneAdminAttendance.dc.html"><i></i>Attendance</a><a class="" href="AdminPayments.dc.html"><i></i>Billing</a><a class="" href="#"><i></i>More</a></nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1200}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

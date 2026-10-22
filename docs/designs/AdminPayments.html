@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin Payments</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&amp;family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#43271B}a:hover{color:#273429}
+.pop{font-family:'Poppins',sans-serif}
+.side{width:280px;background:#43271B;color:#E9DCC6;display:flex;flex-direction:column;padding:28px 20px;box-sizing:border-box;gap:4px}
+.mi{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:#E9DCC6;text-decoration:none;font-size:14px}
+.mi.on{background:#E3D2AE;color:#2C1A12;font-weight:600}
+.cnt{margin-left:auto;background:#fff;color:#43271B;border-radius:999px;font-size:11px;font-weight:600;padding:1px 7px}
+.top{background:#FAF7F1;border-bottom:1px solid #ECE3D3;padding:28px 40px;display:flex;justify-content:space-between;align-items:flex-start}
+.ov{font-size:11px;font-weight:600;letter-spacing:.08em;color:#A07850}
+.card{background:#fff;border-radius:16px;border:1px solid #EFE6D6;padding:24px;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;font:600 13px 'Inter',sans-serif;padding:10px 16px;border:1px solid #E3D2AE;background:#fff;color:#2C1A12;cursor:pointer}
+.btn.p{background:#43271B;color:#fff;border-color:#43271B}.btn.t{background:#EFE3C9;border-color:#EFE3C9}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap}
+.ok{background:#E7F0E6;color:#2F6B3F}.warn{background:#FBEBC8;color:#8A5A00}.info{background:#E3E9F2;color:#2F4E7A}.bad{background:#F8DEDA;color:#B3261E}.neu{background:#F1EBDF;color:#6B5B4B}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;color:#8C7D6E;font-weight:600;padding:12px 16px;border-bottom:1px solid #EFE6D6}
+td{padding:14px 16px;border-bottom:1px solid #F3ECE0;color:#2C1A12}
+.sel{border:1px solid #E3D2AE;border-radius:10px;padding:9px 12px;font:13px 'Inter',sans-serif;background:#fff;color:#2C1A12}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1180px; display: flex; font-family: 'Inter', sans-serif; color: #2C1A12; background: #F3EEE4">
+  <aside class="side">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 8px 28px"><span style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #A07850; display: flex; align-items: center; justify-content: center; font-family: 'Poppins'; color: #fff; font-size: 13px">69</span><div><div class="pop" style="color: #fff; font-size: 18px; font-weight: 600">Block 69 Cafe</div><div style="font-size: 10px; letter-spacing: .1em">ADMIN</div></div></div>
+    <div style="font-size: 10px; letter-spacing: .1em; padding: 0 14px 8px; color: #BFA98C">ADMIN MENU</div>
+    <a class="mi" href="#">Dashboard</a>
+    <a class="mi" href="AdminBookings.dc.html">Bookings<span class="cnt">3</span></a>
+    <a class="mi" href="#">Schedule Management</a>
+    <a class="mi on" href="AdminPayments.dc.html">Manage Billings</a>
+    <a class="mi" href="AdminPricing.dc.html">Pricing &amp; Vouchers</a>
+    <a class="mi" href="#">Content Management</a>
+    <a class="mi" href="#">User Management</a>
+    <a class="mi" href="#">Communications</a>
+    <a class="mi" href="AdminSettings.dc.html">Settings</a>
+    <div style="margin-top: auto; border-top: 1px solid #6A4A38; padding: 16px 8px 0; display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 999px; background: #E3D2AE; color: #43271B; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">RE</span><div><div style="color: #fff; font-size: 13px; font-weight: 600">Rheneshia Escalo</div><div style="font-size: 11px">Administrator</div></div></div>
+  </aside>
+  <div style="flex: 1; display: flex; flex-direction: column">
+    <div class="top">
+      <div><div class="ov">MAT PILATES ADMIN</div><h1 class="pop" style="margin: 6px 0 4px; font-size: 30px; font-weight: 600">Manage Billings</h1><div style="font-size: 13px; color: #8C7D6E">Payments from PayMongo, manual transfers and walk-ins, plus earnings.</div></div>
+      <div style="display: flex; gap: 10px"><button class="btn">This month ▾</button><button class="btn p">Export CSV</button></div>
+    </div>
+    <div style="padding: 28px 40px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+        <div class="card"><div style="font-size: 12px; color: #8C7D6E">Earnings this week</div><div class="pop" style="font-size: 28px; font-weight: 600; margin-top: 6px">₱6,350</div><div style="font-size: 11px; color: #2F6B3F; margin-top: 4px">12 paid seats</div></div>
+        <div class="card"><div style="font-size: 12px; color: #8C7D6E">Earnings this month</div><div class="pop" style="font-size: 28px; font-weight: 600; margin-top: 6px">₱24,900</div><div style="font-size: 11px; color: #8C7D6E; margin-top: 4px">49 paid seats · October 2026</div></div>
+        <div class="card" style="background: #FBF4E6"><div style="font-size: 12px; color: #8C7D6E">Mat rental for strays (month)</div><div class="pop" style="font-size: 28px; font-weight: 600; margin-top: 6px">₱1,150</div><div style="font-size: 11px; color: #8C7D6E; margin-top: 4px">23 mats · donated in full</div></div>
+        <div class="card" style="border-color: #E7B9B3"><div style="font-size: 12px; color: #8C7D6E">Needs action</div><div class="pop" style="font-size: 28px; font-weight: 600; margin-top: 6px; color: #B3261E">2</div><div style="font-size: 11px; color: #8C7D6E; margin-top: 4px">1 transfer to verify · 1 paid but class full</div></div>
+      </div>
+      <div style="display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">Earnings by week</h2><span style="font-size: 12px; color: #8C7D6E">Class fees and mat rental, October 2026</span></div>
+          <div style="display: flex; align-items: flex-end; gap: 28px; height: 180px; margin-top: 20px; padding: 0 12px; border-bottom: 1px solid #EFE6D6">
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="font-size: 11px; font-weight: 600">₱5,700</span><div style="width: 100%; display: flex; flex-direction: column"><div style="height: 10px; background: #D9BE8C; border-radius: 6px 6px 0 0"></div><div style="height: 118px; background: #43271B"></div></div></div>
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="font-size: 11px; font-weight: 600">₱6,250</span><div style="width: 100%; display: flex; flex-direction: column"><div style="height: 12px; background: #D9BE8C; border-radius: 6px 6px 0 0"></div><div style="height: 128px; background: #43271B"></div></div></div>
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="font-size: 11px; font-weight: 600">₱6,600</span><div style="width: 100%; display: flex; flex-direction: column"><div style="height: 14px; background: #D9BE8C; border-radius: 6px 6px 0 0"></div><div style="height: 134px; background: #43271B"></div></div></div>
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="font-size: 11px; font-weight: 600">₱6,350</span><div style="width: 100%; display: flex; flex-direction: column"><div style="height: 12px; background: #D9BE8C; border-radius: 6px 6px 0 0"></div><div style="height: 130px; background: #43271B"></div></div></div>
+          </div>
+          <div style="display: flex; gap: 28px; padding: 8px 12px 0; font-size: 11px; color: #8C7D6E"><span style="flex: 1; text-align: center">Oct 1 – 4</span><span style="flex: 1; text-align: center">Oct 8 – 11</span><span style="flex: 1; text-align: center">Oct 15 – 18</span><span style="flex: 1; text-align: center">Oct 22 – 25</span></div>
+          <div style="display: flex; gap: 16px; margin-top: 12px; font-size: 12px; color: #6B5B4B"><span><span style="display: inline-block; width: 10px; height: 10px; background: #43271B; border-radius: 2px"></span> Class fees</span><span><span style="display: inline-block; width: 10px; height: 10px; background: #D9BE8C; border-radius: 2px"></span> Mat rental (donation)</span></div>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 12px">
+          <h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">By payment method</h2>
+          <div style="display: flex; justify-content: space-between; font-size: 13px"><span>GCash</span><span style="font-weight: 600">₱11,200 · 45%</span></div><div style="height: 8px; border-radius: 99px; background: #F1EBDF"><div style="width: 45%; height: 8px; border-radius: 99px; background: #43271B"></div></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Maya</span><span style="font-weight: 600">₱6,000 · 24%</span></div><div style="height: 8px; border-radius: 99px; background: #F1EBDF"><div style="width: 24%; height: 8px; border-radius: 99px; background: #43271B"></div></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Card</span><span style="font-weight: 600">₱4,700 · 19%</span></div><div style="height: 8px; border-radius: 99px; background: #F1EBDF"><div style="width: 19%; height: 8px; border-radius: 99px; background: #43271B"></div></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px"><span>BPI transfer / cash</span><span style="font-weight: 600">₱3,000 · 12%</span></div><div style="height: 8px; border-radius: 99px; background: #F1EBDF"><div style="width: 12%; height: 8px; border-radius: 99px; background: #43271B"></div></div>
+          <div style="font-size: 11px; color: #8C7D6E">Card numbers are never stored. Only PayMongo's reference is kept.</div>
+        </div>
+      </div>
+      <div class="card" style="padding: 0">
+        <div style="display: flex; gap: 10px; padding: 16px; align-items: center; border-bottom: 1px solid #EFE6D6">
+          <input class="sel" style="width: 260px" placeholder="Search client or reference" aria-label="Search payments">
+          <select class="sel" aria-label="Method"><option>All methods</option></select>
+          <select class="sel" aria-label="Status"><option>All statuses</option></select>
+          <span style="margin-left: auto; font-size: 12px; color: #8C7D6E">Showing 6 of 54 payments</span>
+        </div>
+        <table>
+          <thead><tr><th>DATE</th><th>CLIENT</th><th>BOOKING</th><th>METHOD</th><th>AMOUNT</th><th>STATUS</th><th>REFERENCE</th><th></th></tr></thead>
+          <tbody>
+            <tr style="background: #FFF7F5"><td>Oct 22, 8:12 AM</td><td style="font-weight: 600">Marco Reyes</td><td>Oct 24 · S1</td><td>GCash</td><td style="font-weight: 600">₱500</td><td><span class="badge bad">Paid, needs action</span></td><td style="color: #8C7D6E">pay_Q8m21x</td><td><button class="btn t">Move or refund</button></td></tr>
+            <tr style="background: #F7F9FC"><td>Oct 22, 7:40 AM</td><td style="font-weight: 600">Rona De Leon</td><td>Nov 7 · S2</td><td>BPI transfer</td><td style="font-weight: 600">₱500</td><td><span class="badge info">Awaiting verification</span></td><td style="color: #8C7D6E">Screenshot</td><td><button class="btn t">Review</button></td></tr>
+            <tr><td>Oct 22, 7:05 AM</td><td style="font-weight: 600">James Soriano</td><td>Oct 29 · S1 + mat</td><td>GCash</td><td style="font-weight: 600">₱300</td><td><span class="badge ok">Paid</span></td><td style="color: #8C7D6E">pay_7Hx2k9</td><td><a href="#" style="font-size: 12px; font-weight: 600">View</a></td></tr>
+            <tr><td>Oct 21, 6:48 PM</td><td style="font-weight: 600">Kizzeah Delariman</td><td>Oct 23 · S1 + mat</td><td>Card</td><td style="font-weight: 600">₱550</td><td><span class="badge ok">Paid</span></td><td style="color: #8C7D6E">pay_2LkP0d</td><td><a href="#" style="font-size: 12px; font-weight: 600">View</a></td></tr>
+            <tr><td>Oct 21, 9:02 AM</td><td style="font-weight: 600">Walk-in: Ana Cruz</td><td>Oct 21 · S2</td><td>Cash</td><td style="font-weight: 600">₱500</td><td><span class="badge ok">Paid</span></td><td style="color: #8C7D6E">Recorded by Rheneshia</td><td><a href="#" style="font-size: 12px; font-weight: 600">View</a></td></tr>
+            <tr><td>Oct 20, 4:15 PM</td><td style="font-weight: 600">Yuan Realosa</td><td>Oct 22 · S2</td><td>Maya</td><td style="font-weight: 600">₱500</td><td><span class="badge neu">Expired</span></td><td style="color: #8C7D6E">cs_9Tq0aa</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

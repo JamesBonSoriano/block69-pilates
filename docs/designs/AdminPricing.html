@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin Pricing and Vouchers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&amp;family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#43271B}a:hover{color:#273429}
+.pop{font-family:'Poppins',sans-serif}
+.side{width:280px;background:#43271B;color:#E9DCC6;display:flex;flex-direction:column;padding:28px 20px;box-sizing:border-box;gap:4px}
+.mi{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:#E9DCC6;text-decoration:none;font-size:14px}
+.mi.on{background:#E3D2AE;color:#2C1A12;font-weight:600}
+.cnt{margin-left:auto;background:#fff;color:#43271B;border-radius:999px;font-size:11px;font-weight:600;padding:1px 7px}
+.top{background:#FAF7F1;border-bottom:1px solid #ECE3D3;padding:28px 40px;display:flex;justify-content:space-between;align-items:flex-start}
+.ov{font-size:11px;font-weight:600;letter-spacing:.08em;color:#A07850}
+.card{background:#fff;border-radius:16px;border:1px solid #EFE6D6;padding:24px;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;font:600 13px 'Inter',sans-serif;padding:10px 16px;border:1px solid #E3D2AE;background:#fff;color:#2C1A12;cursor:pointer}
+.btn.p{background:#43271B;color:#fff;border-color:#43271B}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap}
+.ok{background:#E7F0E6;color:#2F6B3F}.warn{background:#FBEBC8;color:#8A5A00}.bad{background:#F8DEDA;color:#B3261E}.neu{background:#F1EBDF;color:#6B5B4B}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;color:#8C7D6E;font-weight:600;padding:12px 16px;border-bottom:1px solid #EFE6D6}
+td{padding:14px 16px;border-bottom:1px solid #F3ECE0}
+.lbl{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;color:#8C7D6E;margin-bottom:6px}
+.fld{width:100%;box-sizing:border-box;border:1px solid #E3D2AE;border-radius:10px;padding:11px 12px;font:14px 'Inter',sans-serif;color:#2C1A12;background:#fff}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1180px; display: flex; font-family: 'Inter', sans-serif; color: #2C1A12; background: #F3EEE4">
+  <aside class="side">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 8px 28px"><span style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #A07850; display: flex; align-items: center; justify-content: center; font-family: 'Poppins'; color: #fff; font-size: 13px">69</span><div><div class="pop" style="color: #fff; font-size: 18px; font-weight: 600">Block 69 Cafe</div><div style="font-size: 10px; letter-spacing: .1em">ADMIN</div></div></div>
+    <div style="font-size: 10px; letter-spacing: .1em; padding: 0 14px 8px; color: #BFA98C">ADMIN MENU</div>
+    <a class="mi" href="#">Dashboard</a>
+    <a class="mi" href="AdminBookings.dc.html">Bookings<span class="cnt">3</span></a>
+    <a class="mi" href="#">Schedule Management</a>
+    <a class="mi" href="AdminPayments.dc.html">Manage Billings</a>
+    <a class="mi on" href="AdminPricing.dc.html">Pricing &amp; Vouchers</a>
+    <a class="mi" href="#">Content Management</a>
+    <a class="mi" href="#">User Management</a>
+    <a class="mi" href="#">Communications</a>
+    <a class="mi" href="AdminSettings.dc.html">Settings</a>
+    <div style="margin-top: auto; border-top: 1px solid #6A4A38; padding: 16px 8px 0; display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 999px; background: #E3D2AE; color: #43271B; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">RE</span><div><div style="color: #fff; font-size: 13px; font-weight: 600">Rheneshia Escalo</div><div style="font-size: 11px">Administrator</div></div></div>
+  </aside>
+  <div style="flex: 1; display: flex; flex-direction: column">
+    <div class="top">
+      <div><div class="ov">MAT PILATES ADMIN</div><h1 class="pop" style="margin: 6px 0 4px; font-size: 30px; font-weight: 600">Pricing &amp; Vouchers</h1><div style="font-size: 13px; color: #8C7D6E">Prices here feed the booking page, the Home page and every total. Nothing is typed into page text.</div></div>
+    </div>
+    <div style="padding: 28px 40px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px">
+        <div class="card" style="display: flex; flex-direction: column; gap: 16px">
+          <h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">Prices</h2>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+            <label><span class="lbl">CLASS PRICE (PER SEAT)</span><input class="fld" value="₱500"></label>
+            <label><span class="lbl">MAT RENTAL ADD-ON</span><input class="fld" value="₱50"></label>
+          </div>
+          <div style="background: #FBF4E6; border-radius: 12px; padding: 12px 14px; font-size: 12px; color: #6B5B4B">The class price includes the upsized matcha or coffee. Mat rental is donated in full, so vouchers never discount it.</div>
+          <div style="display: flex; justify-content: space-between; align-items: center"><span style="font-size: 12px; color: #8C7D6E">Last changed Oct 1, 2026 by Rheneshia. New prices apply to new bookings only.</span><button class="btn p">Save prices</button></div>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 14px">
+          <h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">Create a promo code</h2>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+            <label><span class="lbl">CODE</span><input class="fld" value="FIRSTMAT20"></label>
+            <label><span class="lbl">DISCOUNT</span><input class="fld" value="20% off class fee"></label>
+            <label><span class="lbl">TOTAL USES</span><input class="fld" value="30"></label>
+            <label><span class="lbl">EXPIRES</span><input class="fld" value="Nov 30, 2026"></label>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 10px"><button class="btn">Clear</button><button class="btn p">Create code</button></div>
+        </div>
+      </div>
+      <div class="card" style="padding: 0">
+        <div style="padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #EFE6D6"><h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">Promo codes</h2><span style="font-size: 12px; color: #8C7D6E">Codes the cafe creates for promos</span></div>
+        <table>
+          <thead><tr><th>CODE</th><th>DISCOUNT</th><th>USED</th><th>EXPIRES</th><th>STATUS</th><th></th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight: 600">FIRSTMAT20</td><td>20% off class fee</td><td>12 of 30</td><td>Nov 30, 2026</td><td><span class="badge ok">Active</span></td><td><a href="#" style="font-size: 12px; font-weight: 600">Edit</a> · <a href="#" style="font-size: 12px; font-weight: 600; color: #B3261E">Turn off</a></td></tr>
+            <tr><td style="font-weight: 600">STRAYDAY</td><td>₱100 off class fee</td><td>40 of 40</td><td>Oct 4, 2026</td><td><span class="badge neu">Used up</span></td><td><a href="#" style="font-size: 12px; font-weight: 600">Edit</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card" style="padding: 0">
+        <div style="padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #EFE6D6"><h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">50% codes issued by the system</h2><span style="font-size: 12px; color: #8C7D6E">Created when a client cancels 12 to 24 hours before class · valid 60 days · one use</span></div>
+        <table>
+          <thead><tr><th>CODE</th><th>CLIENT</th><th>FROM BOOKING</th><th>ISSUED</th><th>EXPIRES</th><th>STATUS</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight: 600">HALF50-JS7Q</td><td>James Soriano</td><td>Oct 16 · S2</td><td>Oct 15, 2026</td><td>Dec 15, 2026</td><td><span class="badge ok">Active</span></td></tr>
+            <tr><td style="font-weight: 600">HALF50-M3RT</td><td>Marcus Lee</td><td>Oct 10 · S1</td><td>Oct 9, 2026</td><td>Dec 8, 2026</td><td><span class="badge ok">Active</span></td></tr>
+            <tr><td style="font-weight: 600">HALF50-K2PD</td><td>James Soriano</td><td>Sep 13 · S1</td><td>Sep 12, 2026</td><td>Nov 11, 2026</td><td><span class="badge neu">Used Oct 18</span></td></tr>
+            <tr><td style="font-weight: 600">HALF50-A9ZX</td><td>James Soriano</td><td>Jul 31 · S2</td><td>Jul 30, 2026</td><td>Sep 28, 2026</td><td><span class="badge bad">Expired</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

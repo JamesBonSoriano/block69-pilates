@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&amp;family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#43271B}a:hover{color:#273429}
+.pop{font-family:'Poppins',sans-serif}
+.side{width:280px;background:#43271B;color:#E9DCC6;display:flex;flex-direction:column;padding:28px 20px;box-sizing:border-box;gap:4px}
+.mi{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:#E9DCC6;text-decoration:none;font-size:14px}
+.mi.on{background:#E3D2AE;color:#2C1A12;font-weight:600}
+.cnt{margin-left:auto;background:#fff;color:#43271B;border-radius:999px;font-size:11px;font-weight:600;padding:1px 7px}
+.top{background:#FAF7F1;border-bottom:1px solid #ECE3D3;padding:28px 40px;display:flex;justify-content:space-between;align-items:flex-start}
+.ov{font-size:11px;font-weight:600;letter-spacing:.08em;color:#A07850}
+.card{background:#fff;border-radius:16px;border:1px solid #EFE6D6;padding:24px;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;font:600 13px 'Inter',sans-serif;padding:10px 16px;border:1px solid #E3D2AE;background:#fff;color:#2C1A12;cursor:pointer;text-decoration:none}
+.btn.p{background:#43271B;color:#fff;border-color:#43271B}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap}
+.ok{background:#E7F0E6;color:#2F6B3F}.warn{background:#FBEBC8;color:#8A5A00}.bad{background:#F8DEDA;color:#B3261E}.neu{background:#F1EBDF;color:#6B5B4B}
+.lbl{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;color:#8C7D6E;margin-bottom:6px}
+.fld{width:100%;box-sizing:border-box;border:1px solid #E3D2AE;border-radius:10px;padding:11px 12px;font:14px 'Inter',sans-serif;color:#2C1A12;background:#fff}
+.slot{border:1px solid #E3D2AE;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;font-size:13px;background:#fff}
+.slot.on{border:2px solid #43271B;background:#FBF4E6}
+.slot.full{opacity:.5}
+.opt{border:1px solid #E3D2AE;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px;background:#fff}
+.opt.on{border:2px solid #43271B;background:#FBF4E6;font-weight:600}
+.chk{width:18px;height:18px;border-radius:5px;background:#43271B;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.sec{font-size:15px;font-weight:600;margin:0}
+.ln{display:flex;justify-content:space-between;font-size:13px;padding:6px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;color:#8C7D6E;font-weight:600;padding:12px 16px;border-bottom:1px solid #EFE6D6}
+td{padding:14px 16px;border-bottom:1px solid #F3ECE0}
+.tg{width:44px;height:24px;border-radius:999px;padding:3px;box-sizing:border-box;display:flex;border:0}
+.tg span{width:18px;height:18px;border-radius:999px;background:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #E3D2AE;border-radius:999px;padding:6px 12px;font-size:12px;background:#FBF4E6}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1180px; display: flex; font-family: 'Inter', sans-serif; color: #2C1A12; background: #F3EEE4">
+  <aside class="side">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 8px 28px"><span style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #A07850; display: flex; align-items: center; justify-content: center; font-family: 'Poppins'; color: #fff; font-size: 13px">69</span><div><div class="pop" style="color: #fff; font-size: 18px; font-weight: 600">Block 69 Cafe</div><div style="font-size: 10px; letter-spacing: .1em">ADMIN</div></div></div>
+    <div style="font-size: 10px; letter-spacing: .1em; padding: 0 14px 8px; color: #BFA98C">ADMIN MENU</div>
+    <a class="mi" href="#">Dashboard</a>
+    <a class="mi" href="AdminBookings.dc.html">Bookings<span class="cnt">3</span></a>
+    <a class="mi" href="#">Schedule Management</a>
+    <a class="mi" href="AdminPayments.dc.html">Manage Billings</a>
+    <a class="mi" href="AdminPricing.dc.html">Pricing &amp; Vouchers</a>
+    <a class="mi" href="#">Content Management</a>
+    <a class="mi" href="#">User Management</a>
+    <a class="mi" href="#">Communications</a>
+    <a class="mi on" href="AdminSettings.dc.html">Settings</a>
+    <div style="margin-top: auto; border-top: 1px solid #6A4A38; padding: 16px 8px 0; display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 999px; background: #E3D2AE; color: #43271B; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">RE</span><div><div style="color: #fff; font-size: 13px; font-weight: 600">Rheneshia Escalo</div><div style="font-size: 11px">Administrator</div></div></div>
+  </aside>
+  <div style="flex: 1; display: flex; flex-direction: column">
+    <div class="top">
+      <div><div class="ov">MAT PILATES ADMIN</div><h1 class="pop" style="margin: 6px 0 4px; font-size: 30px; font-weight: 600">Settings</h1><div style="font-size: 13px; color: #8C7D6E">Studio details and the booking rules the website follows.</div></div>
+      <button class="btn p">Save changes</button>
+    </div>
+    <div style="padding: 28px 40px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <div class="card" style="display: flex; flex-direction: column; gap: 14px">
+          <h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">Studio information</h2>
+          <div style="display: flex; gap: 16px; align-items: center"><span style="width: 64px; height: 64px; border-radius: 999px; background: #43271B; color: #FFEBC5; display: flex; align-items: center; justify-content: center; font-family: 'Poppins'; font-weight: 600">69</span><div><button class="btn">Upload new logo</button><div style="font-size: 11px; color: #8C7D6E; margin-top: 6px">PNG or SVG, square, up to 2 MB</div></div></div>
+          <label><span class="lbl">BUSINESS NAME</span><input class="fld" value="Block 69 Cafe"></label>
+          <label><span class="lbl">ADDRESS</span><input class="fld" value="444 Kamagong St., Comembo, Taguig City"></label>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+            <label><span class="lbl">CONTACT EMAIL</span><input class="fld" value="block69cafe@gmail.com"></label>
+            <label><span class="lbl">CONTACT NUMBER</span><input class="fld" value="0917 000 6969"></label>
+            <label><span class="lbl">INSTAGRAM</span><input class="fld" value="@block69cafe"></label>
+            <label><span class="lbl">FACEBOOK</span><input class="fld" value="@block69cafe"></label>
+          </div>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 14px">
+          <h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">Drink options</h2>
+          <div style="font-size: 12px; color: #8C7D6E">Guests pick one upsized drink when they book. It shows on the attendance list.</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px"><span class="chip">Iced matcha latte ×</span><span class="chip">Hot matcha ×</span><span class="chip">Iced coffee ×</span><span class="chip">Hot coffee ×</span></div>
+          <div style="display: flex; gap: 10px"><input class="fld" placeholder="Add a drink option"><button class="btn">Add</button></div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <div class="card" style="display: flex; flex-direction: column; gap: 14px">
+          <h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">Booking rules</h2>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+            <label><span class="lbl">SEATS PER SESSION</span><input class="fld" value="4"></label>
+            <label><span class="lbl">ONLINE BOOKING CLOSES</span><input class="fld" value="8:00 AM on class day"></label>
+            <label><span class="lbl">SEAT HOLD WHILE PAYING</span><input class="fld" value="15 minutes"></label>
+            <label><span class="lbl">50% CODE VALID FOR</span><input class="fld" value="60 days"></label>
+          </div>
+          <div style="background: #FBF4E6; border-radius: 12px; padding: 12px 14px; font-size: 12px; color: #6B5B4B">Cancellation policy: more than 24 hours before, one free transfer. 12 to 24 hours before, a 50% code. Less than 12 hours or no-show, forfeited. Payments are non-refundable.</div>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 4px">
+          <h2 class="pop" style="margin: 0 0 8px; font-size: 16px; font-weight: 600">Payments</h2>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #F3ECE0"><div style="flex: 1"><div style="font-weight: 600; font-size: 14px">PayMongo (GCash, Maya, card)</div><div style="font-size: 12px; color: #8C7D6E">Main way to pay. Confirms bookings automatically.</div></div><span class="badge warn">Test mode</span><span class="tg" style="background: #43271B; justify-content: flex-end"><span></span></span></div>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 12px 0"><div style="flex: 1"><div style="font-weight: 600; font-size: 14px">Manual transfer backup</div><div style="font-size: 12px; color: #8C7D6E">Show GCash / BPI details and screenshot upload if PayMongo is down. Admin verifies each one.</div></div><span class="tg" style="background: #DAC49B; justify-content: flex-start"><span></span></span></div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding-top: 8px; opacity: .6">
+            <label><span class="lbl">GCASH NAME AND NUMBER</span><input class="fld" value="Block 69 Cafe · 0917 000 6969"></label>
+            <label><span class="lbl">BPI ACCOUNT</span><input class="fld" value="Block 69 Cafe · 1234 5678 90"></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

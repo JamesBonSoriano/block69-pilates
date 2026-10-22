@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone Menu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#43271B}
+.serif{font-family:'Playfair Display',Georgia,serif}
+.hdr{background:#43271B;height:64px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box}
+.bw{font-family:'Playfair Display',serif;font-size:22px;color:#fff;line-height:1}
+.bd{font-size:9px;font-weight:700;letter-spacing:.18em;color:#FFEBC5;margin-top:3px}
+.card{background:#FAF7F3;border:1px solid #E6D3AE;border-radius:20px;padding:20px;box-sizing:border-box}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;font:600 14px 'Plus Jakarta Sans',sans-serif;padding:14px 20px;border:1.25px solid #43271B;background:transparent;color:#43271B;text-decoration:none;box-sizing:border-box}
+.btn.p{background:#43271B;color:#FAF7F3}
+.over{font-size:11px;font-weight:700;letter-spacing:.08em;color:#43271B}
+.lbl{display:block;font-size:12px;font-weight:600;color:#43271B;margin-bottom:6px}
+.fld{width:100%;box-sizing:border-box;border:1px solid #E6D3AE;border-radius:12px;padding:13px 14px;font:14px 'Plus Jakarta Sans',sans-serif;color:#273429;background:#fff}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap}
+.ok{background:#E4ECE3;color:#2F6B3F}.info{background:#E3E9F2;color:#2F4E7A}.neu{background:#F2DFBB;color:#43271B}.bad{background:#F8DEDA;color:#B3261E}.warn{background:#FBE9C0;color:#8A5A00}
+.steps{display:flex;gap:6px}.steps span{flex:1;height:4px;border-radius:4px;background:#E6D3AE}.steps span.on{background:#43271B}
+.opt{border:1px solid #E6D3AE;border-radius:14px;padding:14px;background:#fff;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.opt.on{border:2px solid #43271B;background:#F2DFBB}
+.ln{display:flex;justify-content:space-between;font-size:13px;padding:5px 0}
+.ft{background:#43271B;padding:32px 20px;color:#F2DFBB;font-size:12px;display:flex;flex-direction:column;gap:6px}
+.sticky{position:sticky;bottom:0;background:#FAF7F3;border-top:1px solid #E6D3AE;padding:14px 20px;display:flex;align-items:center;gap:12px}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 844px; background: #FFEBC5; font-family: 'Plus Jakarta Sans', sans-serif; color: #273429; display: flex; flex-direction: column">
+<header class="hdr"><div><div class="bw">Block 69 Cafe</div><div class="bd">MAT PILATES + CAFÉ</div></div><div style="display: flex; gap: 12px; align-items: center"><span style="width: 32px; height: 32px; border-radius: 999px; background: #F2DFBB; color: #43271B; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px">JS</span><a href="PhoneMenu.dc.html" aria-label="Open menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFEBC5" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></a></div></header>
+<div style="flex: 1; background: #43271B; padding: 12px 20px 32px; display: flex; flex-direction: column; gap: 4px">
+  <div style="display: flex; align-items: center; gap: 12px; padding: 16px 0 20px; border-bottom: 1px solid #6A4A38"><span style="width: 44px; height: 44px; border-radius: 999px; background: #F2DFBB; color: #43271B; display: flex; align-items: center; justify-content: center; font-weight: 600">JS</span><div><div style="color: #fff; font-weight: 600">James Soriano</div><div style="color: #DAC49B; font-size: 12px">james@email.com</div></div></div>
+  <a href="PhoneHome.dc.html" class="serif" style="color: #FFEBC5; text-decoration: none; font-size: 26px; padding: 14px 0">Home</a>
+  <a href="#" class="serif" style="color: #FFEBC5; text-decoration: none; font-size: 26px; padding: 14px 0">About Us</a>
+  <a href="PhoneBook1.dc.html" class="serif" style="color: #FFEBC5; text-decoration: none; font-size: 26px; padding: 14px 0">Book a Class</a>
+  <a href="PhoneMyBookings.dc.html" class="serif" style="color: #FFEBC5; text-decoration: none; font-size: 26px; padding: 14px 0">My Bookings</a>
+  <div style="border-top: 1px solid #6A4A38; margin-top: 8px; padding-top: 12px; display: flex; flex-direction: column; gap: 4px; font-size: 15px">
+    <a href="Main.dc.html" style="color: #F2DFBB; text-decoration: none; padding: 10px 0">My Profile</a>
+    <a href="Payments.dc.html" style="color: #F2DFBB; text-decoration: none; padding: 10px 0">Payments</a>
+    <a href="Vouchers.dc.html" style="color: #F2DFBB; text-decoration: none; padding: 10px 0">My Vouchers <span class="badge neu" style="margin-left: 6px">1</span></a>
+    <a href="Notifications.dc.html" style="color: #F2DFBB; text-decoration: none; padding: 10px 0">Notifications</a>
+  </div>
+  <a class="btn" href="#" style="margin-top: auto; color: #FFEBC5; border-color: #FFEBC5">Log out</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

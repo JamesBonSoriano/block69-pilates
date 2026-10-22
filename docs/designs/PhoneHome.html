@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#43271B}
+.serif{font-family:'Playfair Display',Georgia,serif}
+.hdr{background:#43271B;height:64px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box}
+.bw{font-family:'Playfair Display',serif;font-size:22px;color:#fff;line-height:1}
+.bd{font-size:9px;font-weight:700;letter-spacing:.18em;color:#FFEBC5;margin-top:3px}
+.card{background:#FAF7F3;border:1px solid #E6D3AE;border-radius:20px;padding:20px;box-sizing:border-box}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;font:600 14px 'Plus Jakarta Sans',sans-serif;padding:14px 20px;border:1.25px solid #43271B;background:transparent;color:#43271B;text-decoration:none;box-sizing:border-box}
+.btn.p{background:#43271B;color:#FAF7F3}
+.over{font-size:11px;font-weight:700;letter-spacing:.08em;color:#43271B}
+.lbl{display:block;font-size:12px;font-weight:600;color:#43271B;margin-bottom:6px}
+.fld{width:100%;box-sizing:border-box;border:1px solid #E6D3AE;border-radius:12px;padding:13px 14px;font:14px 'Plus Jakarta Sans',sans-serif;color:#273429;background:#fff}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap}
+.ok{background:#E4ECE3;color:#2F6B3F}.info{background:#E3E9F2;color:#2F4E7A}.neu{background:#F2DFBB;color:#43271B}.bad{background:#F8DEDA;color:#B3261E}.warn{background:#FBE9C0;color:#8A5A00}
+.steps{display:flex;gap:6px}.steps span{flex:1;height:4px;border-radius:4px;background:#E6D3AE}.steps span.on{background:#43271B}
+.opt{border:1px solid #E6D3AE;border-radius:14px;padding:14px;background:#fff;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.opt.on{border:2px solid #43271B;background:#F2DFBB}
+.ln{display:flex;justify-content:space-between;font-size:13px;padding:5px 0}
+.ft{background:#43271B;padding:32px 20px;color:#F2DFBB;font-size:12px;display:flex;flex-direction:column;gap:6px}
+.sticky{position:sticky;bottom:0;background:#FAF7F3;border-top:1px solid #E6D3AE;padding:14px 20px;display:flex;align-items:center;gap:12px}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1700px; background: #FFEBC5; font-family: 'Plus Jakarta Sans', sans-serif; color: #273429; display: flex; flex-direction: column">
+<header class="hdr"><div><div class="bw">Block 69 Cafe</div><div class="bd">MAT PILATES + CAFÉ</div></div><div style="display: flex; gap: 12px; align-items: center"><a href="PhoneMenu.dc.html" aria-label="Open menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFEBC5" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></a></div></header>
+<section style="padding: 32px 20px; display: flex; flex-direction: column; gap: 16px">
+  <span class="over">MINDFUL MAT PILATES · THU TO SUN</span>
+  <h1 class="serif" style="margin: 0; font-size: 36px; font-weight: 400; line-height: 1.15">Move slow, then <i>sip</i> something good.</h1>
+  <p style="margin: 0; font-size: 15px; color: #565D59; line-height: 1.5">A 50-minute beginner STOTT mat class in the cafe, with an upsized matcha or coffee after. Small groups of 4.</p>
+  <div style="height: 220px; border-radius: 24px; background: linear-gradient(135deg, #DAC49B, #A07850); display: flex; align-items: flex-end; padding: 16px"><span class="badge neu" style="background: #FAF7F3">Photo · class in the cafe</span></div>
+  <a class="btn p" href="PhoneBook1.dc.html">Book a class · ₱500</a>
+  <a class="btn" href="#">About the class</a>
+</section>
+<section style="padding: 8px 20px 32px; display: flex; flex-direction: column; gap: 12px">
+  <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 class="serif" style="margin: 0; font-size: 24px; font-weight: 400">Next open sessions</h2><a href="PhoneBook1.dc.html" style="font-size: 13px; font-weight: 600">See all</a></div>
+  <div class="card" style="padding: 16px; display: flex; align-items: center; gap: 14px"><div style="width: 52px; height: 52px; border-radius: 14px; background: #43271B; color: #FFEBC5; display: flex; flex-direction: column; align-items: center; justify-content: center"><span style="font-size: 10px; font-weight: 700">THU</span><span class="serif" style="font-size: 20px; color: #fff">23</span></div><div style="flex: 1"><div style="font-weight: 600; font-size: 14px">9:00 – 9:50 AM</div><div style="font-size: 12px; color: #565D59">Mindful Mat Pilates · Beginner</div></div><span class="badge ok">3 left</span></div>
+  <div class="card" style="padding: 16px; display: flex; align-items: center; gap: 14px"><div style="width: 52px; height: 52px; border-radius: 14px; background: #43271B; color: #FFEBC5; display: flex; flex-direction: column; align-items: center; justify-content: center"><span style="font-size: 10px; font-weight: 700">THU</span><span class="serif" style="font-size: 20px; color: #fff">23</span></div><div style="flex: 1"><div style="font-weight: 600; font-size: 14px">10:15 – 11:05 AM</div><div style="font-size: 12px; color: #565D59">Mindful Mat Pilates · Beginner</div></div><span class="badge warn">1 left</span></div>
+  <div class="card" style="padding: 16px; display: flex; align-items: center; gap: 14px"><div style="width: 52px; height: 52px; border-radius: 14px; background: #43271B; color: #FFEBC5; display: flex; flex-direction: column; align-items: center; justify-content: center"><span style="font-size: 10px; font-weight: 700">FRI</span><span class="serif" style="font-size: 20px; color: #fff">24</span></div><div style="flex: 1"><div style="font-weight: 600; font-size: 14px">9:00 – 9:50 AM</div><div style="font-size: 12px; color: #565D59">Mindful Mat Pilates · Beginner</div></div><span class="badge ok">4 left</span></div>
+</section>
+<section style="padding: 0 20px 32px; display: flex; flex-direction: column; gap: 12px">
+  <div class="card"><div class="over" style="margin-bottom: 8px">WHAT'S INCLUDED</div><div style="font-size: 14px; display: flex; flex-direction: column; gap: 8px"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2F6B3F" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg> 50-minute beginner mat class</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2F6B3F" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg> Upsized matcha or coffee</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2F6B3F" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg> Max 4 guests per session</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2F6B3F" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg> Mat rental +₱50, donated to strays</span></div></div>
+  <div style="background: #FBE9C0; color: #8A5A00; border-radius: 16px; padding: 14px 16px; font-size: 12px">Not suitable for pregnant participants. Please tell the coach about any injury.</div>
+</section>
+<footer class="ft"><div class="serif" style="font-size: 16px; font-weight: 600; color: #fff">Block 69 Cafe × Mat Pilates</div><div>444 Kamagong St., Comembo, Taguig City</div><div style="color: #DAC49B">block69cafe@gmail.com · IG / FB @block69cafe</div><div style="margin-top: 8px">Every ₱50 mat rental provides meals for stray animals in Comembo.</div></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1700}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin Attendance</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&amp;family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#43271B}a:hover{color:#273429}
+.pop{font-family:'Poppins',sans-serif}
+.side{width:280px;background:#43271B;color:#E9DCC6;display:flex;flex-direction:column;padding:28px 20px;box-sizing:border-box;gap:4px}
+.mi{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:#E9DCC6;text-decoration:none;font-size:14px}
+.mi.on{background:#E3D2AE;color:#2C1A12;font-weight:600}
+.cnt{margin-left:auto;background:#fff;color:#43271B;border-radius:999px;font-size:11px;font-weight:600;padding:1px 7px}
+.top{background:#FAF7F1;border-bottom:1px solid #ECE3D3;padding:28px 40px;display:flex;justify-content:space-between;align-items:flex-start}
+.ov{font-size:11px;font-weight:600;letter-spacing:.08em;color:#A07850}
+.card{background:#fff;border-radius:16px;border:1px solid #EFE6D6;padding:24px;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;font:600 13px 'Inter',sans-serif;padding:10px 16px;border:1px solid #E3D2AE;background:#fff;color:#2C1A12;cursor:pointer;text-decoration:none}
+.btn.p{background:#43271B;color:#fff;border-color:#43271B}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap}
+.ok{background:#E7F0E6;color:#2F6B3F}.warn{background:#FBEBC8;color:#8A5A00}.bad{background:#F8DEDA;color:#B3261E}.neu{background:#F1EBDF;color:#6B5B4B}
+.lbl{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;color:#8C7D6E;margin-bottom:6px}
+.fld{width:100%;box-sizing:border-box;border:1px solid #E3D2AE;border-radius:10px;padding:11px 12px;font:14px 'Inter',sans-serif;color:#2C1A12;background:#fff}
+.slot{border:1px solid #E3D2AE;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;font-size:13px;background:#fff}
+.slot.on{border:2px solid #43271B;background:#FBF4E6}
+.slot.full{opacity:.5}
+.opt{border:1px solid #E3D2AE;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px;background:#fff}
+.opt.on{border:2px solid #43271B;background:#FBF4E6;font-weight:600}
+.chk{width:18px;height:18px;border-radius:5px;background:#43271B;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.sec{font-size:15px;font-weight:600;margin:0}
+.ln{display:flex;justify-content:space-between;font-size:13px;padding:6px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;color:#8C7D6E;font-weight:600;padding:12px 16px;border-bottom:1px solid #EFE6D6}
+td{padding:14px 16px;border-bottom:1px solid #F3ECE0}
+.tg{width:44px;height:24px;border-radius:999px;padding:3px;box-sizing:border-box;display:flex;border:0}
+.tg span{width:18px;height:18px;border-radius:999px;background:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #E3D2AE;border-radius:999px;padding:6px 12px;font-size:12px;background:#FBF4E6}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1180px; display: flex; font-family: 'Inter', sans-serif; color: #2C1A12; background: #F3EEE4">
+  <aside class="side">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 8px 28px"><span style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #A07850; display: flex; align-items: center; justify-content: center; font-family: 'Poppins'; color: #fff; font-size: 13px">69</span><div><div class="pop" style="color: #fff; font-size: 18px; font-weight: 600">Block 69 Cafe</div><div style="font-size: 10px; letter-spacing: .1em">ADMIN</div></div></div>
+    <div style="font-size: 10px; letter-spacing: .1em; padding: 0 14px 8px; color: #BFA98C">ADMIN MENU</div>
+    <a class="mi" href="#">Dashboard</a>
+    <a class="mi on" href="AdminBookings.dc.html">Bookings<span class="cnt">3</span></a>
+    <a class="mi" href="#">Schedule Management</a>
+    <a class="mi" href="AdminPayments.dc.html">Manage Billings</a>
+    <a class="mi" href="AdminPricing.dc.html">Pricing &amp; Vouchers</a>
+    <a class="mi" href="#">Content Management</a>
+    <a class="mi" href="#">User Management</a>
+    <a class="mi" href="#">Communications</a>
+    <a class="mi" href="AdminSettings.dc.html">Settings</a>
+    <div style="margin-top: auto; border-top: 1px solid #6A4A38; padding: 16px 8px 0; display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 999px; background: #E3D2AE; color: #43271B; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">RE</span><div><div style="color: #fff; font-size: 13px; font-weight: 600">Rheneshia Escalo</div><div style="font-size: 11px">Administrator</div></div></div>
+  </aside>
+  <div style="flex: 1; display: flex; flex-direction: column">
+    <div class="top">
+      <div><div class="ov">BOOKINGS</div><h1 class="pop" style="margin: 6px 0 4px; font-size: 30px; font-weight: 600">Attendance list</h1><div style="font-size: 13px; color: #8C7D6E">One list per session. The barista uses it to prepare drinks and mats before class.</div></div>
+      <div style="display: flex; gap: 10px"><button class="btn">Download CSV</button><button class="btn p">Print list</button></div>
+    </div>
+    <div style="padding: 28px 40px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; gap: 10px; align-items: center">
+        <span class="chip" style="background: #43271B; color: #fff; border-color: #43271B">Sat, Oct 24 · 9:00 AM</span><span class="chip">Sat, Oct 24 · 10:15 AM</span><span class="chip">Sun, Oct 25 · 9:00 AM</span><span class="chip">Sun, Oct 25 · 10:15 AM</span>
+        <span style="margin-left: auto; font-size: 12px; color: #8C7D6E">Online booking closed at 8:00 AM</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+        <div class="card"><div class="ov">GUESTS</div><div class="pop" style="font-size: 28px; font-weight: 600; margin-top: 6px">4 of 4</div><div style="font-size: 12px; color: #8C7D6E">Session full</div></div>
+        <div class="card"><div class="ov">DRINKS TO PREPARE</div><div class="pop" style="font-size: 28px; font-weight: 600; margin-top: 6px">4</div><div style="font-size: 12px; color: #8C7D6E">2 iced matcha · 1 iced coffee · 1 hot coffee</div></div>
+        <div class="card"><div class="ov">MATS TO SET OUT</div><div class="pop" style="font-size: 28px; font-weight: 600; margin-top: 6px">3</div><div style="font-size: 12px; color: #8C7D6E">₱150 to the strays</div></div>
+        <div class="card"><div class="ov">STILL TO COLLECT</div><div class="pop" style="font-size: 28px; font-weight: 600; margin-top: 6px">₱0</div><div style="font-size: 12px; color: #8C7D6E">Everyone has paid</div></div>
+      </div>
+      <div class="card" style="padding: 0">
+        <div style="padding: 18px 20px; border-bottom: 1px solid #EFE6D6; display: flex; justify-content: space-between; align-items: center"><h2 class="pop" style="margin: 0; font-size: 16px; font-weight: 600">Saturday, October 24 · 9:00 – 9:50 AM</h2><span class="badge neu">Instructor: Coach Bea</span></div>
+        <table>
+          <thead><tr><th>#</th><th>GUEST</th><th>SOURCE</th><th>DRINK</th><th>MAT</th><th>PAYMENT</th><th>ATTENDANCE</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><b>James Soriano</b><div style="font-size: 12px; color: #8C7D6E">0917 222 1010</div></td><td>Online</td><td>Iced matcha latte</td><td>Rented</td><td><span class="badge ok">Paid · GCash</span></td><td><span class="badge ok">Attended</span> <a href="#" style="font-size: 12px; margin-left: 6px">Undo</a></td></tr>
+            <tr><td>2</td><td><b>Marcus Lee</b><div style="font-size: 12px; color: #8C7D6E">0918 333 2020</div></td><td>Online</td><td>Iced coffee</td><td>Own mat</td><td><span class="badge ok">Paid · Card</span></td><td><button class="btn" style="padding: 6px 12px; font-size: 12px">Attended</button> <button class="btn" style="padding: 6px 12px; font-size: 12px; color: #B3261E">No-show</button></td></tr>
+            <tr><td>3</td><td><b>Andrea Cruz</b><div style="font-size: 12px; color: #8C7D6E">0917 555 0142</div></td><td><span class="badge neu">Walk-in</span></td><td>Iced matcha latte</td><td>Rented</td><td><span class="badge ok">Paid · Cash</span></td><td><button class="btn" style="padding: 6px 12px; font-size: 12px">Attended</button> <button class="btn" style="padding: 6px 12px; font-size: 12px; color: #B3261E">No-show</button></td></tr>
+            <tr><td>4</td><td><b>Bianca Reyes</b><div style="font-size: 12px; color: #8C7D6E">0919 444 3030</div></td><td>Online · moved here</td><td>Hot coffee</td><td>Rented</td><td><span class="badge ok">Paid · Maya</span></td><td><button class="btn" style="padding: 6px 12px; font-size: 12px">Attended</button> <button class="btn" style="padding: 6px 12px; font-size: 12px; color: #B3261E">No-show</button></td></tr>
+          </tbody>
+        </table>
+        <div style="padding: 14px 20px; font-size: 12px; color: #8C7D6E">Marking No-show forfeits the seat with no refund or code, as the policy says. Attendance can be marked from class start until the end of the day.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

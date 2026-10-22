@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My Vouchers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#43271B}a:hover{color:#273429}
+.serif{font-family:'Playfair Display',Georgia,serif}
+.hdr{background:#43271B;height:96px;padding:0 80px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box}
+.brand-w{font-family:'Playfair Display',serif;font-size:34px;color:#fff;line-height:1.1}
+.brand-d{font-size:12px;font-weight:700;letter-spacing:.18em;color:#FFEBC5}
+.nav{display:flex;gap:36px}.nav a{color:#FFEBC5;text-decoration:none;font-size:16px}.nav a.on{font-weight:700}
+.card{background:#FAF7F3;border:1px solid #E6D3AE;border-radius:24px;padding:32px;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;font:600 14px 'Plus Jakarta Sans',sans-serif;padding:12px 24px;border:1.25px solid #43271B;cursor:pointer;text-decoration:none}
+.btn.p{background:#43271B;color:#FAF7F3}
+.over{font-size:12px;font-weight:700;letter-spacing:.08em;color:#43271B}
+.navi{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;color:#43271B;text-decoration:none;font-size:14px}
+.navi.on{background:#F2DFBB;font-weight:600}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600}
+.ok{background:#E4ECE3;color:#2F6B3F}.neu{background:#F2DFBB;color:#43271B}.bad{background:#F8DEDA;color:#B3261E}
+.v{display:flex;background:#FAF7F3;border:1px solid #E6D3AE;border-radius:20px;overflow:hidden}
+.v-l{width:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:24px}
+.v-m{flex:1;padding:24px 28px;display:flex;flex-direction:column;gap:6px}
+.code{display:inline-flex;align-self:flex-start;gap:8px;padding:8px 12px;border:1px dashed #DAC49B;border-radius:10px;font-weight:600;color:#43271B;font-size:14px}
+.ft{background:#43271B;padding:56px 112px;display:flex;gap:40px;color:#F2DFBB;font-size:14px}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1080px; background: #FFEBC5; font-family: 'Plus Jakarta Sans', sans-serif; color: #273429; display: flex; flex-direction: column">
+  <header class="hdr">
+    <div><div class="brand-w">Block 69 Cafe</div><div class="brand-d">MAT PILATES + CAFÉ</div></div>
+    <nav class="nav"><a href="#">Home</a><a href="#">About Us</a><a href="#">Book a Class</a><a class="on" href="#">My Account</a></nav>
+    <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 999px; background: #F2DFBB; color: #43271B; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px">JS</span><span style="color: #FFEBC5; font-weight: 600; font-size: 14px">James</span><button class="btn" style="background: transparent; color: #FFEBC5; border-color: #FFEBC5; padding: 10px 18px; font-size: 12px">Log out</button></div>
+  </header>
+  <main style="padding: 56px 112px 80px; display: flex; flex-direction: column; gap: 32px; flex-grow: 1">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span class="over">MY ACCOUNT</span>
+      <h1 class="serif" style="margin: 0; font-size: 40px; font-weight: 400">My Vouchers</h1>
+      <p style="margin: 0; font-size: 16px; color: #565D59">Codes you can use on your next booking. Each one takes 50% off the ₱500 class fee only.</p>
+    </div>
+    <div style="display: flex; gap: 32px; align-items: flex-start">
+      <nav class="card" style="width: 272px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+        <a class="navi" href="Main.dc.html">My Profile</a>
+        <a class="navi" href="#">My Bookings</a>
+        <a class="navi" href="Payments.dc.html">Payments</a>
+        <a class="navi on" href="Vouchers.dc.html">My Vouchers</a>
+        <a class="navi" href="Notifications.dc.html">Notifications</a>
+        <div style="height: 1px; background: #E6D3AE; margin: 8px 0"></div>
+        <a class="navi" href="#" style="color: #B3261E">Log out</a>
+      </nav>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 20px">
+        <div class="v">
+          <div class="v-l" style="background: #43271B"><span class="serif" style="font-size: 40px; font-weight: 700; color: #fff">50%</span><span style="font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #FFEBC5">OFF CLASS FEE</span></div>
+          <div class="v-m"><div style="display: flex; gap: 10px; align-items: center"><span class="serif" style="font-size: 18px; font-weight: 600">From your Oct 16 cancellation</span><span class="badge ok">Active</span></div><span style="font-size: 12px; color: #565D59">Your next class costs ₱250, or ₱300 with a mat. Expires December 15, 2026 (54 days left).</span><span class="code">HALF50-JS7Q</span></div>
+          <div style="display: flex; align-items: center; padding: 24px 28px"><a class="btn p" href="#">Use on next booking</a></div>
+        </div>
+        <div class="v" style="opacity: .7">
+          <div class="v-l" style="background: #DAC49B"><span class="serif" style="font-size: 40px; font-weight: 700; color: #fff">50%</span><span style="font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #43271B">OFF CLASS FEE</span></div>
+          <div class="v-m"><div style="display: flex; gap: 10px; align-items: center"><span class="serif" style="font-size: 18px; font-weight: 600">From your Sep 12 cancellation</span><span class="badge neu">Used</span></div><span style="font-size: 12px; color: #565D59">Used on October 18, 2026.</span><span class="code">HALF50-K2PD</span></div>
+        </div>
+        <div class="v" style="opacity: .7">
+          <div class="v-l" style="background: #DAC49B"><span class="serif" style="font-size: 40px; font-weight: 700; color: #fff">50%</span><span style="font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #43271B">OFF CLASS FEE</span></div>
+          <div class="v-m"><div style="display: flex; gap: 10px; align-items: center"><span class="serif" style="font-size: 18px; font-weight: 600">From your Jul 30 cancellation</span><span class="badge bad">Expired</span></div><span style="font-size: 12px; color: #565D59">Expired on September 28, 2026.</span><span class="code">HALF50-A9ZX</span></div>
+        </div>
+        <div style="background: #E3E9F2; color: #2F4E7A; border-radius: 16px; padding: 16px 20px; font-size: 12px">Codes are personal, valid for 60 days, and work for one booking. Mat rental is never discounted, so the full ₱50 still goes to the strays.</div>
+      </div>
+    </div>
+  </main>
+  <footer class="ft">
+    <div style="flex: 1"><div class="serif" style="font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 12px">Block 69 Cafe × Mat Pilates</div><div>444 Kamagong St., Comembo, Taguig City</div><div style="color: #DAC49B; font-size: 12px; margin-top: 8px">block69cafe@gmail.com · IG / FB @block69cafe</div></div>
+    <div style="width: 220px; display: flex; flex-direction: column; gap: 6px"><span style="color: #fff; font-weight: 700; font-size: 12px; letter-spacing: .08em">QUICK LINKS</span><span>Home</span><span>About Us</span><span>Book a Class</span><span>My Account</span></div>
+    <div style="width: 260px; font-size: 12px"><span style="color: #fff; font-weight: 700; letter-spacing: .08em">COMMUNITY IMPACT</span><p style="margin: 8px 0 0">Every ₱50 mat rental provides meals for stray animals in Comembo, Taguig.</p></div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
