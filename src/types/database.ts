@@ -523,6 +523,7 @@ export type Database = {
         Args: { p_date: string; p_start_time: string }
         Returns: string
       }
+      booking_family: { Args: { p_booking_id: string }; Returns: string[] }
       cancel_my_booking: {
         Args: { p_booking_id: string }
         Returns: {
@@ -565,6 +566,42 @@ export type Database = {
         }
       }
       generate_sessions: { Args: { p_weeks?: number }; Returns: number }
+      get_my_booking: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booking_id: string
+          class_date: string
+          class_fee: number
+          created_at: string
+          discount: number
+          drink_choice: string
+          end_time: string
+          first_time: boolean
+          health_notes: string
+          hold_expires_at: string
+          hold_seconds_left: number
+          mat_fee: number
+          mat_rental: boolean
+          paid_amount: number
+          paid_at: string
+          paid_method: Database["public"]["Enums"]["payment_method"]
+          session_id: string
+          session_status: Database["public"]["Enums"]["session_status"]
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"]
+          total: number
+          voucher_amount_off: number
+          voucher_code: string
+          voucher_percent_off: number
+        }[]
+      }
+      get_my_session_booking: {
+        Args: { p_session_id: string }
+        Returns: {
+          booking_id: string
+          status: Database["public"]["Enums"]["booking_status"]
+        }[]
+      }
       get_open_sessions: {
         Args: { p_from_date?: string; p_to_date?: string }
         Returns: {
@@ -586,6 +623,7 @@ export type Database = {
         Args: { p_session_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]
       }
+      release_my_hold: { Args: { p_booking_id: string }; Returns: string }
       require_active_user: { Args: never; Returns: string }
       require_admin: { Args: never; Returns: string }
       seats_left: { Args: { p_session_id: string }; Returns: number }

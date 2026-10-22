@@ -25,7 +25,7 @@ npm run test:db -- booking
 npm run test:db -- security
 ```
 
-A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, then a summary like `171/171 checks passed`. If anything fails, the last lines list what failed, and the command exits with an error code.
+A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, then a summary like `197/197 checks passed`. If anything fails, the last lines list what failed, and the command exits with an error code.
 
 ## What gets tested
 
@@ -39,6 +39,7 @@ A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, t
 | `06-seed.test.mjs` | `seed.sql` loads cleanly and covers all 10 booking statuses. `WELCOME10` works, the expired code is refused, and running it twice adds nothing. |
 | `07-signup.test.mjs` | The sign-up trigger saves the full name and phone number the website's sign-up form sends. A blank phone becomes empty. A sneaky `role: "admin"` in the sign-up data is ignored (new accounts are always active clients). |
 | `08-page-content.test.mjs` | Migration 5's page text for Home, About Us and Policies: every block is there, the FAQ has answers, the short policy matches the real rules, every `{fill-in}` word (like `{mat_price}`) is one the website knows, no prices are typed into the text, and the file is safe to run twice. |
+| `09-booking-flow.test.mjs` | Migration 6, for the booking pages. `get_my_booking` shows a client their **own** booking only: another client, an admin and a guest get nothing. It returns the right money, voucher code, payment (including after a transfer) and hold seconds left. `get_my_session_booking` finds a live unpaid hold, so step 2 can open its pay page, and stops finding it once the hold ends. The voucher box gives the **same** "isn't valid" message for a made-up code, another client's code and another client's expired code. Its preview matches what `book_seat` saves, and a preview reserves nothing. |
 
 ## How it works (in simple words)
 

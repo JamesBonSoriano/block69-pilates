@@ -22,6 +22,7 @@ export type CurrentUser = {
   email: string;
   fullName: string;
   mobile: string | null;
+  instagram: string | null; // optional handle, pre-filled in booking step 2
   role: Database["public"]["Enums"]["user_role"]; // "client" or "admin"
   isActive: boolean; // false = deactivated
 };
@@ -55,7 +56,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   // Read their profile. Row Level Security only lets them read their own row.
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("email, full_name, mobile, role, is_active")
+    .select("email, full_name, mobile, instagram, role, is_active")
     .eq("id", claims.sub)
     .maybeSingle();
 
@@ -68,6 +69,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     email: profile?.email || claims.email || "",
     fullName: profile?.full_name ?? "",
     mobile: profile?.mobile ?? null,
+    instagram: profile?.instagram ?? null,
     role: profile?.role ?? "client",
     // No profile row at all is treated like a deactivated account (safe default)
     isActive: profile?.is_active ?? false,

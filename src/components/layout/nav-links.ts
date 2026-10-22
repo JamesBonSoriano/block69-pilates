@@ -6,8 +6,8 @@
 export type NavLink = { href: string; label: string };
 
 // The main client pages, in the order they appear.
-// (/book is built in Step 9, so it shows "page not found" until then.
-// Guests who open My Account are sent to the login page first.)
+// (Guests can open /book to see the classes; picking one, and opening
+// My Account, sends them to the login page first.)
 export const mainNavLinks: NavLink[] = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About Us" },

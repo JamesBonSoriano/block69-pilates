@@ -135,7 +135,12 @@ export default async function run(t) {
   const expectedClientFns = [
     'admin_cancel_session', 'admin_review_manual_payment', 'admin_set_attendance', 'admin_walkin_booking',
     'book_seat', 'cancel_my_booking', 'check_voucher', 'deactivate_my_account', 'generate_sessions',
-    'get_open_sessions', 'is_admin', 'seats_left', 'transfer_my_booking',
+    // migration 6 (booking pages): read only the caller's own bookings
+    'get_my_booking', 'get_my_session_booking',
+    'get_open_sessions', 'is_admin',
+    // migration 7 (pay page "Change details"): checks the owner inside
+    'release_my_hold',
+    'seats_left', 'transfer_my_booking',
   ];
   check('Functions a logged-in user can call (admin_* check is_admin inside)', `${expectedClientFns.length} public functions, no private helpers`,
     clientFns.join(', ') === expectedClientFns.join(', '), clientFns.join(', '));

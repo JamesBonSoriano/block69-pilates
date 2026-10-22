@@ -22,6 +22,7 @@ import type { AuthFormState } from "@/lib/auth/form-state";
 import { safeNextPath } from "@/lib/auth/safe-next";
 import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
+import { isValidMobile } from "@/lib/validation";
 
 // A simple "looks like an email" check (Supabase does the real check).
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -272,14 +273,4 @@ function readText(formData: FormData, name: string): string {
 function readPassword(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
-}
-
-// Checks that a mobile number looks real.
-// Takes: what was typed, e.g. "0917 123 4567" or "+63 917 123 4567".
-// Gives back: true if it only uses digits, spaces, dashes, brackets and an
-// optional "+" at the start, and has 10 to 13 digits.
-function isValidMobile(mobile: string): boolean {
-  if (!/^\+?[0-9\s\-()]+$/.test(mobile)) return false;
-  const digits = mobile.replace(/\D/g, "").length;
-  return digits >= 10 && digits <= 13;
 }

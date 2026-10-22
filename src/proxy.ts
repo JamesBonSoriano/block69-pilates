@@ -6,7 +6,8 @@
 // What it does:
 //   1. Keeps the visitor's Supabase login fresh (src/lib/supabase/proxy.ts).
 //   2. Protects private pages:
-//      - /account/... needs a logged-in user, otherwise -> /login?next=...
+//      - /account/... and booking steps 2-3 (/book/details, /book/pay,
+//        /book/done) need a logged-in user, otherwise -> /login?next=...
 //      - /admin/...   needs an active admin (the database's is_admin()),
 //                     otherwise a client is sent to the Home page
 //      - a deactivated account is sent to /auth/deactivated, which logs it
@@ -21,7 +22,10 @@ import { safeNextPath } from "@/lib/auth/safe-next";
 import { redirectWithCookies, updateSession } from "@/lib/supabase/proxy";
 
 // Pages that need someone logged in (each also covers its sub-pages).
-const LOGIN_REQUIRED = ["/account", "/admin"];
+// /book itself (step 1, the class list) stays open to guests; booking steps
+// 2 and 3 and the booked page need a login. A guest who picks a class is sent
+// to /login?next=/book/details?session=<id> and comes back to the same class.
+const LOGIN_REQUIRED = ["/account", "/admin", "/book/details", "/book/pay", "/book/done"];
 // Pages only active admins may open.
 const ADMIN_ONLY = ["/admin"];
 // Pages that make no sense once you're logged in.

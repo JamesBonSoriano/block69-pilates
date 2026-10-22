@@ -1,6 +1,6 @@
 // One class session as a card: a brown date tile, the time, and a seats-left
 // badge (docs/designs/PhoneHome.html, "Next open sessions").
-// Where it's used: the Home page. Booking step 1 (Step 9) can reuse it.
+// Where it's used: the Home page ("Next open sessions").
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
@@ -47,11 +47,11 @@ export function SessionCard({ session }: { session: OpenSession }) {
     return <div className={cn(cardClasses, "opacity-60")}>{content}</div>;
   }
 
-  // Bookable: the whole card links to booking step 1 with this class picked
-  // (the booking page is built in Step 9)
+  // Bookable: the whole card links straight to booking step 2 for this class
+  // (guests are asked to log in first, then come back to it)
   return (
     <Link
-      href={`/book?session=${session.session_id}`}
+      href={`/book/details?session=${session.session_id}`}
       className={cn(
         cardClasses,
         "transition-colors hover:border-brown focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown",
