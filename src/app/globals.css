@@ -1,0 +1,71 @@
+/*
+  Global styles for the whole website (client pages and admin pages).
+  Where it's used: imported once in src/app/layout.tsx.
+
+  What's in here:
+  1. Tailwind itself.
+  2. Our design tokens (CLAUDE.md section 7). Each `--color-xxx` here becomes
+     Tailwind classes like `bg-xxx`, `text-xxx` and `border-xxx`.
+     Components must use these names (e.g. `bg-brown`), never hex codes.
+  3. The two fonts (Poppins for headings, Montserrat for body text).
+  4. A few base rules for the page.
+*/
+@import "tailwindcss";
+
+@theme {
+  /* ----- Brand colors ----- */
+  --color-brown: #43271B;        /* header, footer, admin sidebar, primary buttons, headings */
+  --color-cream: #FFEBC5;        /* client page background */
+  --color-card: #FAF7F3;         /* cards */
+  --color-line: #E6D3AE;         /* card borders, dividers, input borders */
+  --color-tan-soft: #F2DFBB;     /* active nav item, chips, avatar circles */
+  --color-tan: #DAC49B;          /* muted accents */
+  --color-ink: #273429;          /* main text */
+  --color-muted: #565D59;        /* secondary text */
+  --color-admin-bg: #F3EEE4;     /* admin page background */
+  --color-admin-active: #E3D2AE; /* active admin sidebar item */
+  --color-admin-line: #EFE6D6;   /* border of the white admin cards */
+
+  /* Extra shades taken from the mockups (docs/designs/) */
+  --color-brown-line: #6A4A38;   /* divider lines on brown (phone menu) */
+  --color-caramel: #A07850;      /* darker end of the photo placeholder gradient */
+
+  /* ----- Status badge colors (background + text) ----- */
+  --color-success-bg: #E4ECE3;   /* confirmed, paid, active */
+  --color-success: #2F6B3F;
+  --color-info-bg: #E3E9F2;      /* awaiting verification */
+  --color-info: #2F4E7A;
+  --color-warning-bg: #FBE9C0;   /* few seats left, pending */
+  --color-warning: #8A5A00;
+  --color-error-bg: #F8DEDA;     /* needs action, expired, forfeited */
+  --color-error: #B3261E;
+  /* "Neutral" badges (used, transferred) reuse tan-soft + brown. */
+}
+
+/*
+  Fonts. `next/font/google` (src/app/layout.tsx) downloads the fonts and puts
+  them in the CSS variables --font-poppins and --font-montserrat. `inline`
+  means Tailwind copies the variable straight into its classes.
+  - font-sans    = Montserrat: body text, forms, tables, labels (the default)
+  - font-heading = Poppins: headings, the logo text, big numbers, buttons
+*/
+@theme inline {
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ----- Base rules ----- */
+@layer base {
+  /* Client pages: cream background and dark green-grey text by default */
+  body {
+    @apply bg-cream font-sans text-ink antialiased;
+  }
+
+  /* Every heading uses Poppins in brown */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading text-brown;
+  }
+}

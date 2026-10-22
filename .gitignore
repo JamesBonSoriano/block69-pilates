@@ -5,6 +5,11 @@
 .env
 .env.local
 .env*.local
+# Safety net: make sure the key-names-only template is never hidden by the lines above
+!.env.example
+
+# Private certificate/key files (never commit these either)
+*.pem
 
 # Installed packages (anyone can re-create them with `npm install`)
 node_modules/
@@ -15,6 +20,9 @@ out/
 build/
 next-env.d.ts
 *.tsbuildinfo
+
+# Test coverage reports (made by test tools, re-created any time)
+coverage/
 
 # Vercel's local link folder
 .vercel/

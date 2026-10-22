@@ -100,25 +100,23 @@ export default async function run(t) {
   r = await t.attempt('guest', `select to_char(booking_closes_at at time zone 'Asia/Manila', 'YYYY-MM-DD HH24:MI') as closes,
                                        to_char(date, 'YYYY-MM-DD') as d from public.get_open_sessions() where session_id = $1`, [S[2]]);
   check('Default cutoff = 8:00 AM Manila on class day', `${r.row.d} 08:00`, r.row.closes === `${r.row.d} 08:00`, r.row.closes);
-  // This part needs a class later TODAY (Manila time), so skip it right around midnight.
-  const nowMin = (await one(`select (extract(hour from now() at time zone 'Asia/Manila') * 60
-                                     + extract(minute from now() at time zone 'Asia/Manila'))::int as m`)).m;
-  if (nowMin >= 5 && nowMin <= 23 * 60 + 40) {
-    const today = await t.sessionIn(10 / 60); // starts in 10 minutes
-    // Set the cutoff to 1 minute ago.
-    await q(`update public.settings set value = to_jsonb(to_char((now() - interval '1 minute') at time zone 'Asia/Manila', 'HH24:MI')) where key = 'cutoff_time'`);
-    r = await book('C', today);
-    check('Book after the cutoff (cutoff was 1 min ago)', 'refused', !r.ok && r.err.startsWith('Sorry, online booking for this class closed at'), r.err);
-    r = await t.attempt('guest', 'select state from public.get_open_sessions() where session_id = $1', [today]);
-    check('get_open_sessions after the cutoff', "state 'booking_closed'", r.row?.state === 'booking_closed', r.row?.state);
-    // Set the cutoff to 3 minutes from now.
-    await q(`update public.settings set value = to_jsonb(to_char((now() + interval '3 minutes') at time zone 'Asia/Manila', 'HH24:MI')) where key = 'cutoff_time'`);
-    r = await book('C', today);
-    check('Book before the cutoff (cutoff in 3 min)', 'succeeds', r.ok, r.ok ? 'succeeded' : r.err);
-    await q(`update public.settings set value = '"08:00"' where key = 'cutoff_time'`);
-  } else {
-    check('Book after the cutoff', 'refused', true, 'SKIPPED (too close to midnight in Manila, run again later)');
-  }
+  // These checks work at ANY time of day (no skipping near midnight):
+  //   - "after the cutoff" uses a class TODAY with the cutoff at 00:00, and
+  //     midnight has always already passed today.
+  //   - "before the cutoff" uses a class TOMORROW with the cutoff at the current
+  //     time. That time has passed TODAY, but the cutoff counts on the CLASS's
+  //     day, so tomorrow's class must still be bookable.
+  const today = await t.sessionToday();
+  await q(`update public.settings set value = '"00:00"' where key = 'cutoff_time'`);
+  r = await book('C', today);
+  check("Book today's class after the cutoff (cutoff 00:00)", 'refused', !r.ok && r.err.startsWith('Sorry, online booking for this class closed at'), r.err);
+  r = await t.attempt('guest', 'select state from public.get_open_sessions() where session_id = $1', [today]);
+  check('get_open_sessions after the cutoff', "state 'booking_closed'", r.row?.state === 'booking_closed', r.row?.state);
+  const tomorrow = await t.sessionIn(24);
+  await q(`update public.settings set value = to_jsonb(to_char(now() at time zone 'Asia/Manila', 'HH24:MI')) where key = 'cutoff_time'`);
+  r = await book('C', tomorrow);
+  check("Cutoff time already passed today, but the class is tomorrow", 'succeeds', r.ok, r.ok ? 'succeeded' : r.err);
+  await q(`update public.settings set value = '"08:00"' where key = 'cutoff_time'`);
 
   // ===========================================================================
   t.section('Prices come from settings, never from the browser');

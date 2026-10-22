@@ -74,5 +74,5 @@ t.check('Guest sees seats left', '4', left === 4, left);
 
 - **`Cannot find module 'embedded-postgres'`**: run `npm install` first.
 - **Windows asks to allow "postgres" through the firewall**: you can click Cancel. The test database only talks to your own computer.
-- **One check says SKIPPED**: the cutoff test needs a class later today in Manila time, so it skips itself between 11:40 PM and 12:05 AM Manila time. Run it again later.
+- **Time of day doesn't matter**: the tests pass at any hour, including around midnight in Manila. The `sessionIn()` and `sessionToday()` helpers in `helpers.mjs` make sure a test class never crosses midnight in a way that would change the result.
 - **`SETUP FAILED: Migration ... failed`**: a migration file has an error. The message says which file, and what went wrong.

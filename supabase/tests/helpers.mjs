@@ -91,7 +91,10 @@ export async function startServer() {
     user: USER,
     password: PASSWORD,
     port,
-    persistent: false, // delete the data when the server stops
+    // Don't let the library delete the data folder: on Windows it fails with
+    // EBUSY when Postgres still holds a file. stop() below deletes the whole
+    // temporary folder itself, retrying a few times.
+    persistent: true,
     onLog: () => {},   // hide Postgres' own log lines
     onError: () => {},
   });
@@ -101,7 +104,15 @@ export async function startServer() {
     port,
     async stop() {
       await server.stop();
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      // Delete the throwaway database folder. On Windows, Postgres can keep
+      // its files locked for a moment after stopping (error EBUSY), so try
+      // again a few times. If it still fails, only warn: the tests are
+      // already finished, and Windows clears its Temp folder by itself.
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      } catch (err) {
+        console.warn(`(Could not delete the temporary folder ${tempDir}: ${err.code}. You can ignore this.)`);
+      }
     },
   };
 }
@@ -274,6 +285,16 @@ export async function createTestContext(port, name, results) {
     // Adds a class that starts a given number of hours from now (Philippine time).
     // Takes: hours (can be negative for a class in the past) and the capacity.
     // Gives back: the new class id.
+    //
+    // Works at ANY time of day, including near midnight. A class can't run past
+    // midnight (end_time must be after start_time), so:
+    //   - a class that is STILL RUNNING now but would have started yesterday
+    //     (e.g. "started 30 minutes ago" at 12:05 AM) starts at 12:00 AM today
+    //     instead. It has still started, and it's still running.
+    //   - a class starting after 11:00 PM ends at 11:59:59 PM instead of
+    //     running 50 minutes.
+    // Either way, "has it started?" and "is it still running?" stay the same
+    // as the test asked for.
     async sessionIn(hours, capacity = 4) {
       return (await one(`
         insert into public.class_sessions (date, start_time, end_time, capacity)
@@ -281,8 +302,42 @@ export async function createTestContext(port, name, results) {
                -- 50-minute class, but never past midnight
                case when t::time > '23:00' then '23:59:59.999'::time else (t + interval '50 minutes')::time end,
                $2
-        from (select date_trunc('second', (now() + make_interval(secs => $1::float8 * 3600)) at time zone 'Asia/Manila') as t) x
+        from (
+          select case
+                   -- Still running now, but the start falls on yesterday: start at midnight today
+                   when x.t::date < x.n::date and x.t + interval '50 minutes' > x.n
+                     then date_trunc('day', x.n)
+                   else x.t
+                 end as t
+          from (
+            -- t = the asked-for start, n = now (both Philippine wall-clock time)
+            select date_trunc('second', (now() + make_interval(secs => $1::float8 * 3600)) at time zone 'Asia/Manila') as t,
+                   now() at time zone 'Asia/Manila' as n
+          ) x
+        ) y
         returning id`, [hours, capacity])).id;
+    },
+
+    // Adds a class on TODAY's date (Philippine time), starting about 10
+    // minutes from now. Late at night it starts at 11:59 PM, which may already
+    // have passed. Tests using it must only rely on the DATE being today (e.g.
+    // the cutoff tests), so they work at any time of day.
+    // Takes: the capacity. Gives back: the new class id.
+    async sessionToday(capacity = 4) {
+      return (await one(`
+        insert into public.class_sessions (date, start_time, end_time, capacity)
+        select x.n::date, s.start_time,
+               case when s.start_time > '23:00' then '23:59:59.999'::time else s.start_time + interval '50 minutes' end,
+               $1
+        from (select now() at time zone 'Asia/Manila' as n) x
+        cross join lateral (
+          select case
+                   when (x.n + interval '10 minutes')::date = x.n::date
+                     then date_trunc('second', x.n + interval '10 minutes')::time
+                   else '23:59'::time
+                 end as start_time
+        ) s
+        returning id`, [capacity])).id;
     },
 
     // Adds an already-paid ('confirmed') booking directly, skipping book_seat.
