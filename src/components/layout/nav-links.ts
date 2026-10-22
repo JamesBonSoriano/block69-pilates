@@ -6,14 +6,18 @@
 export type NavLink = { href: string; label: string };
 
 // The main client pages, in the order they appear.
-// (/about, /book, /account and /login are built in Steps 7 to 10, so they show
-// "page not found" until then.)
+// (/about and /book are built in Steps 8 and 9, so they show "page not found"
+// until then. Guests who open My Account are sent to the login page first.)
 export const mainNavLinks: NavLink[] = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About Us" },
   { href: "/book", label: "Book a Class" },
   { href: "/account", label: "My Account" },
 ];
+
+// The admin area. The header adds it to the links ONLY for admins (and the
+// admin pages check is_admin() on the server anyway).
+export const adminNavLink: NavLink = { href: "/admin", label: "Admin" };
 
 // The login page.
 export const loginHref = "/login";

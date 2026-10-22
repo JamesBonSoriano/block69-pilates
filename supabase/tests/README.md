@@ -25,7 +25,7 @@ npm run test:db -- booking
 npm run test:db -- security
 ```
 
-A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, then a summary like `157/157 checks passed`. If anything fails, the last lines list what failed, and the command exits with an error code.
+A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, then a summary like `162/162 checks passed`. If anything fails, the last lines list what failed, and the command exits with an error code.
 
 ## What gets tested
 
@@ -37,6 +37,7 @@ A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, t
 | `04-cancel-transfer.test.mjs` | Cancelling more than 24h before class is refused (Transfer instead). 12 to 24h gives a 50% code for 60 days. Under 12h is forfeited. A booking can be transferred only once, and only more than 24h before class. If the cafe cancels a class, the transfer is free. |
 | `05-admin-account.test.mjs` | Only admins can use admin tools. A walk-in takes a seat like an online booking. Attendance can be marked, and `attended` still holds a seat. Manual payments can be approved or rejected. A client can deactivate their account but can't reactivate it. |
 | `06-seed.test.mjs` | `seed.sql` loads cleanly and covers all 10 booking statuses. `WELCOME10` works, the expired code is refused, and running it twice adds nothing. |
+| `07-signup.test.mjs` | The sign-up trigger saves the full name and phone number the website's sign-up form sends. A blank phone becomes empty. A sneaky `role: "admin"` in the sign-up data is ignored (new accounts are always active clients). |
 
 ## How it works (in simple words)
 

@@ -66,3 +66,16 @@ export function formatClassDate(date: string): {
     full: format({ weekday: "long", day: "numeric", month: "long" }),
   };
 }
+
+// Makes the 1–2 letters shown in a round avatar (e.g. in the header).
+// Takes: the person's full name, and their email as a backup.
+// Gives back: e.g. "JS" for "James Soriano", "B" for "Bea", or the first
+// letter of the email if there's no name yet.
+export function initialsOf(fullName: string, email: string): string {
+  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return (email.trim()[0] ?? "?").toUpperCase();
+  const first = words[0][0];
+  // Use the LAST word for the second letter ("Maria Clara Santos" -> "MS")
+  const last = words.length > 1 ? words[words.length - 1][0] : "";
+  return (first + last).toUpperCase();
+}

@@ -8,6 +8,12 @@
 // Pages that use it must wrap that part in <Suspense>, because cookies are
 // only known when someone actually visits (see src/app/(client)/page.tsx).
 // For public data that is the same for everyone, use ./public.ts instead.
+//
+// IMPORTANT when using it while drawing a PAGE (not in Server Actions or
+// routes): call `await io()` (from "next/cache") BEFORE createClient(). The
+// client reads the clock as soon as it's made, and Next.js forbids clock
+// readings while preparing pages ahead of time ("encountered the unstable
+// value Date.now()"). getCurrentUser() in src/lib/auth/user.ts shows how.
 
 import "server-only"; // stops this file from ever being bundled into browser code
 import { createServerClient } from "@supabase/ssr";

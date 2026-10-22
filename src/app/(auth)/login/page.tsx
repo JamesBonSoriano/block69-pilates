@@ -1,0 +1,61 @@
+// The Log in page: /login
+// Where it's used: the "Log in" button in the header, and anywhere a guest
+// opens a private page (src/proxy.ts sends them here with ?next=<page>).
+//
+// The address can carry:
+//   ?next=/account          where to go after logging in (only paths on our site)
+//   ?error=deactivated      the account was deactivated and has been logged out
+//   ?error=link-expired     an email link was old or already used
+//   ?error=other-browser    an email link was opened in a different browser
+// Admins who log in (with no "next") go to /admin; clients go to the Home page.
+
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { AuthFormSkeleton, AuthPage } from "@/components/auth/AuthPage";
+import { DEACTIVATED_MESSAGE } from "@/lib/auth/errors";
+import { firstParam, safeNextPath } from "@/lib/auth/safe-next";
+import { LoginForm } from "./LoginForm";
+
+export const metadata: Metadata = { title: "Log in" };
+
+// The messages that ?error=... can ask for.
+const NOTICES = {
+  deactivated: { tone: "error", text: DEACTIVATED_MESSAGE },
+  "link-expired": {
+    tone: "error",
+    text: "That email link has expired or was already used. Log in below, or ask for a new link.",
+  },
+  // A "confirm your email" link opened in a different browser. Supabase has
+  // already confirmed the email by then; only the automatic log in failed.
+  "other-browser": {
+    tone: "info",
+    text: "Your email link was opened in a different browser, so we couldn't log you in automatically. If you were confirming your email, it's done. Just log in below.",
+  },
+} as const;
+
+// The login page.
+// Takes: searchParams (the ?next=... and ?error=... part of the address).
+// Gives back: the page. The title shows at once; the form waits for the
+// address to arrive (inside <Suspense>), which takes a split second.
+export default function LoginPage({ searchParams }: PageProps<"/login">) {
+  return (
+    <AuthPage overline="Welcome back" title="Log in" intro="See your bookings, vouchers and payments.">
+      <Suspense fallback={<AuthFormSkeleton fields={2} />}>
+        <LoginFormWithParams searchParams={searchParams} />
+      </Suspense>
+    </AuthPage>
+  );
+}
+
+// Reads the address, then shows the form.
+// Takes: the searchParams promise from the page.
+// Gives back: the LoginForm with a safe "next" and any notice.
+async function LoginFormWithParams({ searchParams }: Pick<PageProps<"/login">, "searchParams">) {
+  const params = await searchParams;
+  const next = safeNextPath(firstParam(params.next));
+  const error = firstParam(params.error);
+  // Object.hasOwn: only OUR messages count (not built-in names like "toString")
+  const notice = error && Object.hasOwn(NOTICES, error) ? NOTICES[error as keyof typeof NOTICES] : null;
+
+  return <LoginForm next={next} notice={notice} />;
+}

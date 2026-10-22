@@ -1,13 +1,28 @@
 // The brown header at the top of every CLIENT page (CLAUDE.md section 7):
 // "Block 69 Cafe" with "MAT PILATES + CAFÉ" under it, the nav links, Chat
-// With Us and Log in. 64px tall on phones (with a menu button), 96px on laptops.
-// Where it's used: src/app/(client)/layout.tsx. (Admin pages get their own
-// sidebar layout in Step 11.)
+// With Us, and Log in (guests) or the person's initials + Log out (logged in).
+// 64px tall on phones (with a menu button), 96px on laptops.
+// Where it's used: src/components/layout/SiteShell.tsx (client and login
+// pages). Admin pages get their own sidebar layout in Step 11.
+//
+// STATIC HEADER, LIVE ACCOUNT PARTS (Next.js Cache Components):
+//   The header itself only uses cached settings, so Next.js builds it ahead
+//   of time and it shows instantly on every page. Only the small parts that
+//   depend on who is logged in (src/components/layout/HeaderAccount.tsx) read
+//   the login cookies, and each sits in its OWN <Suspense> with a simple
+//   fallback. So a page never waits for the login check.
 
 import Link from "next/link";
 import { Suspense } from "react";
 import { getPublicSettings } from "@/lib/data/settings";
-import { HeaderNav, HeaderNavContent } from "./HeaderNav";
+import {
+  DesktopAccount,
+  DesktopAccountFallback,
+  PhoneAvatar,
+  PhoneMenuActions,
+  PhoneMenuUser,
+} from "./HeaderAccount";
+import { HeaderNav } from "./HeaderNav";
 
 // The client header.
 // Takes: nothing (it reads the cafe name and Chat With Us link from settings,
@@ -34,16 +49,32 @@ export async function Header() {
           </span>
         </Link>
 
-        {/*
-          The nav highlights the current page, which means reading the web
-          address. On pages whose address has a changing part (like a booking
-          ID), Next.js only knows it when someone visits, so the nav sits
-          inside <Suspense>. Until the address is known it shows the fallback:
-          the same nav, just without the highlight.
-        */}
-        <Suspense fallback={<HeaderNavContent chatUrl={settings.chatUrl} pathname={null} />}>
-          <HeaderNav chatUrl={settings.chatUrl} />
-        </Suspense>
+        {/* The nav (static). The account parts are handed to it ready-made,
+            each wrapped in its own <Suspense>. Phone fallbacks are empty:
+            nothing shows there until the login check is done. */}
+        <HeaderNav
+          chatUrl={settings.chatUrl}
+          desktopAccount={
+            <Suspense fallback={<DesktopAccountFallback />}>
+              <DesktopAccount />
+            </Suspense>
+          }
+          phoneAvatar={
+            <Suspense fallback={null}>
+              <PhoneAvatar />
+            </Suspense>
+          }
+          phoneMenuUser={
+            <Suspense fallback={null}>
+              <PhoneMenuUser />
+            </Suspense>
+          }
+          phoneMenuActions={
+            <Suspense fallback={null}>
+              <PhoneMenuActions />
+            </Suspense>
+          }
+        />
       </div>
     </header>
   );
