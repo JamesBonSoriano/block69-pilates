@@ -31,6 +31,16 @@ function toTwelveHour(time: string): { text: string; period: "AM" | "PM" } {
   return { text: `${hour12}:${minuteText}`, period };
 }
 
+// Formats one time of day.
+// Takes: a time from the database or settings, e.g. "08:00" or "10:15:00".
+// Gives back: "8:00 AM" or "10:15 AM". Text that isn't a time is given back
+// unchanged, so a typo in settings never breaks the page.
+export function formatTime(time: string): string {
+  if (!/^\d{1,2}:\d{2}/.test(time)) return time;
+  const { text, period } = toTwelveHour(time);
+  return `${text} ${period}`;
+}
+
 // Formats a class's start and end time.
 // Takes: start and end times from the database, e.g. "09:00:00", "09:50:00".
 // Gives back: "9:00 – 9:50 AM", or "11:30 AM – 12:20 PM" when AM/PM differ.
@@ -65,6 +75,52 @@ export function formatClassDate(date: string): {
     month: format({ month: "short" }),
     full: format({ weekday: "long", day: "numeric", month: "long" }),
   };
+}
+
+// Day names, in the database's numbering (0 = Sunday ... 6 = Saturday).
+const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+// Gives the name of a day of the week.
+// Takes: the day number (0 = Sunday ... 6 = Saturday), and "long" or "short".
+// Gives back: "Thursday" or "Thu".
+export function weekdayName(weekday: number, length: "long" | "short" = "long"): string {
+  const name = WEEKDAY_NAMES[weekday] ?? "";
+  return length === "short" ? name.slice(0, 3) : name;
+}
+
+// Describes a set of class days in a few words.
+// Takes: day numbers, already in week order (Monday first), e.g. [4, 5, 6, 0].
+// Gives back: "Thu to Sun" for days in a row (3 or more), "Sat and Sun" for
+// two, or "Thu, Sat and Sun" when there are gaps. "" if there are no days.
+export function formatWeekdays(weekdays: number[]): string {
+  const names = weekdays.map((day) => weekdayName(day, "short"));
+  if (names.length <= 1) return names[0] ?? "";
+
+  // Are the days one after the other? Compare positions in a Monday-first week.
+  const positions = weekdays.map((day) => (day + 6) % 7);
+  const inARow = positions.every((pos, i) => i === 0 || pos === positions[i - 1] + 1);
+  if (inARow && names.length >= 3) return `${names[0]} to ${names[names.length - 1]}`;
+
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+// Works out how long a class is, in minutes.
+// Takes: start and end times, e.g. "09:00:00" and "09:50:00".
+// Gives back: 50.
+export function minutesBetween(start: string, end: string): number {
+  const toMinutes = (time: string) => {
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+  return toMinutes(end) - toMinutes(start);
 }
 
 // Makes the 1–2 letters shown in a round avatar (e.g. in the header).

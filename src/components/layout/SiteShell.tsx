@@ -1,7 +1,8 @@
 // The frame around every CLIENT-side page: skip link, Header, the page, Footer.
 // Where it's used: src/app/(client)/layout.tsx (Home, About, booking, My
 // Account) and src/app/(auth)/layout.tsx (log in, sign up, passwords), so
-// both groups of pages look the same. Admin pages get their own frame in Step 11.
+// both groups of pages look the same. The "page not found" page
+// (src/app/not-found.tsx) uses it too. Admin pages get their own frame in Step 11.
 
 import type { ReactNode } from "react";
 import { Footer } from "./Footer";

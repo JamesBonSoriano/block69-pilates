@@ -1,6 +1,8 @@
 // Reads the editable page text (site_content table) for one page.
-// Where it's used: the Home page (hero text, health note) and the Footer
-// (stray animals note). About Us and the booking pages will use it later.
+// Where it's used: Home, About Us, Policies and the Footer (stray animals
+// note). The booking pages will use it too (Step 9).
+// Pages turn the text into what's shown with src/lib/content-text.ts
+// (fill-in words like {mat_price}, one item per line).
 //
 // CACHING (Next.js "use cache"):
 //   Page text almost never changes and is the same for everyone, so it's cached.

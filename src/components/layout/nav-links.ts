@@ -6,14 +6,19 @@
 export type NavLink = { href: string; label: string };
 
 // The main client pages, in the order they appear.
-// (/about and /book are built in Steps 8 and 9, so they show "page not found"
-// until then. Guests who open My Account are sent to the login page first.)
+// (/book is built in Step 9, so it shows "page not found" until then.
+// Guests who open My Account are sent to the login page first.)
 export const mainNavLinks: NavLink[] = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About Us" },
   { href: "/book", label: "Book a Class" },
   { href: "/account", label: "My Account" },
 ];
+
+// Smaller information pages. They're listed in the footer and in the phone
+// menu, but not in the desktop header row (CLAUDE.md lists only the main
+// pages there, and the row has no room to spare on smaller laptops).
+export const infoNavLinks: NavLink[] = [{ href: "/policies", label: "Policies" }];
 
 // The admin area. The header adds it to the links ONLY for admins (and the
 // admin pages check is_admin() on the server anyway).

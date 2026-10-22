@@ -7,6 +7,8 @@
 
 import type { Metadata, Viewport } from "next";
 import { Montserrat, Poppins } from "next/font/google";
+import { SITE_NAME } from "@/lib/metadata";
+import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
 // Poppins: headings, the logo text, big numbers and buttons.
@@ -28,13 +30,23 @@ const montserrat = Montserrat({
 
 // The browser tab title and the description search engines show.
 // `template` lets each page set its own title, e.g. "About Us · Block 69 Cafe".
+// Pages set their own with pageMetadata() (src/lib/metadata.ts).
 export const metadata: Metadata = {
+  // The site's own address, so pages can write short links like "/about" in
+  // their metadata and Next.js turns them into full ones for link previews.
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: "Block 69 Cafe · Mindful Mat Pilates",
     template: "%s · Block 69 Cafe",
   },
   description:
     "Book a beginner Mindful Mat Pilates class at Block 69 Cafe in Comembo, Taguig City. Every class comes with an upsized matcha or coffee.",
+  // Link preview for pages that don't set their own (e.g. the login pages)
+  openGraph: {
+    siteName: SITE_NAME,
+    locale: "en_PH",
+    type: "website",
+  },
 };
 
 // Phone settings: use the real screen width, and color the phone's top bar brown.

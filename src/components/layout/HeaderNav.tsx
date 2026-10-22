@@ -12,13 +12,13 @@
 // Step 10 adds the My Account sub-links (Profile, Payments, Vouchers,
 // Notifications) to the phone menu, once those pages exist.
 
-import { MessageCircle, Menu, X } from "lucide-react";
+import { FileText, MessageCircle, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { isActiveLink, mainNavLinks } from "./nav-links";
+import { infoNavLinks, isActiveLink, mainNavLinks } from "./nav-links";
 
 type HeaderNavProps = {
   chatUrl: string; // the "Chat With Us" link (from settings)
@@ -124,8 +124,19 @@ export function HeaderNav({
           {phoneMenuUser}
           <NavLinks variant="phone" />
 
-          {chatUrl && (
-            <div className="mt-2 border-t border-brown-line pt-3">
+          {/* Smaller links under a line: Policies, then Chat With Us */}
+          <div className="mt-2 flex flex-col border-t border-brown-line pt-3">
+            {infoNavLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="inline-flex min-h-11 items-center gap-2 py-2.5 text-[15px] text-tan-soft"
+              >
+                <FileText aria-hidden="true" className="size-5" />
+                {link.label}
+              </Link>
+            ))}
+            {chatUrl && (
               <a
                 href={chatUrl}
                 target="_blank"
@@ -135,8 +146,8 @@ export function HeaderNav({
                 <MessageCircle aria-hidden="true" className="size-5" />
                 Chat With Us
               </a>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* mt-auto pushes the buttons to the bottom of the menu */}
           <div className="mt-auto pt-6">{phoneMenuActions}</div>

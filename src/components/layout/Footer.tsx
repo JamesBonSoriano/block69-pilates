@@ -7,7 +7,7 @@ import { AtSign, Mail, MapPin, PawPrint } from "lucide-react";
 import Link from "next/link";
 import { getPageContent } from "@/lib/data/content";
 import { getPublicSettings } from "@/lib/data/settings";
-import { mainNavLinks } from "./nav-links";
+import { infoNavLinks, mainNavLinks } from "./nav-links";
 
 // Class names shared by every link in the footer: light text, at least 44px
 // tall so it's easy to tap, and underlined on hover.
@@ -68,11 +68,11 @@ export async function Footer() {
           </div>
         </div>
 
-        {/* Column 2: quick links (the same pages as the header) */}
+        {/* Column 2: quick links (the header's pages, plus Policies) */}
         <nav aria-label="Footer">
           <p className="mb-2 font-heading text-base font-semibold text-white">Quick links</p>
           <ul className="grid grid-cols-2 gap-x-4 lg:grid-cols-1">
-            {mainNavLinks.map((link) => (
+            {[...mainNavLinks, ...infoNavLinks].map((link) => (
               <li key={link.href}>
                 <Link href={link.href} className={footerLink}>
                   {link.label}

@@ -25,7 +25,7 @@ npm run test:db -- booking
 npm run test:db -- security
 ```
 
-A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, then a summary like `162/162 checks passed`. If anything fails, the last lines list what failed, and the command exits with an error code.
+A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, then a summary like `171/171 checks passed`. If anything fails, the last lines list what failed, and the command exits with an error code.
 
 ## What gets tested
 
@@ -38,6 +38,7 @@ A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, t
 | `05-admin-account.test.mjs` | Only admins can use admin tools. A walk-in takes a seat like an online booking. Attendance can be marked, and `attended` still holds a seat. Manual payments can be approved or rejected. A client can deactivate their account but can't reactivate it. |
 | `06-seed.test.mjs` | `seed.sql` loads cleanly and covers all 10 booking statuses. `WELCOME10` works, the expired code is refused, and running it twice adds nothing. |
 | `07-signup.test.mjs` | The sign-up trigger saves the full name and phone number the website's sign-up form sends. A blank phone becomes empty. A sneaky `role: "admin"` in the sign-up data is ignored (new accounts are always active clients). |
+| `08-page-content.test.mjs` | Migration 5's page text for Home, About Us and Policies: every block is there, the FAQ has answers, the short policy matches the real rules, every `{fill-in}` word (like `{mat_price}`) is one the website knows, no prices are typed into the text, and the file is safe to run twice. |
 
 ## How it works (in simple words)
 
@@ -53,7 +54,7 @@ A full run takes about 15 seconds. It prints `PASS` or `FAIL` for every check, t
 
 ## Adding a test
 
-Add a check to the right `*.test.mjs` file, or make a new file like `07-something.test.mjs`. It's picked up automatically. Each file exports a `title` and one function that gets a toolbox `t`:
+Add a check to the right `*.test.mjs` file, or make a new file like `09-something.test.mjs`. It's picked up automatically. Each file exports a `title` and one function that gets a toolbox `t`:
 
 ```js
 // Example: a guest can see seats left for a class.
