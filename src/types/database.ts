@@ -524,6 +524,7 @@ export type Database = {
         Returns: string
       }
       booking_family: { Args: { p_booking_id: string }; Returns: string[] }
+      booking_moved_to: { Args: { p_booking_id: string }; Returns: string }
       cancel_my_booking: {
         Args: { p_booking_id: string }
         Returns: {
@@ -531,6 +532,15 @@ export type Database = {
           voucher_code: string
           voucher_expires_at: string
         }[]
+      }
+      change_rule: {
+        Args: {
+          p_date: string
+          p_session_status: Database["public"]["Enums"]["session_status"]
+          p_start_time: string
+          p_transferred_from: string
+        }
+        Returns: string
       }
       check_drink_choice: { Args: { p_choice: string }; Returns: string }
       check_voucher: {
@@ -595,11 +605,79 @@ export type Database = {
           voucher_percent_off: number
         }[]
       }
+      get_my_bookings: {
+        Args: never
+        Returns: {
+          booking_id: string
+          can_transfer: boolean
+          change_rule: string
+          class_date: string
+          created_at: string
+          drink_choice: string
+          end_time: string
+          hold_seconds_left: number
+          is_upcoming: boolean
+          mat_rental: boolean
+          moved_from_date: string
+          moved_from_start_time: string
+          moved_to_date: string
+          moved_to_start_time: string
+          paid_amount: number
+          paid_method: Database["public"]["Enums"]["payment_method"]
+          session_id: string
+          session_status: Database["public"]["Enums"]["session_status"]
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"]
+          total: number
+        }[]
+      }
+      get_my_payments: {
+        Args: { p_payment_id?: string }
+        Returns: {
+          amount: number
+          booking_id: string
+          class_date: string
+          class_fee: number
+          created_at: string
+          discount: number
+          drink_choice: string
+          end_time: string
+          mat_fee: number
+          mat_rental: boolean
+          method: Database["public"]["Enums"]["payment_method"]
+          now_date: string
+          now_end_time: string
+          now_start_time: string
+          paid_at: string
+          payment_id: string
+          paymongo_ref: string
+          provider: Database["public"]["Enums"]["payment_provider"]
+          start_time: string
+          status: Database["public"]["Enums"]["payment_status"]
+          total: number
+          voucher_code: string
+        }[]
+      }
       get_my_session_booking: {
         Args: { p_session_id: string }
         Returns: {
           booking_id: string
           status: Database["public"]["Enums"]["booking_status"]
+        }[]
+      }
+      get_my_vouchers: {
+        Args: never
+        Returns: {
+          amount_off: number
+          code: string
+          created_at: string
+          expires_at: string
+          percent_off: number
+          source: Database["public"]["Enums"]["voucher_source"]
+          state: string
+          used_for_date: string
+          uses_left: number
+          voucher_id: string
         }[]
       }
       get_open_sessions: {

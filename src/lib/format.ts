@@ -55,12 +55,14 @@ export function formatTimeRange(start: string, end: string): string {
 
 // Breaks a class date into the parts the date tile shows.
 // Takes: a date from the database, "YYYY-MM-DD".
-// Gives back: { weekday: "THU", day: "23", month: "Oct", full: "Thursday, 23 October" }.
+// Gives back: { weekday: "THU", day: "23", month: "Oct",
+// full: "Thursday, October 23", short: "Thu, Oct 23" }.
 export function formatClassDate(date: string): {
   weekday: string;
   day: string;
   month: string;
   full: string;
+  short: string;
 } {
   const [year, month, day] = date.split("-").map(Number);
   // Build the date in UTC and format it in UTC, so the visitor's own time
@@ -74,7 +76,36 @@ export function formatClassDate(date: string): {
     day: String(day),
     month: format({ month: "short" }),
     full: format({ weekday: "long", day: "numeric", month: "long" }),
+    short: format({ weekday: "short", day: "numeric", month: "short" }),
   };
+}
+
+// Formats an exact moment from the database (e.g. when a payment was made or
+// a voucher expires) as a date in the Philippines.
+// Takes: the moment (text like "2026-12-22T07:15:00+00:00", or a Date).
+// Gives back: e.g. "December 22, 2026". Always Philippine time, whatever time
+// zone the visitor's device (or our server) is in.
+export function formatManilaDate(moment: string | Date): string {
+  return new Date(moment).toLocaleDateString("en-PH", {
+    timeZone: "Asia/Manila",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// Formats an exact moment as a short date and time in the Philippines.
+// Takes: the moment (text or a Date).
+// Gives back: e.g. "Fri, Oct 24, 9:00 AM".
+export function formatManilaDateTime(moment: string | Date): string {
+  return new Date(moment).toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 // Day names, in the database's numbering (0 = Sunday ... 6 = Saturday).

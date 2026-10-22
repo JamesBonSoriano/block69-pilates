@@ -9,8 +9,8 @@
 // It is STATIC: it doesn't know who is logged in. Header.tsx hands it the
 // account parts (Log in / initials / Admin / Log out) ready-made, each in its
 // own <Suspense>, and this file only decides WHERE they go.
-// Step 10 adds the My Account sub-links (Profile, Payments, Vouchers,
-// Notifications) to the phone menu, once those pages exist.
+// The My Account sub-links (Profile, My Bookings, Payments, ...) are in
+// phoneMenuUser (HeaderAccount.tsx), so only logged-in people see them.
 
 import { FileText, MessageCircle, Menu, X } from "lucide-react";
 import Link from "next/link";

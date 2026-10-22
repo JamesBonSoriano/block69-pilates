@@ -34,7 +34,8 @@ export async function Header() {
   return (
     // sticky top-0: stays at the top while scrolling, so the phone menu
     // (which opens just under it) always lines up
-    <header className="sticky top-0 z-40 bg-brown">
+    // print:hidden = left out when a page is printed (e.g. a payment receipt)
+    <header className="sticky top-0 z-40 bg-brown print:hidden">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 lg:h-24 lg:px-8">
         {/* The "logo" (text for now; an uploaded logo image comes with Settings in Step 11) */}
         <Link

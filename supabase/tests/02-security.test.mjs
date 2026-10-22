@@ -136,7 +136,8 @@ export default async function run(t) {
     'admin_cancel_session', 'admin_review_manual_payment', 'admin_set_attendance', 'admin_walkin_booking',
     'book_seat', 'cancel_my_booking', 'check_voucher', 'deactivate_my_account', 'generate_sessions',
     // migration 6 (booking pages): read only the caller's own bookings
-    'get_my_booking', 'get_my_session_booking',
+    // migration 8 (My Account) adds get_my_bookings, get_my_payments, get_my_vouchers
+    'get_my_booking', 'get_my_bookings', 'get_my_payments', 'get_my_session_booking', 'get_my_vouchers',
     'get_open_sessions', 'is_admin',
     // migration 7 (pay page "Change details"): checks the owner inside
     'release_my_hold',

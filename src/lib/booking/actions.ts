@@ -17,19 +17,13 @@ import { redirect } from "next/navigation";
 import { voucherLabel } from "@/lib/booking-rules";
 import type { HoldSeatState, ReleaseHoldState, VoucherPreview } from "@/lib/booking/form-state";
 import { findMySessionBooking, loadSession } from "@/lib/data/booking";
+import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
 import { getPublicSettings } from "@/lib/data/settings";
 import { createClient } from "@/lib/supabase/server";
-import { isUuid, isValidMobile } from "@/lib/validation";
+import { isUuid, isValidInstagram, isValidMobile } from "@/lib/validation";
 
 // The longest health note book_seat() accepts (it refuses longer ones).
 const MAX_HEALTH_NOTES = 1000;
-
-// An Instagram handle: letters, numbers, dots and underscores, up to 30
-// (Instagram's own rule), with or without the "@" in front.
-const INSTAGRAM_PATTERN = /^@?[A-Za-z0-9._]{1,30}$/;
-
-// The message shown when something unexpected goes wrong.
-const GENERIC_ERROR = "Something went wrong on our side. Please try again in a moment.";
 
 // ---------------------------------------------------------------------------
 // VOUCHER PREVIEW ("Apply")
@@ -131,7 +125,7 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
   if (!isValidMobile(mobile)) {
     fieldErrors.mobile = "Please enter a valid mobile number, for example 0917 123 4567.";
   }
-  if (instagram && !INSTAGRAM_PATTERN.test(instagram)) {
+  if (instagram && !isValidInstagram(instagram)) {
     fieldErrors.instagram = "Please enter just your Instagram name, for example @yourname.";
   }
   if (firstTime !== "yes" && firstTime !== "no") {
@@ -260,22 +254,4 @@ export async function releaseHold(_previous: ReleaseHoldState, formData: FormDat
 function readText(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
-}
-
-// Turns a database error into a message we can show.
-// Takes: the error Supabase gave back.
-// Gives back: our OWN plain-English message from the database function (they
-// all use "raise exception", which has the code P0001, or 42501 for the
-// login checks), or a general message for anything unexpected (which is
-// logged for us, never shown).
-function friendlyDatabaseError(error: { code?: string; message: string }): string {
-  if (error.code === "P0001") return error.message;
-  if (error.code === "42501") {
-    // Postgres's own "permission denied" (e.g. logged out) isn't friendly
-    return error.message.startsWith("permission denied")
-      ? "Please log in again to continue."
-      : error.message;
-  }
-  console.error("Booking database error:", error.code, error.message);
-  return GENERIC_ERROR;
 }

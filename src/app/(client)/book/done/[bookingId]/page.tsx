@@ -174,8 +174,7 @@ async function Booked({ params }: Pick<PageProps<"/book/done/[bookingId]">, "par
       )}
 
       <div className="flex w-full flex-col gap-3 sm:flex-row">
-        {/* My Bookings is built in Step 10; until then My Account */}
-        <ButtonLink href="/account" fullWidth className="sm:flex-1">
+        <ButtonLink href="/account/bookings" fullWidth className="sm:flex-1">
           See my bookings
         </ButtonLink>
         <ButtonLink href="/book" variant="secondary" fullWidth className="sm:flex-1">

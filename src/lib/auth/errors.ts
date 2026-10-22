@@ -1,7 +1,7 @@
 // Turns Supabase login errors into short, plain-English messages, and holds
 // the other messages the login pages share.
-// Where it's used: src/lib/auth/actions.ts (log in, sign up, new password)
-// and the login page.
+// Where it's used: src/lib/auth/actions.ts (log in, sign up, new password),
+// src/lib/account/actions.ts (change password on My Profile) and the login page.
 //
 // Supabase gives each error a "code" (e.g. "invalid_credentials"). We match
 // on the code, never on the English text, because the text can change.
@@ -41,6 +41,17 @@ export function friendlyAuthError(error: AuthError): string {
     // Setting a "new" password that is the same as the old one
     case "same_password":
       return "That's already your password. Please choose a different one.";
+
+    // Changing the password on My Profile with the wrong (or no) current
+    // password. Supabase checks it ("Require current password when updating"
+    // in the dashboard; see docs/PROGRESS.md).
+    case "current_password_mismatch":
+    case "current_password_required":
+      return "Your current password isn't right. Please check it and try again.";
+
+    // "Secure password change" is on and the login is over 24 hours old
+    case "reauthentication_needed":
+      return "For your safety, please log out, log back in, and then change your password.";
 
     // Signed up but hasn't clicked the link in the confirmation email yet
     case "email_not_confirmed":
