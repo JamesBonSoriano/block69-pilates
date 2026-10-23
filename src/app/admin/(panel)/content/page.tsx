@@ -9,6 +9,7 @@
 // and the footer, page by page (?page=home). Each block has its own Save
 // (saveContent) with a live preview of the fill-in words, and the four photo
 // spots have an upload (SiteImageUpload -> the public "site-images" bucket).
+// Blocks the website stopped showing in Change 17 are hidden (HIDDEN_BLOCKS).
 // Saving clears the cached page text (updateTag("site-content")), so the
 // change shows on the website straight away.
 //
@@ -49,12 +50,12 @@ type PageKey = (typeof PAGES)[number]["key"];
 const BLOCK_NAMES: Record<string, string> = {
   "home/hero": "Top of the page (hero)",
   "home/hero_kicker": "Small line above the hero title",
-  "home/about_class": "About the class",
-  "home/location_drink": "Location and free drink",
+  "home/class_details": "Class Details & Location (the address and Maps link come from Settings)",
+  "home/mat_note": "Mat rental line (in Class Details & Location)",
   "home/included": "What's included",
-  "home/health_note": "Health note",
   "home/how_it_works": "How it works (heading)",
   "home/cta": "Book now box (bottom)",
+  "home/health_safety": "Health and Safety Information (bottom of Home)",
   "about/cafe": "The cafe",
   "about/instructor": "The instructor (name and bio)",
   "about/instructor_name": "The instructor's title",
@@ -71,10 +72,24 @@ const BLOCK_NAMES: Record<string, string> = {
   "footer/strays_note": "Stray animals note",
 };
 
+// Blocks the website no longer shows (Change 17). They stay in the database,
+// as agreed, but are left off this page so nobody edits text nobody sees.
+// Home: "About the class" + its 3 cards and the old location block became
+// "Class Details & Location"; the small health note became "Health and
+// Safety Information".
+const HIDDEN_BLOCKS = new Set([
+  "home/about_class",
+  "home/feature_1",
+  "home/feature_2",
+  "home/feature_3",
+  "home/location_drink",
+  "home/health_note",
+]);
+
 // The photo spots (page/section) and what to call them.
 const PHOTO_SPOTS: Record<string, string> = {
   "home/hero": "Home: top photo",
-  "home/location_drink": "Home: location and drink photo",
+  "home/class_details": "Home: Class Details & Location photo",
   "about/cafe": "About Us: cafe photo",
   "about/instructor": "About Us: instructor photo",
 };
@@ -109,7 +124,8 @@ async function ContentBody({ searchParams }: { searchParams: PageProps<"/admin/c
   let fillIns: Record<string, string>;
   try {
     const [content, settings] = await Promise.all([getAllSiteContent(), getPublicSettings()]);
-    rows = content;
+    // Leave out the blocks the website no longer shows (see HIDDEN_BLOCKS)
+    rows = content.filter((row) => !HIDDEN_BLOCKS.has(`${row.page}/${row.section}`));
     fillIns = fillInValues(settings);
   } catch (error) {
     unstable_rethrow(error);

@@ -30,10 +30,10 @@ export async function Footer() {
     // print:hidden = left out when a page is printed (e.g. a payment receipt)
     // Brown (#5B3F2E) with Light Sage text (8:1). Plain sage text would be
     // too faint on brown, so the links below use cream instead.
-    <footer className="bg-brown text-sm text-sage-light print:hidden">
-      {/* pb-24 on phones: room under the last links, so the floating Chat
-          With Us button (ChatButton.tsx) never covers them */}
-      <div className="mx-auto grid max-w-6xl gap-8 px-5 pb-24 pt-10 lg:grid-cols-3 lg:gap-12 lg:px-8 lg:py-14">
+    // data-site-footer: the floating Chat With Us button (ChatButton.tsx)
+    // looks for it, and moves up to stay above the footer, never on it
+    <footer data-site-footer className="bg-brown text-sm text-sage-light print:hidden">
+      <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 lg:grid-cols-3 lg:gap-12 lg:px-8 lg:py-14">
         {/* Column 1: the cafe and how to reach it */}
         <div className="flex flex-col gap-1">
           <p className="mb-2 font-heading text-base font-semibold text-white">

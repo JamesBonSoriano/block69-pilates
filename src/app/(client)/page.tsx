@@ -10,23 +10,26 @@
 //     fillSettings() swaps for the current value.
 //   - the class days ("Thu to Sun"): the weekly schedule (cached, see
 //     src/lib/data/schedule.ts)
-// Only small design words (button labels like "About the class") are in the code.
+// Only small design words (button labels like "Book Your Session") are in the code.
 // There's no live class list here: people see the classes and seats left on
 // /book (booking step 1).
 //
 // Layout: one column on phones (docs/designs/PhoneHome.html); on laptops the
 // same blocks spread into two or three columns.
-// Order: hero, about the class + feature cards, what's included + what to
-// bring + health note, how it works, location, call to action.
+// Order (Change 17, Part D): hero, Class Details & Location, what's included +
+// what to bring, how it works, call to action, then Health and Safety
+// Information just before the footer.
+// (The old "About the class" + 3 cards, the old location block and the small
+// health note are no longer shown; their rows stay in the database.)
 
-import { ArrowRight, Feather, MapPin, MessageCircle, PawPrint, Sprout, TriangleAlert } from "lucide-react";
+import { ArrowRight, MapPin, MessageCircle, ShieldAlert, Sparkles } from "lucide-react";
 import { CheckList, ContentText, Paragraphs } from "@/components/content/ContentText";
 import { SiteImage } from "@/components/content/SiteImage";
 import { Section } from "@/components/layout/Section";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
-import { fillSettings, numberedSections } from "@/lib/content-text";
+import { fillSettings, numberedSections, splitLines } from "@/lib/content-text";
 import { getPageContent } from "@/lib/data/content";
 import { getWeeklySchedule } from "@/lib/data/schedule";
 import { getPublicSettings } from "@/lib/data/settings";
@@ -35,15 +38,15 @@ import { pageMetadata } from "@/lib/metadata";
 
 // Tab title, Google description and link preview for this page.
 export const metadata = pageMetadata({
-  title: "Mindful Mat Pilates in Taguig",
+  title: "Mat Pilates for Beginners in Taguig",
   description:
     "Beginner STOTT mat Pilates classes in a small group at Block 69 Cafe, Comembo, Taguig City, with an upsized matcha or coffee after class. Book online.",
   path: "/",
 });
 
-// One icon per feature card, in order (feature_1, feature_2, feature_3).
-// They're only decoration; the card text comes from site_content.
-const FEATURE_ICONS = [Feather, Sprout, PawPrint];
+// The main button's words. No price on it: the proposal calls that
+// redundant (the price is in "What's included" and on the booking pages).
+const BOOK_LABEL = "Book Your Session";
 
 // The Home page.
 // Takes: nothing.
@@ -62,18 +65,15 @@ export default async function HomePage() {
   // Takes: the text. Gives back: the finished text ("" if there was none).
   const fill = (text: string | null | undefined) => fillSettings(text, settings);
 
-  const { hero, about_class: aboutClass, included, how_it_works: howItWorks } = content;
-  const { location_drink: location, cta, health_note: healthNote } = content;
+  const { hero, class_details: classDetails, mat_note: matNote, included, how_it_works: howItWorks } = content;
+  const { cta, health_safety: healthSafety } = content;
   const whatToBring = bookingContent.what_to_bring;
-  const features = numberedSections(content, "feature");
   const steps = numberedSections(content, "step");
+  const healthItems = splitLines(fill(healthSafety?.body));
 
   // "Mindful Mat Pilates · Thu to Sun" (the days come from the weekly schedule)
   const classDays = formatWeekdays(schedule.map((day) => day.weekday));
   const kicker = [content.hero_kicker?.title, classDays].filter(Boolean).join(" · ");
-
-  // The main button text, with the price from settings
-  const bookLabel = `Book a class · ${formatPeso(settings.classPrice)}`;
 
   return (
     <>
@@ -107,85 +107,94 @@ export default async function HomePage() {
         {/* Buttons (phone: last, full width; laptop: left column, under the text) */}
         <div className="flex flex-col gap-3 sm:flex-row lg:self-start">
           <ButtonLink href="/book" className="sm:min-w-56">
-            {bookLabel}
+            {BOOK_LABEL}
           </ButtonLink>
           <ButtonLink href="/about" variant="secondary">
-            About the class
+            About us
           </ButtonLink>
         </div>
       </Section>
 
-      {/* ===== About the class + feature cards ===== */}
-      {(aboutClass || features.length > 0) && (
-        <Section aria-labelledby="about-class-heading" className="flex flex-col gap-5 pb-10 lg:pb-16">
-          {aboutClass && (
-            <div className="flex max-w-2xl flex-col gap-3">
-              {aboutClass.title && (
-                <h2 id="about-class-heading" className="text-2xl font-normal lg:text-3xl">
-                  {fill(aboutClass.title)}
+      {/* ===== Class Details & Location =====
+          One section for the class and where it is (it replaced "About the
+          class", its 3 cards and the old location block, so the address and
+          Maps button are shown only once). */}
+      {classDetails && (
+        <Section aria-labelledby="class-details-heading" className="pb-10 lg:pb-16">
+          {/* Phone: photo on top, text under it. Laptop: photo left, text right. */}
+          <Card className="grid gap-5 lg:grid-cols-2 lg:items-center lg:gap-10">
+            <SiteImage
+              path={classDetails.image_path}
+              alt=""
+              sizes="(min-width: 1152px) 520px, (min-width: 1024px) 45vw, 100vw"
+              className="h-48 rounded-2xl sm:h-64 lg:h-full lg:min-h-80"
+            />
+            <div className="flex flex-col gap-4 px-1 pb-1 lg:px-0">
+              {classDetails.title && (
+                <h2 id="class-details-heading" className="text-2xl font-normal lg:text-3xl">
+                  {fill(classDetails.title)}
                 </h2>
               )}
-              <Paragraphs text={fill(aboutClass.body)} className="text-[15px] leading-relaxed text-muted lg:text-base" />
+              {/* A short description of the class */}
+              <Paragraphs text={fill(classDetails.body)} className="text-[15px] leading-relaxed text-muted" />
+
+              {/* Where: the full address and the Maps link, from Settings */}
+              {settings.cafeAddress && (
+                <div className="flex flex-col gap-1">
+                  <Overline as="h3">Location</Overline>
+                  <p className="flex items-start gap-2 text-sm font-semibold text-ink">
+                    <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brown" />
+                    <span>
+                      {settings.cafeName}, {settings.cafeAddress}
+                    </span>
+                  </p>
+                </div>
+              )}
+              {settings.mapsUrl && (
+                <ButtonLink href={settings.mapsUrl} external variant="secondary" className="self-start max-sm:w-full">
+                  Open in Google Maps
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </ButtonLink>
+              )}
+
+              {/* "Don't have a mat? Add mat rental to your booking." */}
+              {matNote?.body && (
+                <p className="flex items-start gap-2.5 rounded-2xl bg-sage-light px-4 py-3 text-sm text-ink">
+                  <Sparkles aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <ContentText text={fill(matNote.body)} />
+                </p>
+              )}
             </div>
-          )}
-          {features.length > 0 && (
-            // 1 per row on phones, 3 in a row from tablet width
-            <ul className="grid gap-3 sm:grid-cols-3 lg:gap-4">
-              {features.map((feature, i) => {
-                const Icon = FEATURE_ICONS[i] ?? Sprout;
-                return (
-                  <li key={i}>
-                    <Card className="flex h-full flex-col gap-2">
-                      {/* Icon in a tan circle (decoration only) */}
-                      <span className="mb-1 flex size-10 items-center justify-center rounded-full bg-tan-soft text-brown">
-                        <Icon aria-hidden="true" className="size-5" />
-                      </span>
-                      <h3 className="text-base font-semibold">{fill(feature.title)}</h3>
-                      <p className="text-sm leading-relaxed text-muted">
-                        <ContentText text={fill(feature.body)} />
-                      </p>
-                    </Card>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          </Card>
         </Section>
       )}
 
-      {/* ===== What's included + what to bring + health note ===== */}
-      <Section className="grid gap-3 pb-10 lg:grid-cols-2 lg:gap-4 lg:pb-16">
-        {included && (
-          <Card className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between gap-3">
-              {included.title && <Overline as="h2">{fill(included.title)}</Overline>}
-              {/* The class price, big, from settings */}
-              <p className="whitespace-nowrap text-xs text-muted">
-                <span className="font-heading text-2xl font-semibold text-brown">
-                  {formatPeso(settings.classPrice)}
-                </span>{" "}
-                per class
-              </p>
-            </div>
-            <CheckList text={fill(included.body)} />
-          </Card>
-        )}
-        {whatToBring && (
-          <Card className="flex flex-col gap-3">
-            {whatToBring.title && <Overline as="h2">{fill(whatToBring.title)}</Overline>}
-            <CheckList text={fill(whatToBring.body)} />
-          </Card>
-        )}
-        {healthNote?.body && (
-          // The yellow warning box from the design, across both columns on laptops
-          <div className="flex items-start gap-2.5 rounded-2xl bg-warning-bg px-4 py-3.5 text-xs leading-relaxed text-warning lg:col-span-2 lg:text-sm">
-            <TriangleAlert aria-hidden="true" className="mt-px size-4 shrink-0" />
-            <p>
-              <ContentText text={fill(healthNote.body)} />
-            </p>
-          </div>
-        )}
-      </Section>
+      {/* ===== What's included + what to bring ===== */}
+      {(included || whatToBring) && (
+        <Section className="grid gap-3 pb-10 lg:grid-cols-2 lg:gap-4 lg:pb-16">
+          {included && (
+            <Card className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between gap-3">
+                {included.title && <Overline as="h2">{fill(included.title)}</Overline>}
+                {/* The class price, big, from settings */}
+                <p className="whitespace-nowrap text-xs text-muted">
+                  <span className="font-heading text-2xl font-semibold text-brown">
+                    {formatPeso(settings.classPrice)}
+                  </span>{" "}
+                  per class
+                </p>
+              </div>
+              <CheckList text={fill(included.body)} />
+            </Card>
+          )}
+          {whatToBring && (
+            <Card className="flex flex-col gap-3">
+              {whatToBring.title && <Overline as="h2">{fill(whatToBring.title)}</Overline>}
+              <CheckList text={fill(whatToBring.body)} />
+            </Card>
+          )}
+        </Section>
+      )}
 
       {/* ===== How it works (3 steps) ===== */}
       {steps.length > 0 && (
@@ -223,45 +232,9 @@ export default async function HomePage() {
         </Section>
       )}
 
-      {/* ===== Location (+ the free drink) ===== */}
-      {location && (
-        <Section aria-labelledby="location-heading" className="pb-10 lg:pb-16">
-          {/* Phone: photo on top, text under it. Laptop: photo left, text right. */}
-          <Card className="grid gap-5 lg:grid-cols-2 lg:items-center lg:gap-10">
-            <SiteImage
-              path={location.image_path}
-              alt=""
-              sizes="(min-width: 1152px) 520px, (min-width: 1024px) 45vw, 100vw"
-              className="h-48 rounded-2xl sm:h-64 lg:h-80"
-            />
-            <div className="flex flex-col gap-3 px-1 pb-1 lg:px-0">
-              {location.title && (
-                <h2 id="location-heading" className="text-2xl font-normal lg:text-3xl">
-                  {fill(location.title)}
-                </h2>
-              )}
-              <Paragraphs text={fill(location.body)} className="text-[15px] leading-relaxed text-muted" />
-              {/* Address and Maps link from settings */}
-              {settings.cafeAddress && (
-                <p className="flex items-start gap-2 text-sm font-semibold text-ink">
-                  <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brown" />
-                  {settings.cafeAddress}
-                </p>
-              )}
-              {settings.mapsUrl && (
-                <ButtonLink href={settings.mapsUrl} external variant="secondary" className="self-start max-sm:w-full">
-                  Open in Google Maps
-                  <ArrowRight aria-hidden="true" className="size-4" />
-                </ButtonLink>
-              )}
-            </div>
-          </Card>
-        </Section>
-      )}
-
       {/* ===== Call to action ===== */}
       {cta && (
-        <Section aria-labelledby="cta-heading" className="pb-12 lg:pb-20">
+        <Section aria-labelledby="cta-heading" className="pb-10 lg:pb-16">
           <div className="flex flex-col gap-4 rounded-3xl bg-brown px-6 py-8 text-center lg:items-center lg:px-12 lg:py-12">
             {cta.title && (
               // text-white: headings are dark by default, which can't be read on brown
@@ -276,7 +249,7 @@ export default async function HomePage() {
             )}
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <ButtonLink href="/book" variant="light" className="sm:min-w-56">
-                {bookLabel}
+                {BOOK_LABEL}
               </ButtonLink>
               {settings.chatUrl && (
                 <ButtonLink href={settings.chatUrl} external variant="lightOutline">
@@ -286,6 +259,32 @@ export default async function HomePage() {
               )}
             </div>
           </div>
+        </Section>
+      )}
+
+      {/* ===== Health and Safety Information (just before the footer) =====
+          Moved here from About Us (Change 17). One item per line of text. */}
+      {healthItems.length > 0 && (
+        <Section aria-labelledby="health-heading" className="pb-12 lg:pb-20">
+          <Card className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning">
+                <ShieldAlert aria-hidden="true" className="size-5" />
+              </span>
+              <h2 id="health-heading" className="text-xl font-normal lg:text-2xl">
+                {fill(healthSafety?.title) || "Health and Safety Information"}
+              </h2>
+            </div>
+            <ul className="flex flex-col gap-2.5">
+              {healthItems.map((item, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-[15px] leading-relaxed text-ink">
+                  {/* A small dot, like a bullet point (decoration only) */}
+                  <span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-warning" />
+                  <ContentText text={item} />
+                </li>
+              ))}
+            </ul>
+          </Card>
         </Section>
       )}
     </>

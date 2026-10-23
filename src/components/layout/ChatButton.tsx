@@ -6,16 +6,21 @@
 // pages). It is not on the admin pages. With no chat link in Settings, the
 // shell doesn't show it at all.
 //
-// "use client" = it runs in the browser, because on phones it has to move UP
-// when a page has a sticky bottom bar (the booking steps' Continue / Pay
-// bar), so it never covers those buttons. The bar is marked with the
-// attribute data-sticky-bar (src/components/booking/BookingLayout.tsx).
+// "use client" = it runs in the browser, because it has to move UP so it
+// never covers other things at the bottom of the screen:
+//   - on phones, a sticky bottom bar (the booking steps' Continue / Pay bar),
+//     marked with data-sticky-bar (src/components/booking/BookingLayout.tsx)
+//   - on every screen size, the FOOTER (Change 17): once the footer scrolls
+//     into view, the button rides just above its top edge, so it sits on the
+//     page, above the footer, and never covers the footer's links. The footer
+//     is marked with data-site-footer (src/components/layout/Footer.tsx).
 
 import { MessageCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-// The gap between the button and the bottom of the screen (or the bar), in px.
+// The gap between the button and the bottom of the screen (or the bar, or
+// the top of the footer), in px.
 const GAP = 16;
 
 // The floating chat button (with the page-aware position).
@@ -28,24 +33,45 @@ export function ChatButton({ chatUrl }: { chatUrl: string }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Phones and tablets only: on laptops the booking summary is a side card,
-    // not a bottom bar
+    // The sticky bar matters on phones and tablets only: on laptops the
+    // booking summary is a side card, not a bottom bar
     const phone = window.matchMedia("(max-width: 1023.98px)");
     const bar = document.querySelector<HTMLElement>("[data-sticky-bar]");
+    const footer = document.querySelector<HTMLElement>("[data-site-footer]");
 
-    // Works out the position: just above the bar if there is one, else the corner.
-    const place = () => setBottom(phone.matches && bar ? bar.offsetHeight + GAP : GAP);
+    // Works out the position: GAP above the highest of (the screen's bottom,
+    // the sticky bar, the part of the footer that is showing).
+    const place = () => {
+      const barHeight = phone.matches && bar ? bar.offsetHeight : 0;
+      // How much of the footer is on the screen right now (0 = none)
+      const footerShowing = footer ? Math.max(0, window.innerHeight - footer.getBoundingClientRect().top) : 0;
+      setBottom(Math.max(barHeight, footerShowing) + GAP);
+    };
     place();
 
-    // Move again when the bar changes height (e.g. an error line appears)
-    // or the screen is turned / resized past the laptop width
-    const resize = bar ? new ResizeObserver(place) : null;
-    if (bar) resize?.observe(bar);
+    // Scrolling changes how much of the footer shows. requestAnimationFrame
+    // = at most once per screen refresh, so scrolling stays smooth.
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(place);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    // Move again when the bar or the page changes height (e.g. an error line
+    // appears) or the screen is turned / resized past the laptop width
+    const resize = new ResizeObserver(place);
+    if (bar) resize.observe(bar);
+    resize.observe(document.body);
     phone.addEventListener("change", place);
 
     // Clean-up when the page changes
     return () => {
-      resize?.disconnect();
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      resize.disconnect();
       phone.removeEventListener("change", place);
     };
   }, [pathname]);
@@ -60,7 +86,9 @@ export function ChatButton({ chatUrl }: { chatUrl: string }) {
       title="Chat With Us"
       // max(...) keeps it above an iPhone's home bar
       style={{ bottom: `max(${bottom}px, env(safe-area-inset-bottom))` }}
-      className="fixed right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg transition-[bottom] hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:right-6 print:hidden"
+      // No slide animation on "bottom": while scrolling it must follow the
+      // footer exactly, not lag behind it
+      className="fixed right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:right-6 print:hidden"
     >
       <MessageCircle aria-hidden="true" className="size-6" />
     </a>
