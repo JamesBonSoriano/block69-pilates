@@ -67,20 +67,20 @@ export function RadioOption({ label, description, aside, className, disabled, ..
     <label
       className={cn(
         "flex min-h-11 items-center gap-3 rounded-[14px] border border-line bg-white px-3.5 py-3 text-sm text-ink",
-        // Picked: brown border (ring adds the 2nd pixel without moving
-        // anything) and the tan fill from the mockups
-        "has-checked:border-brown has-checked:bg-tan-soft has-checked:ring-1 has-checked:ring-brown",
+        // Picked: primary border (ring adds the 2nd pixel without moving
+        // anything) and the soft fill (light sage / admin tan)
+        "has-checked:border-primary has-checked:bg-tan-soft has-checked:ring-1 has-checked:ring-primary",
         // A clear outline when the radio is reached with the keyboard
-        "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brown",
-        disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer hover:border-brown",
+        "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
+        disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer hover:border-primary",
         className,
       )}
     >
       <input
         type="radio"
         disabled={disabled}
-        // accent-brown colors the dot brown; focus is shown on the whole card
-        className="size-4.5 shrink-0 cursor-[inherit] accent-brown focus:outline-none"
+        // accent-primary colors the dot; focus is shown on the whole card
+        className="size-4.5 shrink-0 cursor-[inherit] accent-primary focus:outline-none"
         {...props}
       />
       <span className="min-w-0 flex-1">

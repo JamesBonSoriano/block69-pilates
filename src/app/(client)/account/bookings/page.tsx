@@ -171,7 +171,7 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
         className={cn(
           "inline-flex min-h-11 items-center rounded-full px-5 text-sm font-semibold transition-colors",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown",
-          active ? "bg-brown text-card" : "text-brown hover:bg-tan-soft",
+          active ? "bg-primary text-on-primary" : "text-brown hover:bg-tan-soft",
         )}
       >
         {children}

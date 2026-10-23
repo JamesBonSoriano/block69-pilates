@@ -34,7 +34,7 @@ export function BookingSteps({ step, title, intro, breadcrumb }: BookingStepsPro
       {breadcrumb ?? <BookingBreadcrumb current={step} />}
       <div aria-hidden="true" className="flex gap-1.5">
         {[1, 2, 3].map((n) => (
-          <span key={n} className={cn("h-1 flex-1 rounded", n <= step ? "bg-brown" : "bg-line")} />
+          <span key={n} className={cn("h-1 flex-1 rounded", n <= step ? "bg-primary" : "bg-line")} />
         ))}
       </div>
       <div className="mt-1 flex flex-col gap-1">

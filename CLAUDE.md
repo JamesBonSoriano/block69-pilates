@@ -207,32 +207,42 @@ Seed data: the Thu to Sun templates for both sessions, the default settings, and
 - Load both with `next/font/google`.
 
 **Colors** (set them as Tailwind theme tokens in `globals.css` with `@theme`, and never repeat hex codes in components)
-| Token | Hex | Used for |
-| --- | --- | --- |
-| `brown` | `#43271B` | Header, footer, admin sidebar, primary buttons, headings |
-| `cream` | `#FFEBC5` | Client page background |
-| `card` | `#FAF7F3` | Cards |
-| `line` | `#E6D3AE` | Card borders, dividers, input borders |
-| `tan-soft` | `#F2DFBB` | Active nav item, chips, avatar circles |
-| `tan` | `#DAC49B` | Muted accents |
-| `ink` | `#273429` | Main text |
-| `muted` | `#565D59` | Secondary text |
-| `admin-bg` | `#F3EEE4` | Admin page background (admin cards are white with border `#EFE6D6`) |
-| `admin-active` | `#E3D2AE` | Active admin sidebar item |
+
+The **client side** (Change 17) uses a green / beige palette. The **admin side keeps the brown palette**: the admin frame and `/admin/login` have `data-theme="admin"`, which sets the same token names back to the admin values (see the top of `globals.css`).
+
+| Token | Client | Admin | Used for |
+| --- | --- | --- | --- |
+| `primary` | `#5F735D` (sage-dark) | `#43271B` | Primary buttons, client header bar, active pill, selected date, anything with white text on it |
+| `on-primary` | `#FFFFFF` | `#FAF7F3` | Text on a `primary` fill |
+| `heading` | `#2E2A24` | `#43271B` | Headings (h1–h4) |
+| `brown` | `#5B3F2E` | `#43271B` | Accents, secondary button outline, client footer, admin sidebar |
+| `cream` | `#FFF9F2` | `#FFEBC5` | Page background |
+| `card` | `#F3E7D8` (beige) | `#FAF7F3` | Cards |
+| `line` | `#E2D0B8` | `#E6D3AE` | Card borders, dividers, input borders |
+| `tan-soft` | `#E8EFE6` (light sage) | `#F2DFBB` | Active nav item, chips, avatar circles, soft panels |
+| `tan` | `#7A8F78` (sage) | `#DAC49B` | Muted accents |
+| `ink` | `#2E2A24` | `#273429` | Main text |
+| `muted` | `#565D59` | `#565D59` | Secondary text |
+| `sage` / `sage-dark` / `sage-light` / `beige` | `#7A8F78` / `#5F735D` / `#E8EFE6` / `#F3E7D8` | (client only) | The proposal's named colors |
+| `admin-bg` | | `#F3EEE4` | Admin page background (admin cards are white with border `#EFE6D6`) |
+| `admin-active` | | `#E3D2AE` | Active admin sidebar item |
+
+Sage Green `#7A8F78` with white text is only 3.5:1 (fails WCAG AA), so anything with white text on it uses **sage-dark `#5F735D`** (5.1:1). Plain `#7A8F78` is for borders, icons and accents only.
 
 Status badge colors (background / text):
 - Success (confirmed, paid, active): `#E4ECE3` / `#2F6B3F`
+- Available (a class with free seats, client): `#E8EFE6` / `#2F6B3F`
 - Info (awaiting verification): `#E3E9F2` / `#2F4E7A`
 - Warning (few seats left, pending): `#FBE9C0` / `#8A5A00`
-- Error (needs action, expired, forfeited): `#F8DEDA` / `#B3261E`
-- Neutral (used, transferred): `#F2DFBB` / `#43271B`
+- Error (needs action, expired, forfeited, fully booked): `#F8DEDA` / `#B3261E`
+- Neutral (used, transferred, booking closed): client `#EAD8C1` / `#5B3F2E`, admin `#F2DFBB` / `#43271B`
 
 **Shapes and layout**
 - Cards: rounded corners (20 to 24px), cream-white fill, thin tan border, no heavy shadows.
-- Buttons: fully rounded pills. Primary is a brown fill with light text. Secondary is a brown outline. Danger is a red outline.
+- Buttons: fully rounded pills. Primary is a `primary` fill with light text (sage-dark on the client side, brown on the admin side). Secondary is a brown outline. Danger is a red outline.
 - Inputs: rounded (12px), white, tan border, with the label above the field.
-- Client header: brown, with "Block 69 Cafe" (Poppins) and "MAT PILATES + CAFÉ" in small letter-spaced caps under it. It's 96px tall on desktop and 64px on phone, where it shows a menu button.
-- Footer: brown, with the address, contact details, quick links and the stray animals note.
+- Client header: sage-dark, with "Block 69 Cafe" (Poppins) and "MAT PILATES + CAFÉ" in small letter-spaced caps under it. It's 96px tall on desktop and 64px on phone, where it shows a menu button.
+- Footer: brown (`#5B3F2E`), with the address, contact details, quick links and the stray animals note.
 - Admin: a brown sidebar (280px) on desktop and a top bar with a menu on phone. Content goes on white cards.
 
 **Responsive (required)**
@@ -245,7 +255,7 @@ Status badge colors (background / text):
 - Keep text contrast readable, and give icon-only buttons an `aria-label`.
 
 **Designs to follow**
-- `docs/designs/` has 21 HTML mockups: open them in a browser to look at them. (They link a missing `support.js`; ignore that.) Copy their **layout, spacing and colors**, but use our fonts (Poppins and Montserrat), not the fonts written in the mockups.
+- `docs/designs/` has 21 HTML mockups: open them in a browser to look at them. (They link a missing `support.js`; ignore that.) Copy their **layout, spacing and colors**, but use our fonts (Poppins and Montserrat), not the fonts written in the mockups. **Client mockups:** copy layout and spacing only; their brown colors were replaced by the green / beige palette above (Change 17). Admin mockups keep their colors.
   - Client desktop: Profile, Payments, Vouchers, Notifications
   - Admin desktop: AdminPayments, AdminPricing, AdminBookings, AdminWalkIn, AdminAttendance, AdminSettings
   - Phone client: PhoneHome, PhoneMenu, PhoneBook1, PhoneBook2, PhoneBook3, PhoneBooked, PhoneMyBookings, PhoneLogin

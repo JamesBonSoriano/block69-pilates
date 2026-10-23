@@ -73,10 +73,10 @@ export default async function PoliciesPage() {
         {/* Jump links to the two parts (handy on phones, where the page is long) */}
         {policy && agreement && (
           <nav aria-label="On this page" className="flex flex-wrap gap-2">
-            <a href="#cancellation" className="inline-flex min-h-11 items-center rounded-full bg-tan-soft px-4 text-sm font-semibold text-brown hover:bg-tan">
+            <a href="#cancellation" className="inline-flex min-h-11 items-center rounded-full bg-tan-soft px-4 text-sm font-semibold text-brown hover:bg-line">
               {fill(policy.title)}
             </a>
-            <a href="#agreement" className="inline-flex min-h-11 items-center rounded-full bg-tan-soft px-4 text-sm font-semibold text-brown hover:bg-tan">
+            <a href="#agreement" className="inline-flex min-h-11 items-center rounded-full bg-tan-soft px-4 text-sm font-semibold text-brown hover:bg-line">
               {fill(agreement.title)}
             </a>
           </nav>

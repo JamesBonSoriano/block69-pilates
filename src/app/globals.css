@@ -6,9 +6,20 @@
   1. Tailwind itself.
   2. Our design tokens (CLAUDE.md section 7). Each `--color-xxx` here becomes
      Tailwind classes like `bg-xxx`, `text-xxx` and `border-xxx`.
-     Components must use these names (e.g. `bg-brown`), never hex codes.
-  3. The two fonts (Poppins for headings, Montserrat for body text).
-  4. A few base rules for the page.
+     Components must use these names (e.g. `bg-primary`), never hex codes.
+  3. The ADMIN palette: the admin pages put back the old brown/cream values
+     (Change 17 only changed the client side, see `[data-theme="admin"]`).
+  4. The two fonts (Poppins for headings, Montserrat for body text).
+  5. A few base rules for the page.
+
+  How the two palettes work (Change 17):
+  Tailwind turns `bg-card` into `background-color: var(--color-card)`. So if
+  an element sets `--color-card` to another value, everything inside it uses
+  that value. The values in @theme below are the CLIENT palette (green /
+  beige). The admin frame (src/app/admin/(panel)/layout.tsx) and the admin
+  login page have `data-theme="admin"`, which sets the same names back to the
+  admin's brown palette. Shared components (Button, Card, Badge, Input...)
+  therefore look right on both sides without knowing which side they're on.
 */
 @import "tailwindcss";
 
@@ -22,22 +33,36 @@
 @source not "../../supabase";
 
 @theme {
-  /* ----- Brand colors ----- */
-  --color-brown: #43271B;        /* header, footer, admin sidebar, primary buttons, headings */
-  --color-cream: #FFEBC5;        /* client page background */
-  --color-card: #FAF7F3;         /* cards */
-  --color-line: #E6D3AE;         /* card borders, dividers, input borders */
-  --color-tan-soft: #F2DFBB;     /* active nav item, chips, avatar circles */
-  --color-tan: #DAC49B;          /* muted accents */
-  --color-ink: #273429;          /* main text */
+  /* ----- The client palette: green / beige (Change 17) ----- */
+  --color-sage: #7A8F78;         /* Sage Green: borders, icons, accents (too light for white text) */
+  --color-sage-dark: #5F735D;    /* darker Sage: anything with WHITE text on it (5.1:1, WCAG AA) */
+  --color-sage-light: #E8EFE6;   /* Light Sage: side menu, soft panels, "Available" badges */
+  --color-beige: #F3E7D8;        /* Beige: cards and secondary surfaces */
+
+  /* ----- Role colors (same names on both sides, different values) ----- */
+  --color-primary: #5F735D;      /* primary buttons, header bar, active pill, selected item (= sage-dark) */
+  --color-on-primary: #FFFFFF;   /* text and icons on a primary fill */
+  --color-heading: #2E2A24;      /* h1-h4 */
+
+  /* ----- Shared names. On the client side they hold the green / beige
+     values; [data-theme="admin"] below puts back the admin's brown ones ----- */
+  --color-brown: #5B3F2E;        /* Brown: accents, secondary button outline, footer */
+  --color-cream: #FFF9F2;        /* Cream: page background */
+  --color-card: #F3E7D8;         /* cards (= beige) */
+  --color-line: #E2D0B8;         /* card borders, dividers, input borders (a darker beige) */
+  --color-tan-soft: #E8EFE6;     /* active nav item, chips, avatar circles (= sage-light) */
+  --color-tan: #7A8F78;          /* muted accents (= sage) */
+  --color-ink: #2E2A24;          /* Text: body text */
   --color-muted: #565D59;        /* secondary text */
+
+  /* ----- Admin-only colors (unchanged) ----- */
   --color-admin-bg: #F3EEE4;     /* admin page background */
   --color-admin-active: #E3D2AE; /* active admin sidebar item */
   --color-admin-line: #EFE6D6;   /* border of the white admin cards */
 
   /* Extra shades taken from the mockups (docs/designs/) */
-  --color-brown-line: #6A4A38;   /* divider lines on brown (phone menu) */
-  --color-caramel: #A07850;      /* darker end of the photo placeholder gradient */
+  --color-brown-line: #6A4A38;   /* divider lines on brown (admin phone menu) */
+  --color-caramel: #5F735D;      /* darker end of the photo placeholder gradient (client: sage-dark; admin: caramel) */
 
   /* ----- Status badge colors (background + text) ----- */
   --color-success-bg: #E4ECE3;   /* confirmed, paid, active */
@@ -48,7 +73,31 @@
   --color-warning: #8A5A00;
   --color-error-bg: #F8DEDA;     /* needs action, expired, forfeited */
   --color-error: #B3261E;
-  /* "Neutral" badges (used, transferred) reuse tan-soft + brown. */
+  /* "Neutral" badges (used, transferred, booking closed): a deeper beige
+     than the cards, so the badge still shows on a beige card. Text = brown. */
+  --color-neutral-bg: #EAD8C1;
+}
+
+/*
+  The ADMIN palette (the colors from before Change 17, unchanged).
+  Used by: src/app/admin/(panel)/layout.tsx and src/app/admin/login/page.tsx.
+  Everything inside an element with data-theme="admin" sees these values
+  instead of the client ones above.
+*/
+[data-theme="admin"] {
+  --color-primary: #43271B;      /* brown buttons and fills, as before */
+  --color-on-primary: #FAF7F3;   /* the light text on them, as before */
+  --color-heading: #43271B;      /* brown headings */
+  --color-brown: #43271B;
+  --color-cream: #FFEBC5;
+  --color-card: #FAF7F3;
+  --color-line: #E6D3AE;
+  --color-tan-soft: #F2DFBB;
+  --color-tan: #DAC49B;
+  --color-ink: #273429;
+  --color-muted: #565D59;
+  --color-neutral-bg: #F2DFBB;   /* neutral badges: tan-soft, as before */
+  --color-caramel: #A07850;      /* logo ring, photo placeholder end */
 }
 
 /*
@@ -65,16 +114,17 @@
 
 /* ----- Base rules ----- */
 @layer base {
-  /* Client pages: cream background and dark green-grey text by default */
+  /* Client pages: cream background and dark text by default */
   body {
     @apply bg-cream font-sans text-ink antialiased;
   }
 
-  /* Every heading uses Poppins in brown */
+  /* Every heading uses Poppins in the heading color (dark text on the
+     client side, brown on the admin side) */
   h1,
   h2,
   h3,
   h4 {
-    @apply font-heading text-brown;
+    @apply font-heading text-heading;
   }
 }

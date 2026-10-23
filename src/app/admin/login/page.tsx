@@ -14,7 +14,7 @@
 //   ?next=/admin/bookings   the admin page to open after logging in
 //   ?error=deactivated      the account was deactivated and has been logged out
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AuthFormSkeleton } from "@/components/auth/AuthPage";
@@ -26,6 +26,9 @@ import { getPublicSettings } from "@/lib/data/settings";
 // Tab title. Private page: ask Google not to list it.
 export const metadata: Metadata = { title: "Admin log in", robots: { index: false } };
 
+// The phone's own top bar stays admin brown here (the website uses sage).
+export const viewport: Viewport = { themeColor: "#43271B" };
+
 // The admin login page.
 // Takes: searchParams (the ?next=... and ?error=... part of the address).
 // Gives back: the logo, the card with the form, and a link back to the website.
@@ -34,8 +37,13 @@ export default async function AdminLoginPage({ searchParams }: PageProps<"/admin
   const settings = await getPublicSettings();
 
   return (
-    // flex-1 fills the screen under <body>; the card sits in the middle
-    <main id="main" className="flex flex-1 flex-col items-center justify-center bg-admin-bg px-4 py-10">
+    // flex-1 fills the screen under <body>; the card sits in the middle.
+    // data-theme="admin" keeps the brown admin colors (see globals.css).
+    <main
+      id="main"
+      data-theme="admin"
+      className="flex flex-1 flex-col items-center justify-center bg-admin-bg px-4 py-10"
+    >
       <div className="flex w-full max-w-md flex-col gap-6">
         {/* The "69" logo with the cafe name and "ADMIN", like the admin menu */}
         <div className="flex items-center justify-center gap-3">

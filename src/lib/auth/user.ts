@@ -136,7 +136,7 @@ export async function sendAdminsAway(): Promise<void> {
     user = await getCurrentUser();
   } catch (error) {
     // Pass on Next.js's own internal signals, and the dev-mode AbortError
-    // (see the Home page's SessionList)
+    // (see the class list code in src/app/(client)/book/page.tsx)
     unstable_rethrow(error);
     if (error instanceof Error && error.name === "AbortError") throw error;
     console.error(error);

@@ -60,7 +60,7 @@ export function ChatButton({ chatUrl }: { chatUrl: string }) {
       title="Chat With Us"
       // max(...) keeps it above an iPhone's home bar
       style={{ bottom: `max(${bottom}px, env(safe-area-inset-bottom))` }}
-      className="fixed right-4 z-30 flex size-14 items-center justify-center rounded-full bg-brown text-cream shadow-lg transition-[bottom] hover:bg-brown/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown lg:right-6 print:hidden"
+      className="fixed right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg transition-[bottom] hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:right-6 print:hidden"
     >
       <MessageCircle aria-hidden="true" className="size-6" />
     </a>
@@ -78,7 +78,7 @@ export function ChatButtonFallback({ chatUrl }: { chatUrl: string }) {
       rel="noopener noreferrer"
       aria-label="Chat With Us (opens in a new tab)"
       title="Chat With Us"
-      className="fixed bottom-4 right-4 z-30 flex size-14 items-center justify-center rounded-full bg-brown text-cream shadow-lg lg:right-6 print:hidden"
+      className="fixed bottom-4 right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg lg:right-6 print:hidden"
     >
       <MessageCircle aria-hidden="true" className="size-6" />
     </a>

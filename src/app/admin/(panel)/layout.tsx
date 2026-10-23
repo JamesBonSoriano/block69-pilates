@@ -17,7 +17,7 @@
 // server before showing anything. This frame shows only the admin's own
 // name, so it doesn't need its own check.
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { AdminNav } from "@/components/admin/AdminNav";
@@ -31,6 +31,9 @@ import { initialsOf } from "@/lib/format";
 // Private pages: ask Google not to list them. Each page sets its own title.
 export const metadata: Metadata = { robots: { index: false } };
 
+// The phone's own top bar stays admin brown here (the website uses sage).
+export const viewport: Viewport = { themeColor: "#43271B" };
+
 // The admin frame.
 // Takes: the page to show (children).
 // Gives back: side menu (laptop) / top bar + bottom tabs (phone), and the page.
@@ -39,8 +42,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const settings = await getPublicSettings();
 
   return (
-    // flex-1 fills the screen under <body>; bg-admin-bg covers the cream body color
-    <div className="flex flex-1 bg-admin-bg">
+    // flex-1 fills the screen under <body>; bg-admin-bg covers the cream body color.
+    // data-theme="admin" keeps the brown admin colors (see globals.css), since
+    // the client side uses the green / beige palette.
+    <div data-theme="admin" className="flex flex-1 bg-admin-bg">
       {/* Hidden until a keyboard user presses Tab: lets them jump past the menu */}
       <a
         href="#main"

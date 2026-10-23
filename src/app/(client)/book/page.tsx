@@ -148,9 +148,13 @@ async function SessionPicker({
   try {
     sessions = await getBookingSessions();
   } catch (error) {
-    // Pass on Next.js's own internal signals, and the dev-mode AbortError
-    // (see the same code on the Home page)
+    // Next.js uses special "errors" internally to pause rendering until a
+    // visitor arrives. Those must be passed on, not treated as real errors.
     unstable_rethrow(error);
+    // In dev mode, Next.js also runs an extra "practice" render of the page
+    // and stops it early. Stopping it cancels our database call with an
+    // "AbortError". That isn't a real problem (the visitor's own render
+    // still loads the classes), so pass it on quietly instead of logging it.
     if (error instanceof Error && error.name === "AbortError") throw error;
     console.error(error);
     return (

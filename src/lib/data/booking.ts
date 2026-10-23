@@ -6,7 +6,9 @@
 //
 // NO CACHING, on purpose: seats left, holds and booking statuses must always
 // be the real values right now. Nothing here says "use cache".
-//   - The class functions call connection() first (see src/lib/data/sessions.ts).
+//   - The class functions call connection() first, which tells Next.js:
+//     "only run this when someone actually visits, never at build time, and
+//     never reuse the answer". So two people never see an old seat count.
 //   - The "my booking" functions use the LOGGED-IN Supabase client, so they
 //     call `await io()` before createClient() (the Step 7 rule, see the notes
 //     in src/lib/supabase/server.ts). Pages must show them inside <Suspense>.

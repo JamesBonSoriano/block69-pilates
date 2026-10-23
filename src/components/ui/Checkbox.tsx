@@ -34,10 +34,11 @@ export function Checkbox({ label, name, id, hint, error, className, ...props }: 
           name={name}
           aria-invalid={error ? true : undefined}
           aria-describedby={hint || error ? helpId : undefined}
-          // accent-brown colors the tick box brown; mt-0.5 lines it up with the text
+          // accent-primary colors the tick box (sage-dark / admin brown);
+          // mt-0.5 lines it up with the text
           className={cn(
-            "mt-0.5 size-5 shrink-0 cursor-pointer rounded accent-brown",
-            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown",
+            "mt-0.5 size-5 shrink-0 cursor-pointer rounded accent-primary",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
           )}
           {...props}
         />

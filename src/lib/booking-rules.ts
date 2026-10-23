@@ -35,12 +35,14 @@ export function seatBadge(
 ): { label: string; variant: BadgeVariant } {
   if (state === "cancelled") return { label: "Cancelled", variant: "error" };
   if (state === "closed") return { label: "Closed", variant: "neutral" };
+  // Booking closed = beige, fully booked = red (Change 17 colors)
   if (state === "booking_closed") return { label: "Booking closed", variant: "neutral" };
-  if (seatsLeft <= 0 || state === "full") return { label: "Full", variant: "neutral" };
+  if (seatsLeft <= 0 || state === "full") return { label: "Fully booked", variant: "error" };
   const label = capacity ? `${seatsLeft} of ${capacity} left` : `${seatsLeft} left`;
   // Only one seat left: warn with the yellow "few seats" color
   if (seatsLeft === 1) return { label, variant: "warning" };
-  return { label, variant: "success" };
+  // Free seats: the Light Sage "available" badge
+  return { label, variant: "available" };
 }
 
 // Explains in plain English why a class can't be booked right now.

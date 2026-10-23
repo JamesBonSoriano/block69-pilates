@@ -35,13 +35,14 @@ export function ReminderSwitch({ initialValue, labelId }: { initialValue: boolea
         aria-labelledby={labelId}
         disabled={pending}
         // 44px tall tap area around the smaller switch shape
-        className="inline-flex min-h-11 items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown"
+        className="inline-flex min-h-11 items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <span
           aria-hidden="true"
           className={cn(
             "flex h-7 w-12 rounded-full p-0.75 transition-colors",
-            shown ? "justify-end bg-brown" : "justify-start bg-tan",
+            // On = sage-dark; off = grey, so on and off never look alike
+            shown ? "justify-end bg-primary" : "justify-start bg-muted/45",
           )}
         >
           <span className="size-5.5 rounded-full bg-white shadow-sm" />

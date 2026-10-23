@@ -1,4 +1,4 @@
-// The brown header at the top of every CLIENT page (CLAUDE.md section 7):
+// The sage-dark header at the top of every CLIENT page (CLAUDE.md section 7):
 // "Block 69 Cafe" with "MAT PILATES + CAFÉ" under it, the nav links, and
 // Log in (guests) or the person icon + Log out (logged in). Chat With Us is
 // the floating round button instead (src/components/layout/ChatButton.tsx).
@@ -36,7 +36,8 @@ export async function Header() {
     // sticky top-0: stays at the top while scrolling, so the phone menu
     // (which opens just under it) always lines up
     // print:hidden = left out when a page is printed (e.g. a payment receipt)
-    <header className="sticky top-0 z-40 bg-brown print:hidden">
+    // bg-primary = sage-dark, dark enough for the white text (WCAG AA)
+    <header className="sticky top-0 z-40 bg-primary print:hidden">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 lg:h-24 lg:px-8">
         {/* The "logo" (text for now; an uploaded logo image comes later, see docs/PROGRESS.md) */}
         <Link

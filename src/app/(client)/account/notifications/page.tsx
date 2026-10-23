@@ -162,6 +162,7 @@ async function NotificationsContent() {
 // The icon and circle colors for each tone (status colors, CLAUDE.md section 7).
 const TONE_STYLES: Record<BadgeVariant, { icon: LucideIcon; circle: string }> = {
   success: { icon: CircleCheck, circle: "bg-success-bg text-success" },
+  available: { icon: CircleCheck, circle: "bg-sage-light text-success" },
   info: { icon: Clock, circle: "bg-info-bg text-info" },
   warning: { icon: TriangleAlert, circle: "bg-warning-bg text-warning" },
   error: { icon: CircleAlert, circle: "bg-error-bg text-error" },

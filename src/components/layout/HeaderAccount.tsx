@@ -59,7 +59,8 @@ const loadHeaderUser = cache(async (): Promise<HeaderUser | null> => {
       unread: isAdmin ? 0 : await getMyUnreadCount(),
     };
   } catch (error) {
-    // Pass on Next.js's own internal signals (see the Home page's SessionList)
+    // Pass on Next.js's own internal signals (see the class list code in
+    // src/app/(client)/book/page.tsx)
     unstable_rethrow(error);
     // Dev-mode "practice render" being stopped early: pass it on quietly
     if (error instanceof Error && error.name === "AbortError") throw error;
@@ -77,9 +78,9 @@ function AccountIcon({ user, size }: { user: HeaderUser; size: "lg" | "sm" }) {
   // The link itself: a 44px round tap area
   const tapArea =
     "flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cream";
-  // The visible tan circle inside it
+  // The visible Light Sage circle inside it
   const circle = cn(
-    "relative flex items-center justify-center rounded-full bg-tan-soft font-semibold text-brown",
+    "relative flex items-center justify-center rounded-full bg-sage-light font-semibold text-primary",
     size === "lg" ? "size-11 text-xs" : "size-9 text-[11px]",
   );
 
@@ -104,7 +105,7 @@ function AccountIcon({ user, size }: { user: HeaderUser; size: "lg" | "sm" }) {
         {/* The unread dot. data-unread-dot lets the Notifications page hide it
             straight away once the updates are marked as read. */}
         {user.unread > 0 && (
-          <span data-unread-dot className="absolute right-0 top-0 size-3 rounded-full border-2 border-brown bg-error" />
+          <span data-unread-dot className="absolute right-0 top-0 size-3 rounded-full border-2 border-primary bg-error" />
         )}
       </span>
     </Link>
@@ -166,18 +167,18 @@ export async function PhoneMenuUser() {
   const user = await loadHeaderUser();
   if (!user) return null;
   return (
-    <div className="mb-1 flex flex-col gap-4 border-b border-brown-line pb-5 pt-4">
+    <div className="mb-1 flex flex-col gap-4 border-b border-white/25 pb-5 pt-4">
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-tan-soft font-semibold text-brown"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sage-light font-semibold text-primary"
         >
           {user.isAdmin ? user.initials : <UserRound className="size-5" />}
         </span>
         {/* min-w-0 + break-all: a long email wraps instead of overflowing */}
         <div className="min-w-0">
           {user.name && <p className="font-semibold text-white">{user.name}</p>}
-          <p className="break-all text-xs text-tan">{user.email}</p>
+          <p className="break-all text-xs text-cream">{user.email}</p>
           {user.isAdmin && (
             <Link
               href={adminHomeHref}
@@ -196,7 +197,7 @@ export async function PhoneMenuUser() {
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-brown-line px-4 text-sm text-cream hover:bg-cream/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cream"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 px-4 text-sm text-cream hover:bg-cream/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cream"
               >
                 {link.label}
                 {link.href === "/account/notifications" && user.unread > 0 && (

@@ -16,7 +16,7 @@ export function fieldBoxClasses(hasError: boolean, className?: string): string {
     // tapped; 14px on bigger screens to match the mockups
     "text-base sm:text-sm",
     "placeholder:text-muted/70",
-    "focus:border-brown focus:outline-none focus:ring-2 focus:ring-brown/20",
+    "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
     "disabled:cursor-not-allowed disabled:bg-card disabled:text-muted",
     hasError ? "border-error" : "border-line",
     className,

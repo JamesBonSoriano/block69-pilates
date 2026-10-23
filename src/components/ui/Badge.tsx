@@ -5,21 +5,25 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/cn";
 
-// The five badge colors and what they mean:
-//   success  confirmed, paid, active, plenty of seats
-//   info     awaiting verification
-//   warning  few seats left, pending
-//   error    needs action, expired, forfeited
-//   neutral  used, transferred, full
-export type BadgeVariant = "success" | "info" | "warning" | "error" | "neutral";
+// The badge colors and what they mean:
+//   success    confirmed, paid, active
+//   available  a class with free seats ("3 of 4 left"), Light Sage
+//   info       awaiting verification
+//   warning    few seats left, pending
+//   error      needs action, expired, forfeited, fully booked
+//   neutral    used, transferred, booking closed (beige on the client side)
+export type BadgeVariant = "success" | "available" | "info" | "warning" | "error" | "neutral";
 
 // Background + text color for each variant (from the theme tokens).
 const variantClasses: Record<BadgeVariant, string> = {
   success: "bg-success-bg text-success",
+  // Light Sage with the dark green status text (sage-dark text would be too
+  // faint for 11px letters on this light background)
+  available: "bg-sage-light text-success",
   info: "bg-info-bg text-info",
   warning: "bg-warning-bg text-warning",
   error: "bg-error-bg text-error",
-  neutral: "bg-tan-soft text-brown",
+  neutral: "bg-neutral-bg text-brown",
 };
 
 type BadgeProps = ComponentProps<"span"> & {

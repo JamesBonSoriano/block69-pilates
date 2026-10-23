@@ -445,7 +445,7 @@ export function BookingDetailsForm({
                 className={cn(
                   "block min-h-11 w-full min-w-0 flex-1 rounded-xl border bg-white px-3.5 py-3 text-base uppercase text-ink sm:text-sm",
                   "placeholder:normal-case placeholder:text-muted/70",
-                  "focus:border-brown focus:outline-none focus:ring-2 focus:ring-brown/20 read-only:bg-card",
+                  "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 read-only:bg-card",
                   voucherError ? "border-error" : "border-line",
                 )}
               />

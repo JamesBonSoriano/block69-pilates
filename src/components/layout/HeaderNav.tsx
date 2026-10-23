@@ -1,6 +1,7 @@
 "use client";
 // The interactive part of the client Header: the desktop links, and on phones
-// the menu button that opens a full-screen brown menu (docs/designs/PhoneMenu.html).
+// the menu button that opens a full-screen menu in the header's sage-dark
+// (layout from docs/designs/PhoneMenu.html).
 // Where it's used: src/components/layout/Header.tsx.
 //
 // "use client" = this runs in the browser too, because the menu has to open
@@ -105,18 +106,18 @@ export function HeaderNav({
           aria-label="Main"
           onClick={closeMenuOnLinkClick}
           onSubmit={closeMenu}
-          className="fixed inset-x-0 bottom-0 top-16 z-40 flex flex-col overflow-y-auto bg-brown px-5 pb-8 pt-3 lg:hidden"
+          className="fixed inset-x-0 bottom-0 top-16 z-40 flex flex-col overflow-y-auto bg-primary px-5 pb-8 pt-3 lg:hidden"
         >
           {phoneMenuUser}
           <NavLinks variant="phone" />
 
           {/* Smaller links under a line: Policies */}
-          <div className="mt-2 flex flex-col border-t border-brown-line pt-3">
+          <div className="mt-2 flex flex-col border-t border-white/25 pt-3">
             {infoNavLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="inline-flex min-h-11 items-center gap-2 py-2.5 text-[15px] text-tan-soft"
+                className="inline-flex min-h-11 items-center gap-2 py-2.5 text-[15px] text-cream"
               >
                 <FileText aria-hidden="true" className="size-5" />
                 {link.label}
@@ -183,12 +184,14 @@ function NavLinkList({
                   ? cn(
                       "inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium transition-colors",
                       "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cream",
-                      active ? "bg-tan-soft text-brown" : "text-cream hover:bg-cream/10",
+                      // Current page: a Light Sage pill with dark text, so it
+                      // stands out on the sage-dark header
+                      active ? "bg-sage-light text-ink" : "text-cream hover:bg-cream/10",
                     )
                   : cn(
                       "block py-3.5 font-heading text-[26px] leading-tight text-cream",
-                      // The current page gets a tan underline
-                      active && "underline decoration-tan decoration-2 underline-offset-8",
+                      // The current page gets a Light Sage underline
+                      active && "underline decoration-sage-light decoration-2 underline-offset-8",
                     )
               }
             >

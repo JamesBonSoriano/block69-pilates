@@ -10,30 +10,25 @@
 //     fillSettings() swaps for the current value.
 //   - the class days ("Thu to Sun"): the weekly schedule (cached, see
 //     src/lib/data/schedule.ts)
-//   - "Next open sessions": get_open_sessions(), NEVER cached, so seats left
-//     are always live (see src/lib/data/sessions.ts)
-// Only small design words (button labels like "See all") are in the code.
+// Only small design words (button labels like "About the class") are in the code.
+// There's no live class list here: people see the classes and seats left on
+// /book (booking step 1).
 //
 // Layout: one column on phones (docs/designs/PhoneHome.html); on laptops the
 // same blocks spread into two or three columns.
-// Order: hero, next open sessions, about the class + feature cards, what's
-// included + what to bring + health note, how it works, location, call to action.
+// Order: hero, about the class + feature cards, what's included + what to
+// bring + health note, how it works, location, call to action.
 
 import { ArrowRight, Feather, MapPin, MessageCircle, PawPrint, Sprout, TriangleAlert } from "lucide-react";
-import Link from "next/link";
-import { unstable_rethrow } from "next/navigation";
-import { Suspense } from "react";
 import { CheckList, ContentText, Paragraphs } from "@/components/content/ContentText";
 import { SiteImage } from "@/components/content/SiteImage";
 import { Section } from "@/components/layout/Section";
-import { SessionCard } from "@/components/sessions/SessionCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
 import { fillSettings, numberedSections } from "@/lib/content-text";
 import { getPageContent } from "@/lib/data/content";
 import { getWeeklySchedule } from "@/lib/data/schedule";
-import { getUpcomingSessions } from "@/lib/data/sessions";
 import { getPublicSettings } from "@/lib/data/settings";
 import { formatPeso, formatWeekdays } from "@/lib/format";
 import { pageMetadata } from "@/lib/metadata";
@@ -46,9 +41,6 @@ export const metadata = pageMetadata({
   path: "/",
 });
 
-// How many classes to list under "Next open sessions".
-const SESSIONS_TO_SHOW = 6;
-
 // One icon per feature card, in order (feature_1, feature_2, feature_3).
 // They're only decoration; the card text comes from site_content.
 const FEATURE_ICONS = [Feather, Sprout, PawPrint];
@@ -56,8 +48,7 @@ const FEATURE_ICONS = [Feather, Sprout, PawPrint];
 // The Home page.
 // Takes: nothing.
 // Gives back: every Home block (see the list at the top of this file).
-// The page itself only uses cached data, so Next.js can pre-build it. The live
-// session list streams in separately inside <Suspense>.
+// The page only uses cached data, so Next.js can pre-build it.
 export default async function HomePage() {
   // Load all the cached data at the same time, not one after the other
   const [settings, content, bookingContent, schedule] = await Promise.all([
@@ -86,8 +77,9 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* ===== Hero ===== */}
-      <Section className="grid gap-4 py-8 lg:grid-cols-2 lg:gap-x-12 lg:gap-y-6 lg:py-16">
+      {/* ===== Hero =====
+          pb-10 / lg:pb-16: the same gap under it as between the other blocks */}
+      <Section className="grid gap-4 pb-10 pt-8 lg:grid-cols-2 lg:gap-x-12 lg:gap-y-6 lg:py-16">
         {/* Text (phone: first; laptop: left column, top) */}
         <div className="flex flex-col gap-4 lg:self-end">
           {kicker && <Overline>{kicker}</Overline>}
@@ -121,26 +113,6 @@ export default async function HomePage() {
             About the class
           </ButtonLink>
         </div>
-      </Section>
-
-      {/* ===== Next open sessions (LIVE seats) ===== */}
-      <Section
-        aria-labelledby="sessions-heading"
-        className="flex flex-col gap-3 pb-10 pt-2 lg:pb-16"
-      >
-        <div className="flex items-baseline justify-between">
-          <h2 id="sessions-heading" className="text-2xl font-normal lg:text-3xl">
-            Next open sessions
-          </h2>
-          <Link href="/book" className="inline-flex min-h-11 items-center text-[13px] font-semibold text-brown hover:underline">
-            See all
-          </Link>
-        </div>
-        {/* The page shows the loading cards first, then swaps in the real
-            list as soon as the database answers */}
-        <Suspense fallback={<SessionListLoading />}>
-          <SessionList />
-        </Suspense>
       </Section>
 
       {/* ===== About the class + feature cards ===== */}
@@ -232,10 +204,10 @@ export default async function HomePage() {
           <ol className="grid gap-3 sm:grid-cols-3 lg:gap-4">
             {steps.map((step, i) => (
               <li key={i} className="flex gap-4 sm:flex-col sm:gap-3">
-                {/* Step number in a brown circle (screen readers already hear the number) */}
+                {/* Step number in a sage-dark circle (screen readers already hear the number) */}
                 <span
                   aria-hidden="true"
-                  className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brown font-heading text-lg font-semibold text-cream"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary font-heading text-lg font-semibold text-on-primary"
                 >
                   {i + 1}
                 </span>
@@ -292,7 +264,7 @@ export default async function HomePage() {
         <Section aria-labelledby="cta-heading" className="pb-12 lg:pb-20">
           <div className="flex flex-col gap-4 rounded-3xl bg-brown px-6 py-8 text-center lg:items-center lg:px-12 lg:py-12">
             {cta.title && (
-              // text-white: headings are brown by default, which can't be read on brown
+              // text-white: headings are dark by default, which can't be read on brown
               <h2 id="cta-heading" className="text-2xl font-normal text-white lg:text-3xl">
                 {fill(cta.title)}
               </h2>
@@ -317,80 +289,5 @@ export default async function HomePage() {
         </Section>
       )}
     </>
-  );
-}
-
-// The live list of upcoming classes (runs on every visit, never cached).
-// Takes: nothing.
-// Gives back: a grid of session cards, a "no classes" message, or an error
-// message if the database couldn't be reached.
-async function SessionList() {
-  let sessions;
-  try {
-    sessions = await getUpcomingSessions(SESSIONS_TO_SHOW);
-  } catch (error) {
-    // Next.js uses special "errors" internally to pause rendering until a
-    // visitor arrives. Those must be passed on, not treated as real errors.
-    unstable_rethrow(error);
-    // In dev mode, Next.js also runs an extra "practice" render of the page
-    // and stops it early. Stopping it cancels our database call with an
-    // "AbortError". That isn't a real problem (the visitor's own render
-    // still loads the classes), so pass it on quietly instead of logging it.
-    if (error instanceof Error && error.name === "AbortError") throw error;
-    console.error(error); // shows the real problem in the terminal
-    return (
-      <Card>
-        <p className="text-sm text-muted">
-          We couldn&apos;t load the class list right now. Please refresh the page in a moment.
-        </p>
-      </Card>
-    );
-  }
-
-  if (sessions.length === 0) {
-    return (
-      <Card>
-        <p className="text-sm text-muted">
-          There are no open classes in the next 4 weeks yet. Check back soon, or message us
-          with Chat With Us.
-        </p>
-      </Card>
-    );
-  }
-
-  return (
-    // 1 per row on phones, 2 on tablets, 3 on laptops
-    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
-      {sessions.map((session) => (
-        <li key={session.session_id}>
-          <SessionCard session={session} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// Grey placeholder cards shown while the live class list loads.
-// Takes: nothing.
-// Gives back: three pulsing empty cards (hidden from screen readers, which
-// hear "Loading classes" instead).
-function SessionListLoading() {
-  return (
-    <div role="status" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
-      <span className="sr-only">Loading classes…</span>
-      {[1, 2, 3].map((n) => (
-        <div
-          key={n}
-          aria-hidden="true"
-          className="flex h-21.5 animate-pulse items-center gap-3.5 rounded-[20px] border border-line bg-card p-4"
-        >
-          <div className="size-13 rounded-[14px] bg-tan-soft" />
-          <div className="flex flex-1 flex-col gap-2">
-            <div className="h-3.5 w-28 rounded bg-tan-soft" />
-            <div className="h-3 w-40 rounded bg-tan-soft" />
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

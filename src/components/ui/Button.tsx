@@ -3,11 +3,13 @@
 // something) and <ButtonLink> for links that look like buttons (Book Now).
 //
 // Variants:
-//   primary      brown fill, light text (the main action on a screen)
+//   primary      "primary" fill, light text (the main action on a screen).
+//                Sage-dark with white text on the client side, brown on the
+//                admin side (globals.css)
 //   secondary    brown outline
 //   danger       red outline (cancel a booking, deactivate, ...)
-//   light        cream fill, brown text: a main action on a BROWN background (header)
-//   lightOutline cream outline: a second action on a BROWN background (phone menu)
+//   light        cream fill, brown text: a main action on a dark background (header)
+//   lightOutline cream outline: a second action on a dark background (phone menu)
 
 import Link from "next/link";
 import type { ComponentProps } from "react";
@@ -22,7 +24,7 @@ export type ButtonVariant =
 
 // The color classes for each variant.
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "border-brown bg-brown text-card hover:bg-brown/90 focus-visible:outline-brown",
+  primary: "border-primary bg-primary text-on-primary hover:bg-primary/90 focus-visible:outline-primary",
   secondary: "border-brown text-brown hover:bg-brown/5 focus-visible:outline-brown",
   danger: "border-error text-error hover:bg-error-bg focus-visible:outline-error",
   light: "border-cream bg-cream text-brown hover:bg-tan-soft focus-visible:outline-cream",

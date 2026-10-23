@@ -261,6 +261,23 @@ Claude Code: update this file at the end of every step. Keep it short.
       - `/account`, `/account/birthday` and `/account/notifications` → login
     - **Not checked by me:** the logged-in pages (no login here). That's your checklist
 
+- **Change 16: "Next open sessions" removed from Home** (2026-10-23, `docs/prompts/16-remove-open-sessions.md`)
+  - `src/app/(client)/page.tsx`: removed the section (heading, See all, cards), `SessionList`, `SessionListLoading`, `SESSIONS_TO_SHOW` and their imports. The hero now has `pb-10` on phones, the same gap as between the other blocks. Home only uses cached data now; classes and live seats are on `/book`
+  - Deleted `src/components/sessions/SessionCard.tsx` and `src/lib/data/sessions.ts` (`getUpcomingSessions`), which only Home used. `/book` keeps using `getBookingSessions()` in `src/lib/data/booking.ts`
+  - Comments that pointed to the deleted code now point to `/book` or `booking.ts` (comment-only changes in `book/page.tsx`, `booking.ts`, `schedule.ts`, `user.ts`, `HeaderAccount.tsx`)
+  - Checked: `tsc` and `lint` clean; on the dev server `/` returns 200 without "Next open sessions"
+
+- **Change 17: Client revisions round 2, in progress** (`docs/prompts/17-client-revisions-2.md`, plan agreed 2026-10-23)
+  - **Part A: client colors** (done)
+    - `globals.css`: the `@theme` values are now the **client** green / beige palette. The new tokens are `sage`, `sage-dark`, `sage-light` and `beige`, plus the roles `primary`, `on-primary` and `heading` and the badge color `neutral-bg`. The shared names (`brown`, `cream`, `card`, `line`, `tan-soft`, `tan`, `ink`, `caramel`) hold the client values
+    - `[data-theme="admin"]` puts every name back to the old brown values. It's on `src/app/admin/(panel)/layout.tsx` and `/admin/login`, so **the admin side looks exactly as before**. The admin pages also keep a brown phone top bar (`viewport.themeColor`); the website's is sage-dark
+    - **Contrast:** white on Sage `#7A8F78` = 3.5:1 (fails AA), so white-text fills use **sage-dark `#5F735D`** (5.1:1): primary buttons, the header bar and phone menu, the chat button, the step bars and the bookings tabs. Sage text on the brown footer would be 2.7:1, so footer links are cream and the body text is light sage (8:1)
+    - Shared components use the role tokens: Button primary (`bg-primary text-on-primary`), the Checkbox / Radio tick color, the picked radio card, input focus, and `h1`-`h4` (`text-heading`)
+    - Badges: a new `available` variant (Light Sage). `seatBadge`: free seats = available, **"Fully booked" = red** (was neutral "Full"), "Booking closed" = beige neutral
+    - Header: the active pill is Light Sage with dark text (so it shows on the sage-dark bar). The reminder switch is grey when off. The photo placeholder gradient is sage
+    - CLAUDE.md §7 updated (both palettes, contrast rule, mockups note)
+    - Checked: `tsc`, `lint`, `test:unit` 15/15, `test:db` 510/510, `npm run build` OK (the admin rule is in the built CSS)
+
 ## Next
 - **You:** click through Revisions part 1 (checklist in chat; SQL in `supabase/manual-tests/r1-setup.sql` / `r1-cleanup.sql`)
 - **Revisions part 1, Home page** (Figma node 103-26): the screenshot arrived; a bigger export would help with spacing. Then Revisions part 2 (admin) and part 3 (emails)
@@ -302,7 +319,7 @@ Claude Code: update this file at the end of every step. Keep it short.
 - `npm audit`: 0 problems in website packages; 5 "high" in dev-only tools (old `braces`). Don't run `npm audit fix --force` (it would install breaking versions).
 - To add a new fill-in word, update `FILL_INS` in `src/lib/content-text.ts` **and** `KNOWN_FILL_INS` in `supabase/tests/08-page-content.test.mjs` (the Content page lists `FILL_INS` by itself)
 - **No `₱` (or other non-English characters) in migration files, even in comments.** The Windows test database reads SQL files as WIN1252 and fails. Use `{class_price}` in page text and "pesos" in comments
-- Small design words stay in the code on purpose (button labels, "See all", "Next open sessions", "Frequently asked questions", the quick-fact labels, the 404 text). Everything about the class, prices, times and policies comes from the database
+- Small design words stay in the code on purpose (button labels, "Frequently asked questions", the quick-fact labels, the 404 text). Everything about the class, prices, times and policies comes from the database
 - **Placeholders to fill in** (on the admin Settings and Content pages; both list what is still a placeholder): `[CAFE PHONE NUMBER]`, `[GCASH ACCOUNT NAME]`, `[GCASH NUMBER]`, `[BPI ACCOUNT NAME]`, `[BPI ACCOUNT NUMBER]`, `[INSTRUCTOR NAME]` + bio (`about/instructor`) and the instructor's title (`about/instructor_name`). Also check `chat_url` (guessed `m.me/block69cafe`) and the Registration Agreement wording (a draft; the cafe should review it).
 - **Unpaid hold, same class:** `book_seat` still refuses a second hold, but the website now catches it and opens the existing hold's pay page (Step 9). Phase D only needs that page's Pay button to resume the checkout.
 - **Until Phase E, reset links only work in the same browser.** The default `{{ .ConfirmationURL }}` link goes to Supabase, then to `/auth/confirm?next=/reset-password&code=…`. Swapping the code needs the secret "verifier" cookie saved when the person clicked "Send reset link", so the email must be opened in that same browser. Another phone or browser gets the "other-browser" message. Asking for two links in a row: only the newest works. The Redirect URLs entry `http://localhost:3000/**` is required; without it Supabase drops our `/auth/confirm` link and sends people to the Home page

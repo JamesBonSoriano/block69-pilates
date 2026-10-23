@@ -4,7 +4,7 @@
 // list and the class facts: length and group size).
 //
 // This is the PATTERN, not the dated classes. Seats left for real dates come
-// from get_open_sessions() (src/lib/data/sessions.ts), which is never cached.
+// from get_open_sessions() (src/lib/data/booking.ts), which is never cached.
 //
 // CACHING (Next.js "use cache"):
 //   The pattern almost never changes and is the same for everyone.

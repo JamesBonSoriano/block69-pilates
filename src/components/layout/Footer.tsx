@@ -1,4 +1,4 @@
-// The brown footer at the bottom of every CLIENT page (CLAUDE.md section 7):
+// The brown footer (#5B3F2E) at the bottom of every CLIENT page (CLAUDE.md section 7):
 // the address, contact details, quick links and the stray animals note.
 // One column on phones, three columns on laptops.
 // Where it's used: src/app/(client)/layout.tsx.
@@ -28,7 +28,9 @@ export async function Footer() {
 
   return (
     // print:hidden = left out when a page is printed (e.g. a payment receipt)
-    <footer className="bg-brown text-sm text-tan-soft print:hidden">
+    // Brown (#5B3F2E) with Light Sage text (8:1). Plain sage text would be
+    // too faint on brown, so the links below use cream instead.
+    <footer className="bg-brown text-sm text-sage-light print:hidden">
       {/* pb-24 on phones: room under the last links, so the floating Chat
           With Us button (ChatButton.tsx) never covers them */}
       <div className="mx-auto grid max-w-6xl gap-8 px-5 pb-24 pt-10 lg:grid-cols-3 lg:gap-12 lg:px-8 lg:py-14">
@@ -49,13 +51,13 @@ export async function Footer() {
             </a>
           )}
           {settings.cafeEmail && (
-            <a href={`mailto:${settings.cafeEmail}`} className={`${footerLink} text-tan`}>
+            <a href={`mailto:${settings.cafeEmail}`} className={`${footerLink} text-cream`}>
               <Mail aria-hidden="true" className="size-4 shrink-0" />
               {settings.cafeEmail}
             </a>
           )}
           {/* Social links (lucide has no brand logos, so we use an @ icon) */}
-          <div className="flex flex-wrap gap-x-5 text-tan">
+          <div className="flex flex-wrap gap-x-5 text-cream">
             {settings.instagramUrl && (
               <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className={footerLink}>
                 <AtSign aria-hidden="true" className="size-4 shrink-0" />
@@ -88,7 +90,7 @@ export async function Footer() {
         {/* Column 3: where the mat rental money goes (editable page text) */}
         {straysNote && (
           <div className="flex items-start gap-3">
-            <PawPrint aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-tan" />
+            <PawPrint aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-sage-light" />
             <p className="leading-relaxed">{straysNote}</p>
           </div>
         )}

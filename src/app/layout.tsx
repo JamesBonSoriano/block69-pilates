@@ -49,11 +49,12 @@ export const metadata: Metadata = {
   },
 };
 
-// Phone settings: use the real screen width, and color the phone's top bar brown.
+// Phone settings: use the real screen width, and color the phone's top bar
+// like our header (the client header's sage-dark).
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#43271B", // brown (a hex is needed here: this is not a CSS class)
+  themeColor: "#5F735D", // sage-dark (a hex is needed here: this is not a CSS class)
 };
 
 // The outer page wrapper.
