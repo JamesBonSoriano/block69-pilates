@@ -1,20 +1,23 @@
 // The About Us page ("/about"), which guests can see too.
 // Where it's used: "About Us" in the header, footer and phone menu, and the
-// "About the class" button on Home.
+// "About us" button on Home.
 //
 // Where everything on it comes from (nothing about prices, times or policies
 // is typed into this file):
 //   - all text: site_content, page "about" (cached, see src/lib/data/content.ts).
 //     Text can say {mat_price}, {cutoff_time} etc.; fillSettings() swaps
 //     them for the current settings values.
-//   - class days, times, length and group size: the weekly schedule
-//     (schedule_templates, cached, see src/lib/data/schedule.ts)
-//   - price, address, email, phone, social and Chat links: settings (cached)
+//   - class days, length and group size (the quick facts): the weekly
+//     schedule (schedule_templates, cached, see src/lib/data/schedule.ts)
+//   - price, address, email, social and Chat links: settings (cached)
 // Only small design words (button labels, "FAQ") are in the code.
 //
 // Blocks, in order: about the cafe, about the class (+ quick facts), the
-// instructor, the schedule and the short cancellation policy, health and
-// safety, the FAQ, then visit us and contact us.
+// instructor, the short cancellation policy, the FAQ, then visit us and
+// contact us.
+// Change 17, Part E: the Class Schedule and the Health and Safety sections
+// were removed (Health and Safety is on Home now; the classes and times are
+// on /book), and the cafe's phone number is no longer listed under Contact.
 // Layout: one column on phones; two columns for several blocks on laptops.
 
 import {
@@ -27,7 +30,6 @@ import {
   Mail,
   MapPin,
   MessageCircle,
-  Phone,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -42,7 +44,7 @@ import { fillSettings, numberedSections } from "@/lib/content-text";
 import { getPageContent } from "@/lib/data/content";
 import { getWeeklySchedule, type ScheduleDay } from "@/lib/data/schedule";
 import { getPublicSettings } from "@/lib/data/settings";
-import { formatPeso, formatTimeRange, formatWeekdays, minutesBetween, weekdayName } from "@/lib/format";
+import { formatPeso, formatWeekdays, minutesBetween } from "@/lib/format";
 import { pageMetadata } from "@/lib/metadata";
 
 // Tab title, Google description and link preview for this page.
@@ -73,8 +75,7 @@ export default async function AboutPage() {
   const fill = (text: string | null | undefined) => fillSettings(text, settings);
 
   const { cafe, class: aboutClass, instructor, instructor_name: instructorName } = content;
-  const { schedule: scheduleNote, policy_summary: policy, health_safety: health } = content;
-  const { visit, contact } = content;
+  const { policy_summary: policy, visit, contact } = content;
   const faqs = numberedSections(content, "faq");
 
   return (
@@ -147,49 +148,28 @@ export default async function AboutPage() {
         </Section>
       )}
 
-      {/* ===== Schedule + cancellation policy in short ===== */}
-      <Section className="grid gap-3 pb-10 lg:grid-cols-2 lg:gap-4 lg:pb-16">
-        <Card aria-labelledby="schedule-heading" role="region" className="flex flex-col gap-4">
-          <h2 id="schedule-heading" className="text-xl font-normal lg:text-2xl">
-            {fill(scheduleNote?.title) || "Class schedule"}
-          </h2>
-          <ScheduleList schedule={schedule} />
-          {scheduleNote?.body && (
-            <p className="text-sm leading-relaxed text-muted">
-              <ContentText text={fill(scheduleNote.body)} />
-            </p>
-          )}
-          <ButtonLink href="/book" className="mt-auto self-start max-sm:w-full">
-            See open classes
-          </ButtonLink>
-        </Card>
-
-        {policy && (
-          <Card aria-labelledby="policy-heading" role="region" className="flex flex-col gap-4">
+      {/* ===== Cancellation policy in short ===== */}
+      {policy && (
+        <Section aria-labelledby="policy-heading" className="pb-10 lg:pb-16">
+          <Card className="flex flex-col gap-4">
             <h2 id="policy-heading" className="text-xl font-normal lg:text-2xl">
               {fill(policy.title)}
             </h2>
             <CheckList text={fill(policy.body)} marker="dot" />
-            <Link
-              href="/policies"
-              className="mt-auto inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold text-brown hover:underline"
-            >
-              Read the full policies
-              <ArrowRight aria-hidden="true" className="size-4" />
-            </Link>
+            {/* The classes and their times are on the booking page */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
+              <Link
+                href="/policies"
+                className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold text-brown hover:underline"
+              >
+                Read the full policies
+                <ArrowRight aria-hidden="true" className="size-4" />
+              </Link>
+              <ButtonLink href="/book" className="max-sm:w-full">
+                See open classes
+              </ButtonLink>
+            </div>
           </Card>
-        )}
-      </Section>
-
-      {/* ===== Health and safety ===== */}
-      {health && (
-        <Section aria-labelledby="health-heading" className="pb-10 lg:pb-16">
-          <div className="flex flex-col gap-3 rounded-[20px] bg-warning-bg p-5 text-warning lg:rounded-3xl lg:p-6">
-            <h2 id="health-heading" className="text-xl font-normal text-warning lg:text-2xl">
-              {fill(health.title)}
-            </h2>
-            <CheckList text={fill(health.body)} marker="dot" />
-          </div>
         </Section>
       )}
 
@@ -260,11 +240,7 @@ export default async function AboutPage() {
                   {settings.cafeEmail}
                 </ContactItem>
               )}
-              {settings.cafePhone && (
-                <ContactItem icon={Phone} href={phoneLink(settings.cafePhone)}>
-                  <ContentText text={settings.cafePhone} />
-                </ContactItem>
-              )}
+              {/* (No phone number here: Change 17 took it off this page) */}
               {settings.instagramUrl && (
                 <ContactItem icon={AtSign} href={settings.instagramUrl} external>
                   Instagram
@@ -329,40 +305,6 @@ function ClassFacts({ schedule, classPrice }: { schedule: ScheduleDay[]; classPr
   );
 }
 
-// The weekly schedule as a list: each class day with its class times.
-// Takes: the weekly schedule (days Monday first).
-// Gives back: e.g. "Thursday  [9:00 – 9:50 AM] [10:15 – 11:05 AM]" for each
-// day, or a short message if the cafe has no classes set up.
-function ScheduleList({ schedule }: { schedule: ScheduleDay[] }) {
-  if (schedule.length === 0) {
-    return <p className="text-sm text-muted">The class schedule is being updated. Please check back soon.</p>;
-  }
-
-  return (
-    <ul className="flex flex-col">
-      {schedule.map((day) => (
-        <li
-          key={day.weekday}
-          // Phone: day on top, times under it. Wider: day left, times right.
-          className="flex flex-col gap-2 border-b border-line py-3 first:pt-0 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <span className="font-heading font-semibold text-brown">{weekdayName(day.weekday)}</span>
-          <span className="flex flex-wrap gap-2">
-            {day.slots.map((slot) => (
-              <span
-                key={slot.startTime}
-                className="rounded-full border border-line bg-white px-3 py-1 text-[13px] font-semibold text-ink"
-              >
-                {formatTimeRange(slot.startTime, slot.endTime)}
-              </span>
-            ))}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 // One line in the "Contact us" list: an icon and a link.
 // Takes: the icon, the link (null = show the text without a link), whether
 // it opens another website in a new tab, and the text.
@@ -402,15 +344,4 @@ function ContactItem({
       )}
     </li>
   );
-}
-
-// Makes a "tap to call" link from the cafe's phone number.
-// Takes: the phone number from settings, e.g. "0917 123 4567".
-// Gives back: "tel:09171234567", or null while it's still a [PLACEHOLDER]
-// (or has no digits), so we never link to a fake number.
-function phoneLink(phone: string): string | null {
-  if (phone.includes("[")) return null;
-  // Keep only the digits and a "+" for country codes
-  const digits = phone.replace(/[^\d+]/g, "");
-  return digits ? `tel:${digits}` : null;
 }

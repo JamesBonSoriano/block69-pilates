@@ -300,6 +300,12 @@ Claude Code: update this file at the end of every step. Keep it short.
     - **Admin Content page:** the 6 old Home blocks are hidden (`HIDDEN_BLOCKS`), the new 3 have names, and the photo spot moved from `location_drink` to `class_details`
     - Tests: new `16-r2-content` (11 checks: new text, admin edits kept, earlier edits and the photo carried over, safe to run twice). `test:db` **524/524**, `test:unit` 28/28
     - Checked: `tsc`, `lint`, `npm run build` OK. Built site (live database without migration 13): Home shows "Book Your Session" without a price, no feature cards; the new sections appear after `db push`
+  - **Part E: About Us** (done)
+    - **Migration 14** `supabase/migrations/20261023000010_r2_about_content.sql` (**not pushed yet**): `about/instructor_name` = **Mhay Florence Corpuz** / "STOTT-trained mat Pilates instructor." (only while still a [PLACEHOLDER] or empty); `about/instructor` bio: the original placeholder text becomes "Mhay Florence Corpuz is a STOTT-trained mat Pilates instructor who teaches our beginner mat classes."; an admin's own bio only gets `[INSTRUCTOR NAME]` swapped for the name
+    - **About Us** (`src/app/(client)/about/page.tsx`): the Class Schedule and Health and Safety sections are removed (the short cancellation policy card stays, now with "See open classes"); Contact no longer lists the cafe's phone number (email, Instagram, Facebook, Chat With Us stay). The quick facts (length, group size, days, price) stay
+    - **Admin Content page:** `about/health_safety` and `about/schedule` hidden too (rows kept); the two instructor blocks have clearer names
+    - Tests: `16-r2-content` +4 checks (15 now: name and description, bio, admin edits kept, safe to run twice). `test:db` **528/528**, `test:unit` 28/28
+    - Checked: `tsc`, `lint`, `npm run build` OK. Built `/about`: no schedule or health section, no `tel:` link, Contact and the policy card still there. The instructor's name shows after `db push`
 
 ## Next
 - **You (Change 17, Google sign-in):** Google Cloud → OAuth consent screen + Web OAuth client (JavaScript origin `http://localhost:3000`; redirect URI `https://mbfshqndgiywphuannuw.supabase.co/auth/v1/callback`), then Supabase → Authentication → Sign In / Providers → **Google**: enable, paste the Client ID + Secret. Steps in the Part C chat summary

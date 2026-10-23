@@ -57,8 +57,8 @@ const BLOCK_NAMES: Record<string, string> = {
   "home/cta": "Book now box (bottom)",
   "home/health_safety": "Health and Safety Information (bottom of Home)",
   "about/cafe": "The cafe",
-  "about/instructor": "The instructor (name and bio)",
-  "about/instructor_name": "The instructor's title",
+  "about/instructor": "The instructor (small heading and bio)",
+  "about/instructor_name": "The instructor's name (title) and description",
   "about/class": "The class",
   "about/schedule": "Schedule note",
   "about/visit": "Visit us",
@@ -77,6 +77,8 @@ const BLOCK_NAMES: Record<string, string> = {
 // Home: "About the class" + its 3 cards and the old location block became
 // "Class Details & Location"; the small health note became "Health and
 // Safety Information".
+// About Us: Health and Safety moved to Home (edit "Health and Safety
+// Information" on the Home tab), and the Class Schedule section was removed.
 const HIDDEN_BLOCKS = new Set([
   "home/about_class",
   "home/feature_1",
@@ -84,6 +86,8 @@ const HIDDEN_BLOCKS = new Set([
   "home/feature_3",
   "home/location_drink",
   "home/health_note",
+  "about/health_safety",
+  "about/schedule",
 ]);
 
 // The photo spots (page/section) and what to call them.

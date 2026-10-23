@@ -1,6 +1,7 @@
 // Tests for Change 17's page-text migrations (docs/prompts/17-client-revisions-2.md):
 //   migration 13 (..._r2_home_content.sql): the new Home hero, Class Details &
 //   Location, the mat line, and Health and Safety moving to Home.
+//   migration 14 (..._r2_about_content.sql): the instructor on About Us.
 // Each content migration must only change text the admin never edited, and be
 // safe to run twice.
 // Run with: npm run test:db   (see supabase/tests/README.md)
@@ -9,12 +10,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const title = 'Change 17: page text (Home)';
+export const title = 'Change 17: page text (Home, About Us)';
 
 // A migration file by the end of its name, so it can be run a second time.
 const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'migrations');
 const migrationFile = (suffix) => path.join(migrationsDir, fs.readdirSync(migrationsDir).find((f) => f.endsWith(suffix)));
 const HOME_FILE = migrationFile('_r2_home_content.sql');
+const ABOUT_FILE = migrationFile('_r2_about_content.sql');
 
 // Runs every check in this file.
 // Takes: the toolbox from helpers.mjs. Gives back: nothing (results go to t.check).
@@ -93,4 +95,27 @@ export default async function run(t) {
   const carriedHealth = await block('home', 'health_safety');
   check('Edited Health and Safety list carries over to Home', 'Line one / Line two',
     carriedHealth?.body === 'Line one\nLine two', carriedHealth?.body?.replace('\n', ' / '));
+
+  // ===========================================================================
+  t.section('About Us: the instructor');
+  // ===========================================================================
+  const name = await block('about', 'instructor_name');
+  check('Instructor name and description', 'Mhay Florence Corpuz / STOTT-trained mat Pilates instructor.',
+    name?.title === 'Mhay Florence Corpuz' && name.body === 'STOTT-trained mat Pilates instructor.',
+    name && `${name.title} / ${name.body}`);
+  const bio = await block('about', 'instructor');
+  check('Bio placeholder replaced by a finished sentence (no [PLACEHOLDERS] left)', 'names her, no [ ]',
+    bio?.body?.startsWith('Mhay Florence Corpuz') && !bio.body.includes('['), bio?.body);
+
+  // An admin who already wrote their own name and bio keeps them
+  await q(`update public.site_content set title = 'Coach Ana', body = 'Our own title' where page = 'about' and section = 'instructor_name'`);
+  await q(`update public.site_content set body = '[INSTRUCTOR NAME] has taught for years.' where page = 'about' and section = 'instructor'`);
+  const aboutAgain = await rerun(ABOUT_FILE);
+  const keptName = await block('about', 'instructor_name');
+  check('Run it again: an edited name and description are kept', 'Coach Ana / Our own title',
+    aboutAgain.ok && keptName.title === 'Coach Ana' && keptName.body === 'Our own title',
+    aboutAgain.ok ? `${keptName.title} / ${keptName.body}` : aboutAgain.err);
+  const fixedBio = await block('about', 'instructor');
+  check("An admin's own bio keeps their words; only [INSTRUCTOR NAME] is filled in",
+    'Mhay Florence Corpuz has taught for years.', fixedBio.body === 'Mhay Florence Corpuz has taught for years.', fixedBio.body);
 }
