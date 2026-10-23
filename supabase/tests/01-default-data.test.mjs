@@ -126,8 +126,10 @@ export default async function run(t) {
     missing.length ? `missing: ${missing.join(', ')}` : `${CONTENT_BLOCKS.length} blocks`);
 
   const bring = (blocks['booking/what_to_bring']?.body ?? '').split('\n');
-  check('What to bring: one item per line', 'mat, towel, water bottle, grip socks',
-    bring.length === 4 && /mat/i.test(bring[0]) && /towel/i.test(bring[1]) && /water/i.test(bring[2]) && /grip socks/i.test(bring[3]),
+  // (Migration 12 changed the list to the revisions' wording. The mat stays
+  // FIRST: booking step 1 puts the "Rent a mat" tick under it.)
+  check('What to bring: one item per line', 'workout mat, water bottle, towel, workout clothes',
+    bring.length === 4 && /mat/i.test(bring[0]) && /water/i.test(bring[1]) && /towel/i.test(bring[2]) && /clothes/i.test(bring[3]),
     bring.join(' | '));
 
   const policy = blocks['booking/cancellation_policy']?.body ?? '';

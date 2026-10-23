@@ -1,6 +1,7 @@
 // The brown header at the top of every CLIENT page (CLAUDE.md section 7):
-// "Block 69 Cafe" with "MAT PILATES + CAFÉ" under it, the nav links, Chat
-// With Us, and Log in (guests) or the person's initials + Log out (logged in).
+// "Block 69 Cafe" with "MAT PILATES + CAFÉ" under it, the nav links, and
+// Log in (guests) or the person icon + Log out (logged in). Chat With Us is
+// the floating round button instead (src/components/layout/ChatButton.tsx).
 // 64px tall on phones (with a menu button), 96px on laptops.
 // Where it's used: src/components/layout/SiteShell.tsx (client and login
 // pages). Admin pages get their own sidebar layout in Step 11.
@@ -25,8 +26,8 @@ import {
 import { HeaderNav } from "./HeaderNav";
 
 // The client header.
-// Takes: nothing (it reads the cafe name and Chat With Us link from settings,
-// which are cached; see src/lib/data/settings.ts).
+// Takes: nothing (it reads the cafe name from settings, which are cached;
+// see src/lib/data/settings.ts).
 // Gives back: the <header> element.
 export async function Header() {
   const settings = await getPublicSettings();
@@ -54,7 +55,6 @@ export async function Header() {
             each wrapped in its own <Suspense>. Phone fallbacks are empty:
             nothing shows there until the login check is done. */}
         <HeaderNav
-          chatUrl={settings.chatUrl}
           desktopAccount={
             <Suspense fallback={<DesktopAccountFallback />}>
               <DesktopAccount />

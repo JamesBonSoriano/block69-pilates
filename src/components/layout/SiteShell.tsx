@@ -3,8 +3,11 @@
 // Account) and src/app/(auth)/layout.tsx (log in, sign up, passwords), so
 // both groups of pages look the same. The "page not found" page
 // (src/app/not-found.tsx) uses it too. Admin pages get their own frame in Step 11.
+// It also adds the floating "Chat With Us" button (Revisions part 1, item 2).
 
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import { getPublicSettings } from "@/lib/data/settings";
+import { ChatButton, ChatButtonFallback } from "./ChatButton";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
 
@@ -27,6 +30,22 @@ export function SiteShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <Footer />
+      <FloatingChat />
     </>
+  );
+}
+
+// The floating Chat With Us button, if the cafe has set a chat link.
+// Takes: nothing (reads the cached chat_url setting).
+// Gives back: the button, or nothing when Settings has no chat link.
+// The button reads the page address (to move above a sticky bottom bar), so
+// it sits in <Suspense>; until then the same button shows in the corner.
+async function FloatingChat() {
+  const { chatUrl } = await getPublicSettings();
+  if (!chatUrl) return null;
+  return (
+    <Suspense fallback={<ChatButtonFallback chatUrl={chatUrl} />}>
+      <ChatButton chatUrl={chatUrl} />
+    </Suspense>
   );
 }

@@ -1,7 +1,14 @@
-// Booking step 2, "Your details": /book/details?session=<class id>
-// Where it's used: Continue on step 1, and the class cards on the Home page.
+// Booking step 2, "Your details": /book/details?session=<class id>&mat=yes
+// Where it's used: "Proceed to payment" on step 1, and the class cards on the
+// Home page.
 // Layout follows docs/designs/PhoneBook2.html (phone), with a summary card
-// on the right on laptops.
+// on the right on laptops. Revisions part 1, item 5:
+//   - a breadcrumb (Pick a class > Your details > Payment). "Pick a class"
+//     goes back to step 1 with the same class and mat tick.
+//   - name, mobile and Instagram are SHOWN, not edited here (they come from
+//     the profile; "Edit in My Profile" links there and back)
+//   - the mat was chosen on step 1 (?mat=yes); it's only shown here
+//   - no "Is this your first Pilates class?" question any more
 //
 // What happens here (all on the server, before the form is shown):
 //   1. No (or a broken) ?session=  ->  back to step 1.
@@ -22,7 +29,7 @@ import type { Metadata } from "next";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { CheckList } from "@/components/content/ContentText";
-import { BookingSteps } from "@/components/booking/BookingSteps";
+import { BookingBreadcrumb, BookingSteps } from "@/components/booking/BookingSteps";
 import { Section } from "@/components/layout/Section";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -48,18 +55,48 @@ import { BookingDetailsForm, type KeptChoices } from "./BookingDetailsForm";
 export const metadata: Metadata = { title: "Your details", robots: { index: false } };
 
 // The step 2 page.
-// Takes: searchParams (?session=<class id>).
+// Takes: searchParams (?session=<class id>, &mat=yes).
 // Gives back: the step header, then everything that needs the login or live
 // data inside <Suspense>.
 export default function BookingDetailsPage({ searchParams }: PageProps<"/book/details">) {
   return (
     <Section className="flex flex-col gap-6 pt-6 lg:gap-8 lg:py-12">
-      <BookingSteps step={2} title="Your details" />
+      <BookingSteps
+        step={2}
+        title="Your details"
+        // The "Pick a class" link needs the address, which only arrives with
+        // the visit; until then the same breadcrumb shows without the link
+        breadcrumb={
+          <Suspense fallback={<BookingBreadcrumb current={2} />}>
+            <StepTwoBreadcrumb searchParams={searchParams} />
+          </Suspense>
+        }
+      />
       <Suspense fallback={<DetailsLoading />}>
         <DetailsStep searchParams={searchParams} />
       </Suspense>
     </Section>
   );
+}
+
+// The breadcrumb, with "Pick a class" going back to step 1 with the same
+// class and mat tick (so nothing chosen there is lost).
+// Takes: the searchParams promise.
+// Gives back: the breadcrumb.
+async function StepTwoBreadcrumb({ searchParams }: Pick<PageProps<"/book/details">, "searchParams">) {
+  const params = await searchParams;
+  return <BookingBreadcrumb current={2} links={{ 1: stepOneHref(firstParam(params.session), firstParam(params.mat) === "yes") }} />;
+}
+
+// The address of step 1 with a class and the mat tick picked again.
+// Takes: the class id (if it looks like one) and whether a mat is rented.
+// Gives back: e.g. "/book?session=<id>&mat=yes", or just "/book".
+function stepOneHref(sessionId: string | undefined, mat: boolean): string {
+  const query = new URLSearchParams();
+  if (isUuid(sessionId)) query.set("session", sessionId);
+  if (mat) query.set("mat", "yes");
+  const text = query.toString();
+  return text ? `/book?${text}` : "/book";
 }
 
 // Works out what to show for this class and this person (see the list at
@@ -133,6 +170,11 @@ async function DetailsStep({ searchParams }: Pick<PageProps<"/book/details">, "s
   //    the choices from the released booking (?from=<old booking id>).
   const kept = await loadKeptChoices(firstParam(params.from), sessionId);
 
+  // The mat: chosen on step 1 (?mat=yes), or kept from a released hold
+  const matRental = kept ? kept.matRental : firstParam(params.mat) === "yes";
+  // This page again, with the same choices (for "Edit in My Profile" to come back to)
+  const thisPage = `/book/details?session=${sessionId}${matRental ? "&mat=yes" : ""}`;
+
   // 6. The form. Everything it shows comes from the database:
   const date = formatClassDate(session.date);
   const badge = seatBadge(session.seats_left, session.state, session.capacity);
@@ -154,6 +196,10 @@ async function DetailsStep({ searchParams }: Pick<PageProps<"/book/details">, "s
         // Shown with the "@" in front (it's saved without it)
         instagram: user.instagram ? `@${user.instagram.replace(/^@/, "")}` : "",
       }}
+      // My Profile, with a "Back to your booking" link to this page
+      editProfileHref={`/account/profile?back=${encodeURIComponent(thisPage)}`}
+      matRental={matRental}
+      changeClassHref={stepOneHref(session.session_id, matRental)}
       classPrice={settings.classPrice}
       matPrice={settings.matPrice}
       drinkOptions={settings.drinkOptions}
@@ -204,7 +250,6 @@ async function loadKeptChoices(fromId: string | undefined, sessionId: string): P
   return {
     drinkChoice: old.drink_choice ?? "",
     matRental: old.mat_rental,
-    firstTime: old.first_time,
     healthNotes: old.health_notes ?? "",
     voucher,
   };

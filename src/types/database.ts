@@ -291,6 +291,51 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          read_at: string | null
+          user_id: string
+          voucher_code: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          read_at?: string | null
+          user_id: string
+          voucher_code?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["notification_kind"]
+          read_at?: string | null
+          user_id?: string
+          voucher_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -1035,6 +1080,20 @@ export type Database = {
           total: number
         }[]
       }
+      get_my_notifications: {
+        Args: { p_limit?: number }
+        Returns: {
+          booking_id: string
+          class_date: string
+          created_at: string
+          end_time: string
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          read_at: string
+          start_time: string
+          voucher_code: string
+        }[]
+      }
       get_my_payments: {
         Args: { p_payment_id?: string }
         Returns: {
@@ -1101,10 +1160,12 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       manila_today: { Args: never; Returns: string }
+      mark_my_notifications_read: { Args: never; Returns: number }
       my_seat_status: {
         Args: { p_session_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]
       }
+      my_unread_notification_count: { Args: never; Returns: number }
       release_my_hold: { Args: { p_booking_id: string }; Returns: string }
       require_active_user: { Args: never; Returns: string }
       require_admin: { Args: never; Returns: string }
@@ -1179,6 +1240,16 @@ export type Database = {
         | "voucher"
         | "session_notice"
         | "admin_alert"
+      notification_kind:
+        | "booking_confirmed"
+        | "payment_checking"
+        | "payment_approved"
+        | "payment_rejected"
+        | "payment_needs_action"
+        | "booking_transferred"
+        | "cancelled_with_voucher"
+        | "booking_forfeited"
+        | "class_cancelled"
       payment_method: "gcash" | "maya" | "card" | "bpi" | "cash"
       payment_provider: "paymongo" | "manual" | "cash"
       payment_status:
@@ -1340,6 +1411,17 @@ export const Constants = {
         "voucher",
         "session_notice",
         "admin_alert",
+      ],
+      notification_kind: [
+        "booking_confirmed",
+        "payment_checking",
+        "payment_approved",
+        "payment_rejected",
+        "payment_needs_action",
+        "booking_transferred",
+        "cancelled_with_voucher",
+        "booking_forfeited",
+        "class_cancelled",
       ],
       payment_method: ["gcash", "maya", "card", "bpi", "cash"],
       payment_provider: ["paymongo", "manual", "cash"],

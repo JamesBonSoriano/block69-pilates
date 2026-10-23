@@ -9,11 +9,15 @@ export type NavLink = { href: string; label: string };
 // The main client pages, in the order they appear.
 // (Guests can open /book to see the classes; picking one, and opening
 // My Account, sends them to the login page first.)
+// "My Account" opens My Profile (Revisions part 1, item 6). On laptops the
+// header shows it as the person icon instead of text (HeaderAccount.tsx).
+export const accountHomeHref = "/account/profile";
+
 export const mainNavLinks: NavLink[] = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About Us" },
   { href: "/book", label: "Book a Class" },
-  { href: "/account", label: "My Account" },
+  { href: accountHomeHref, label: "My Account" },
 ];
 
 // Smaller information pages. They're listed in the footer and in the phone

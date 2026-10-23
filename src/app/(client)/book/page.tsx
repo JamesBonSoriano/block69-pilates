@@ -1,9 +1,12 @@
 // Booking step 1, "Pick a class": /book
 // Where it's used: "Book a Class" in the header, every "Book a class" button
-// on Home and About Us, and "Change" on step 2 (/book?session=<id> picks
-// that class again).
-// Layout follows docs/designs/PhoneBook1.html: date chips, the classes for
-// each day, and a sticky bar with the price and Continue (laptop: a side card).
+// on Home and About Us, and "Pick a class" / "Change" on step 2
+// (/book?session=<id>&mat=yes picks that class and the mat tick again).
+// Layout follows docs/designs/PhoneBook1.html, changed by Revisions part 1,
+// item 4: the classes for each day (no date chips any more), and the
+// "Booking details" card (Date, Session, What to bring with the Rent a mat
+// tick, Proceed to payment). On phones that card is the sticky bottom bar,
+// and "What to bring" is listed under the classes.
 //
 // GUESTS CAN LOOK: anyone can see the classes and seats left. Continue opens
 // step 2 (/book/details?session=<id>), which needs a login: src/proxy.ts
@@ -17,27 +20,30 @@
 // Full, closed, cancelled and past-the-cutoff classes are shown greyed out
 // and can't be picked. (book_seat() checks again anyway.)
 //
-// It works without JavaScript too: it's a normal form with radio buttons
-// that sends ?session=<id> to step 2.
+// It works without JavaScript too: it's a normal form with radio buttons and
+// a tick box that sends ?session=<id> (and &mat=yes) to step 2.
 
 import Form from "next/form";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
-import { BookingAside, BookingColumns } from "@/components/booking/BookingLayout";
+import { CheckList } from "@/components/content/ContentText";
+import { BookingDetailsCard } from "@/components/booking/BookingDetailsCard";
+import { BookingColumns } from "@/components/booking/BookingLayout";
 import { BookingSteps } from "@/components/booking/BookingSteps";
 import { Section } from "@/components/layout/Section";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Overline } from "@/components/ui/Overline";
 import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
 import { firstParam } from "@/lib/auth/safe-next";
 import { sendAdminsAway } from "@/lib/auth/user";
 import { seatBadge } from "@/lib/booking-rules";
-import { cn } from "@/lib/cn";
+import { fillSettings, splitLines } from "@/lib/content-text";
 import { getBookingSessions } from "@/lib/data/booking";
+import { getPageContent } from "@/lib/data/content";
 import { getWeeklySchedule } from "@/lib/data/schedule";
 import { getPublicSettings } from "@/lib/data/settings";
-import { formatClassDate, formatPeso, formatTime, formatTimeRange, formatWeekdays } from "@/lib/format";
+import { formatClassDate, formatTime, formatTimeRange, formatWeekdays } from "@/lib/format";
 import { pageMetadata } from "@/lib/metadata";
 import type { OpenSession } from "@/types/app";
 
@@ -50,13 +56,21 @@ export const metadata = pageMetadata({
 });
 
 // The step 1 page.
-// Takes: searchParams (?session=<id> picks that class, if it can still be booked).
+// Takes: searchParams (?session=<id> picks that class, if it can still be
+// booked; ?mat=yes ticks Rent a mat).
 // Gives back: the step header (with the cutoff time and class days from the
 // database), then the live class picker inside <Suspense>.
 export default async function BookPage({ searchParams }: PageProps<"/book">) {
   // Cached data (the same for everyone), loaded at the same time
-  const [settings, schedule] = await Promise.all([getPublicSettings(), getWeeklySchedule()]);
+  const [settings, schedule, content] = await Promise.all([
+    getPublicSettings(),
+    getWeeklySchedule(),
+    getPageContent("booking"),
+  ]);
   const classDays = formatWeekdays(schedule.map((day) => day.weekday));
+  // What to bring (site_content booking/what_to_bring): one item per line,
+  // with {fill-in} words like {mat_price} swapped for the settings values
+  const whatToBring = splitLines(fillSettings(content.what_to_bring?.body, settings));
 
   return (
     <Section className="flex flex-col gap-6 pt-6 lg:gap-8 lg:py-12">
@@ -71,7 +85,13 @@ export default async function BookPage({ searchParams }: PageProps<"/book">) {
         }
       />
       <Suspense fallback={<SessionPickerLoading />}>
-        <SessionPicker searchParams={searchParams} classPrice={settings.classPrice} />
+        <SessionPicker
+          searchParams={searchParams}
+          classPrice={settings.classPrice}
+          matPrice={settings.matPrice}
+          whatToBring={whatToBring}
+          whatToBringTitle={fillSettings(content.what_to_bring?.title, settings) || "What to bring"}
+        />
       </Suspense>
     </Section>
   );
@@ -98,19 +118,28 @@ function groupByDate(sessions: OpenSession[]): ClassDay[] {
 }
 
 // The live class picker (runs on every visit, never cached).
-// Takes: the searchParams promise and the class price (for the sticky bar).
-// Gives back: the form with date chips, the days and their classes, and the
-// Continue bar. Or a message if there are no classes or the database
+// Takes: the searchParams promise, the class and mat prices (from settings)
+// and the "What to bring" list and its title.
+// Gives back: the form with the days and their classes, and the Booking
+// details card. Or a message if there are no classes or the database
 // couldn't be reached.
 async function SessionPicker({
   searchParams,
   classPrice,
+  matPrice,
+  whatToBring,
+  whatToBringTitle,
 }: {
   searchParams: PageProps<"/book">["searchParams"];
   classPrice: number;
+  matPrice: number;
+  whatToBring: string[];
+  whatToBringTitle: string;
 }) {
   const params = await searchParams;
   const picked = firstParam(params.session);
+  // Back from step 2 with the mat ticked: tick it again
+  const matTicked = firstParam(params.mat) === "yes";
 
   // Admin accounts don't book (they use the admin Walk-in page instead)
   await sendAdminsAway();
@@ -148,6 +177,15 @@ async function SessionPicker({
   const anyBookable = days.some((day) => day.anyBookable);
   // Only pre-pick the class from the address if it can still be booked
   const preselected = sessions.find((s) => s.session_id === picked && s.is_bookable)?.session_id;
+  // Date and time of every class that can be picked, ready for the card
+  const sessionLabels = Object.fromEntries(
+    sessions
+      .filter((session) => session.is_bookable)
+      .map((session) => [
+        session.session_id,
+        { date: formatClassDate(session.date).full, time: formatTimeRange(session.start_time, session.end_time) },
+      ]),
+  );
 
   return (
     // next/form's <Form>: a normal GET form (it adds ?session=<id> to the
@@ -155,42 +193,10 @@ async function SessionPicker({
     <Form action="/book/details">
       <BookingColumns>
         <div className="flex min-w-0 flex-col gap-5">
-          {/* Date chips: jump links to each day (like the date row in the mockup).
-              Phone: one row you can swipe sideways inside its own box, so the
-              page itself never scrolls sideways. Laptop: they wrap. */}
-          <nav aria-label="Jump to a date">
-            <ul className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0">
-              {days.map((day) => {
-                const date = formatClassDate(day.date);
-                return (
-                  <li key={day.date} className="shrink-0">
-                    <a
-                      href={`#day-${day.date}`}
-                      className={cn(
-                        "flex min-h-11 w-14.5 flex-col items-center justify-center rounded-[14px] border border-line bg-white py-2 text-ink",
-                        "hover:border-brown focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown",
-                        // Days with nothing left to book are faded
-                        !day.anyBookable && "opacity-40",
-                      )}
-                    >
-                      <span className="text-[10px] font-bold">{date.weekday}</span>
-                      <span className="font-heading text-xl leading-tight">{date.day}</span>
-                      <span className="sr-only">
-                        {date.full}
-                        {!day.anyBookable && " (nothing left to book)"}
-                      </span>
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
           {/* The days: 1 per row on phones, 2 per row from tablet width */}
           <ul className="grid gap-4 sm:grid-cols-2">
             {days.map((day) => (
-              // scroll-mt: leave a little space above the day when a chip jumps to it
-              <li key={day.date} id={`day-${day.date}`} className="scroll-mt-4">
+              <li key={day.date}>
                 <Card>
                   <RadioGroup legend={formatClassDate(day.date).full} name={`day-${day.date}`} legendStyle="heading">
                     {day.sessions.map((session) => {
@@ -215,16 +221,27 @@ async function SessionPicker({
               </li>
             ))}
           </ul>
+
+          {/* Phones: what to bring, under the classes (on laptops it's in
+              the Booking details card, with the Rent a mat tick) */}
+          {whatToBring.length > 0 && (
+            <Card className="flex flex-col gap-3 lg:hidden">
+              <Overline as="h2">{whatToBringTitle}</Overline>
+              <CheckList text={whatToBring.join("\n")} />
+              <p className="text-xs text-muted">You can rent a mat in the bar at the bottom of the screen.</p>
+            </Card>
+          )}
         </div>
 
-        <BookingAside
-          totalLabel="Class fee"
-          total={formatPeso(classPrice)}
-          action={
-            <Button type="submit" fullWidth disabled={!anyBookable}>
-              Continue
-            </Button>
-          }
+        {/* Booking details: sticky bar (phone) / card (laptop) */}
+        <BookingDetailsCard
+          sessions={sessionLabels}
+          initialSessionId={preselected ?? null}
+          initialMat={matTicked}
+          items={whatToBring}
+          classPrice={classPrice}
+          matPrice={matPrice}
+          canBook={anyBookable}
           note={
             anyBookable
               ? "Includes an upsized matcha or coffee. Next: your details. You'll need to log in or sign up to book."

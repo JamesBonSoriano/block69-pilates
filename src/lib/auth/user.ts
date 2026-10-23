@@ -23,7 +23,8 @@ export type CurrentUser = {
   email: string;
   fullName: string;
   mobile: string | null;
-  instagram: string | null; // optional handle, pre-filled in booking step 2
+  instagram: string | null; // optional handle, shown in booking step 2
+  birthday: string | null; // "YYYY-MM-DD"; null = not given yet (asked once)
   role: Database["public"]["Enums"]["user_role"]; // "client" or "admin"
   isActive: boolean; // false = deactivated
 };
@@ -57,7 +58,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   // Read their profile. Row Level Security only lets them read their own row.
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("email, full_name, mobile, instagram, role, is_active")
+    .select("email, full_name, mobile, instagram, birthday, role, is_active")
     .eq("id", claims.sub)
     .maybeSingle();
 
@@ -71,6 +72,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     fullName: profile?.full_name ?? "",
     mobile: profile?.mobile ?? null,
     instagram: profile?.instagram ?? null,
+    birthday: profile?.birthday ?? null,
     role: profile?.role ?? "client",
     // No profile row at all is treated like a deactivated account (safe default)
     isActive: profile?.is_active ?? false,
@@ -94,18 +96,29 @@ export async function requireUser(nextPath: string): Promise<CurrentUser> {
   return user;
 }
 
+// The one-time "add your birthday" page (Revisions part 1, item 7).
+export const BIRTHDAY_PATH = "/account/birthday";
+
 // Use at the top of every CLIENT-only page (booking steps, My Account).
-// Takes: the path of the page (for coming back after logging in).
-// Gives back: the CurrentUser, but only for a client. An admin is sent to the
-// admin Dashboard instead (admins don't book or use My Account; Revisions
-// part 1, item 1). Guests and deactivated accounts are handled by
-// requireUser() first.
+// Takes: the path of the page (for coming back after logging in, or after
+// adding a birthday).
+// Gives back: the CurrentUser, but only for a client. Otherwise it sends
+// them somewhere else:
+//   - guests and deactivated accounts: see requireUser()
+//   - an admin: to the admin Dashboard (admins don't book or use My Account;
+//     Revisions part 1, item 1)
+//   - a client with no birthday yet (accounts made before it was required):
+//     to /account/birthday?next=<path>, ONCE. After saving it they come back.
 export async function requireClient(nextPath: string): Promise<CurrentUser> {
   const user = await requireUser(nextPath);
   // requireUser() has already checked the account is active, so an active
   // account with role "admin" is exactly what is_admin() means
   if (user.role === "admin") {
     redirect("/admin");
+  }
+  // The birthday page itself must not send people to itself
+  if (!user.birthday && !nextPath.startsWith(BIRTHDAY_PATH)) {
+    redirect(`${BIRTHDAY_PATH}?next=${encodeURIComponent(nextPath)}`);
   }
   return user;
 }

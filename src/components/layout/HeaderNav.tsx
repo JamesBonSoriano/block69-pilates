@@ -7,32 +7,33 @@
 // and close when tapped.
 //
 // It is STATIC: it doesn't know who is logged in. Header.tsx hands it the
-// account parts (Log in / initials / Admin / Log out) ready-made, each in its
-// own <Suspense>, and this file only decides WHERE they go.
+// account parts (Log in / person icon / Log out) ready-made, each in its own
+// <Suspense>, and this file only decides WHERE they go.
 // The My Account sub-links (Profile, My Bookings, Payments, ...) are in
 // phoneMenuUser (HeaderAccount.tsx), so only logged-in people see them.
+//
+// Revisions part 1: "Chat With Us" is no longer in the nav or the phone menu
+// (it's the floating round button, ChatButton.tsx), and on laptops "My
+// Account" is the person icon in desktopAccount instead of a text link.
 
-import { FileText, MessageCircle, Menu, X } from "lucide-react";
+import { FileText, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useState, type MouseEvent, type ReactNode } from "react";
-import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { infoNavLinks, isActiveLink, mainNavLinks } from "./nav-links";
+import { accountHomeHref, infoNavLinks, isActiveLink, mainNavLinks } from "./nav-links";
 
 type HeaderNavProps = {
-  chatUrl: string; // the "Chat With Us" link (from settings)
-  desktopAccount: ReactNode; // laptop: Log in, or Admin + initials + Log out
-  phoneAvatar: ReactNode; // phone bar: initials next to the menu button
+  desktopAccount: ReactNode; // laptop: Log in, or the person icon + Log out
+  phoneAvatar: ReactNode; // phone bar: the person icon next to the menu button
   phoneMenuUser: ReactNode; // top of the phone menu: name + email
-  phoneMenuActions: ReactNode; // bottom of the phone menu: Log in, or Admin + Log out
+  phoneMenuActions: ReactNode; // bottom of the phone menu: Log in or Log out
 };
 
 // The header nav.
-// Takes: chatUrl and the four account parts (see above).
+// Takes: the four account parts (see above).
 // Gives back: the desktop links + buttons, and the phone menu button + menu.
 export function HeaderNav({
-  chatUrl,
   desktopAccount,
   phoneAvatar,
   phoneMenuUser,
@@ -77,22 +78,7 @@ export function HeaderNav({
       {/* ===== Laptop / desktop (1024px and wider): links in a row ===== */}
       <nav aria-label="Main" className="hidden items-center gap-6 lg:flex">
         <NavLinks variant="desktop" />
-        <div className="flex items-center gap-3">
-          {chatUrl && (
-            <ButtonLink
-              href={chatUrl}
-              external
-              variant="lightOutline"
-              // Icon only on smaller laptops, to leave room for the account
-              // buttons (the hidden text still names the link for screen readers)
-              className="max-xl:px-3"
-            >
-              <MessageCircle aria-hidden="true" className="size-4" />
-              <span className="max-xl:sr-only">Chat With Us</span>
-            </ButtonLink>
-          )}
-          {desktopAccount}
-        </div>
+        {desktopAccount}
       </nav>
 
       {/* ===== Phone / tablet (under 1024px): avatar + menu button ===== */}
@@ -124,7 +110,7 @@ export function HeaderNav({
           {phoneMenuUser}
           <NavLinks variant="phone" />
 
-          {/* Smaller links under a line: Policies, then Chat With Us */}
+          {/* Smaller links under a line: Policies */}
           <div className="mt-2 flex flex-col border-t border-brown-line pt-3">
             {infoNavLinks.map((link) => (
               <Link
@@ -136,17 +122,6 @@ export function HeaderNav({
                 {link.label}
               </Link>
             ))}
-            {chatUrl && (
-              <a
-                href={chatUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-11 items-center gap-2 py-2.5 text-[15px] text-tan-soft"
-              >
-                <MessageCircle aria-hidden="true" className="size-5" />
-                Chat With Us
-              </a>
-            )}
           </div>
 
           {/* mt-auto pushes the buttons to the bottom of the menu */}
@@ -191,8 +166,12 @@ function NavLinkList({
 }) {
   return (
     <ul className={variant === "desktop" ? "flex items-center gap-1" : "flex flex-col gap-1"}>
-      {mainNavLinks.map((link) => {
-        const active = isActiveLink(link.href, pathname);
+      {/* Laptops leave out "My Account": it's the person icon instead */}
+      {mainNavLinks
+        .filter((link) => variant === "phone" || link.href !== accountHomeHref)
+        .map((link) => {
+        // "My Account" (My Profile) stays highlighted on every /account page
+        const active = isActiveLink(link.href === accountHomeHref ? "/account" : link.href, pathname);
         return (
           <li key={link.href}>
             <Link

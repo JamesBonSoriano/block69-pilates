@@ -216,15 +216,66 @@ Claude Code: update this file at the end of every step. Keep it short.
     - **In the pages:** `requireClient()` (new) on every booking and My Account page, `sendAdminsAway()` on `/book` step 1, and `requireUser()` picks the right login page. The client Server Actions (hold seat, release hold, pay, manual transfer, free booking, cancel, transfer, profile, reminders) refuse admins with `STAFF_ACCOUNT_ERROR` (`src/lib/auth/client-guard.ts`)
     - Header: the **Admin link is gone**. For an admin only, the avatar links to `/admin`, and the phone menu shows "Admin dashboard" instead of the My Account links
     - Checked: `tsc`, `lint` and `npm run build` clean (`/admin/login` is Partial Prerender). On the built site as a guest: `/admin` and `/admin/bookings?…` go to `/admin/login?next=…`, `/account/profile` goes to `/login?next=…`, and `/admin/login`, `/login`, `/book` and `/` return 200. No database change, so `test:db` wasn't needed
+  - **Sub-steps 2 to 7** (done in one go, as you asked, 2026-10-23)
+    - **Migration 12** `supabase/migrations/20261023000008_client_revisions.sql` (**pushed**, types regenerated):
+      - `handle_new_user()` also saves `birthday` from the sign-up metadata. A broken or future date is left empty
+      - Trigger `protect_profile_locked_fields()`: from the website, a client can't change `email`, can save `birthday` once (then it can't be changed or cleared), and only a real past date. Admins, our functions and the server key aren't affected
+      - Table `notifications` (user, booking, `notification_kind`, voucher code, created, read). RLS: read own rows only, **admins included**. Nobody can add, change or delete rows from the website
+      - Triggers: `notify_booking_change()` on bookings, for any booking with a `user_id` (so part 2's walk-ins with accounts work too):
+        - booking confirmed
+        - payment checking / approved / rejected
+        - late payment (`payment_needs_action`)
+        - transfer done (on the new booking)
+        - cancelled with a 50% code (the code is saved)
+        - cancelled with no credit (`booking_forfeited`)
+      - `notify_class_cancelled()` on class_sessions: everyone holding a seat when the cafe cancels
+      - `get_my_notifications(limit)`, `my_unread_notification_count()` and `mark_my_notifications_read()`, logged-in users only
+      - Default `booking/what_to_bring` is now "Workout mat / Water bottle / Towel / Comfortable workout clothes" (only if it was never edited). The mat stays the first line
+    - Tests: new `15-client-revisions` (43 checks, incl. "a client can't see another client's notifications"), `02-security` expects 11 tables and the 3 new functions, `01-default-data` checks the new list. **510/510 passed**
+    - **2. Chat With Us:** gone from the nav and the phone menu. Now a round floating button, lower right of every client and login page (`src/components/layout/ChatButton.tsx`, in `SiteShell`). It's hidden when `chat_url` is empty. On phones it moves up above any `[data-sticky-bar]` (the booking bars) and measures the bar's height. The footer has extra bottom space on phones. The Chat buttons inside Home, About and Policies content stay
+    - **4. Booking step 1:** no date chips. A new **Booking details** card (`BookingDetailsCard.tsx`) has Date + Session (filled in when a class is picked), What to bring (from `site_content`, icons by keyword) with a **Rent a mat** tick (price from settings) under the mat line, Total, and **Proceed to payment**. On phones it's the sticky bar (picked class, the tick, total, button), and What to bring is a card under the classes. The tick is sent as `?mat=yes`
+    - **5. Booking step 2:**
+      - Breadcrumb `Pick a class > Your details > Payment` (`BookingBreadcrumb`, on all 3 steps; on step 2 "Pick a class" goes back with the same class and mat)
+      - Name, mobile, email and Instagram are shown, not edited, with "Edit in My Profile" (`/account/profile?back=…`, which shows "Back to your booking")
+      - The mat is shown in the class card and the summary ("Change" goes to step 1); the first-time question is removed
+      - Drink, notes and voucher code are kept in `sessionStorage` for that tab while going back and forth (cleared on Confirm)
+      - `holdSeat()` now reads the name and mobile from the profile (refuses if missing) and no longer writes the profile
+      - The laptop summary no longer shows Total twice (`PriceSummary showTotal`)
+    - **6. Person icon:**
+      - "My Account" in the laptop nav is now a person icon (`aria-label` "My Account", plus the unread count). It opens `/account/profile`, and so does `/account`
+      - Red dot when there are unread notifications; the phone menu shows the count on Notifications
+      - Admins still get their initials linking to `/admin`
+    - **7. My Profile:**
+      - Round initials placeholder
+      - Name, mobile and Instagram each have a pen button: input + Save / Cancel (`updateProfileField()`, one column at a time)
+      - Email and Birthday are read-only, with a lock and a note
+      - Change password and Deactivate are removed (`changePassword` / `deactivateAccount` actions deleted; `deactivate_my_account()` kept in the database)
+      - **Birthday:** required on sign-up. `requireClient()` sends an account without one to **`/account/birthday?next=…` once** (`saveBirthday()`, only fills an empty birthday), then back
+    - **8. Policies:** `BackButton` goes back only if this tab came from our site, otherwise Home
+    - **9. Notifications page:** an **Updates** list (newest first, colored icon, title, sentence from `src/lib/notifications.ts`, time, "New" badge, link) above the **Emails** card (switch kept). After it shows, `MarkNotificationsRead` marks them read and hides the header dot
+    - `supabase/manual-tests/r1-setup.sql` (clear the test client's birthday; 2 sample bookings → "Booking confirmed" + "checking your payment"; list their updates) and `r1-cleanup.sql`. Both dry-run on the test database: 2 updates, admin approve works, cleanup leaves 0/0/0 and another client's updates alone
+    - Checked: `tsc`, `lint`, `npm run build` clean, `test:unit` 15/15, `test:db` 510/510. On the built site as a guest:
+      - floating chat on every client page, no Chat or Admin in the nav
+      - `/book` has Booking details, Proceed to payment and Rent a mat (ticked with `?mat=yes`), and no date chips
+      - `/policies` has Back, and `/signup` has Birthday
+      - `/account`, `/account/birthday` and `/account/notifications` → login
+    - **Not checked by me:** the logged-in pages (no login here). That's your checklist
 
 ## Next
-- **Revisions part 1, sub-step 2:** Chat With Us as a floating button (then sub-steps 3 to 7, Home last)
+- **You:** click through Revisions part 1 (checklist in chat; SQL in `supabase/manual-tests/r1-setup.sql` / `r1-cleanup.sql`)
+- **Revisions part 1, Home page** (Figma node 103-26): the screenshot arrived; a bigger export would help with spacing. Then Revisions part 2 (admin) and part 3 (emails)
 - **You:** add `SUPABASE_SECRET_KEY` and `PAYMONGO_SECRET_KEY` to `.env.local`, restart `npm run dev`, then click through Step 12 (checklist in chat; SQL in `supabase/manual-tests/step12-setup.sql` / `step12-cleanup.sql`)
 - **Phase D/E, Step 13:** deploy to Vercel, then add the PayMongo webhook `https://<your-site>.vercel.app/api/paymongo/webhook` (event `checkout_session.payment.paid`) and put its secret in Vercel as `PAYMONGO_WEBHOOK_SECRET`
 - **You:** click through Step 11 part 1 at 390px and 1440px (checklist in chat; test SQL in `supabase/manual-tests/step11-setup.sql` and `step11-cleanup.sql`, paste into the SQL Editor by hand, never pushed). Still open from Step 10, if not done yet: **Require current password when updating**, delete the throwaway `step10-check-…@example.com` users
 - **You:** click through Step 11 part 2 at 390px and 1440px (checklist in chat; test SQL in `supabase/manual-tests/step11-part2-setup.sql` and `step11-part2-cleanup.sql`, paste by hand). Then fill in the [PLACEHOLDERS] on Settings and Content
 
 ## Known problems / notes
+- **Revisions part 1 notes:**
+  - Online bookings now always save `first_time = false` (the question is gone). The admin attendance list, booking details and booking list still show "first time" (part 2 can hide it)
+  - "Grip socks" is no longer in the default what-to-bring list (the revisions' list). The admin can add it back on Content
+  - The "Require current password when updating" dashboard setting no longer matters: Change password is gone from My Profile (Forgot password still works)
+  - Old events made before migration 12 have no notifications; the list starts empty
+  - An account without a mobile number can't confirm a booking until it adds one in My Profile (step 2 says so)
 - **Admin limits (on purpose):** walk-ins have no transfer reference field (no column for it). Admin cancel / transfer never refunds money: a cash refund for a late payment happens outside the website, then the admin cancels the booking. Closing a whole day = close its classes one by one on Schedule. There is no logo upload yet (`logo_path` stays empty; the header shows the cafe name). Ask before adding any of these
 - Walk-in classes: the list shows only `open` classes. A class the admin **closed** can't take walk-ins (`admin_walkin_booking` refuses it). That's the database rule from migration 3
 - The admin booking "History" is built from saved times (created, paid, hold end, transfers, last change). There's no status log table. Add one only if the cafe needs a full audit trail

@@ -12,10 +12,13 @@
 //   - {fill-in} words like {mat_price}: settings (see src/lib/content-text.ts)
 // The rules themselves are enforced by the database (cancel_my_booking() and
 // transfer_my_booking()); this page only explains them.
+// A Back button at the top goes back to the page the visitor came from, or
+// Home if there's none (Revisions part 1, item 8).
 
 import { MessageCircle } from "lucide-react";
 import { ContentText, NumberedList } from "@/components/content/ContentText";
 import { Section } from "@/components/layout/Section";
+import { BackButton } from "@/components/ui/BackButton";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
@@ -56,6 +59,7 @@ export default async function PoliciesPage() {
     <Section className="py-8 lg:py-16">
       {/* A narrower, centered column than other pages: long text is easier to read that way */}
       <div className="mx-auto flex max-w-3xl flex-col gap-4 lg:gap-6">
+        <BackButton />
         <div className="flex flex-col gap-3">
           <Overline>Block 69 Cafe · Mindful Mat Pilates</Overline>
           <h1 className="text-4xl font-normal leading-tight lg:text-5xl">{fill(intro?.title) || "Policies"}</h1>

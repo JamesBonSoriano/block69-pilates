@@ -1,10 +1,10 @@
 "use client";
-// The sign-up form: full name, phone number, email and password.
+// The sign-up form: full name, phone number, birthday, email and password.
 // Where it's used: src/app/(auth)/signup/page.tsx.
 //
 // The real work happens on the server in signUp() (src/lib/auth/actions.ts),
 // which also checks every field again. The database's sign-up trigger then
-// copies the name and phone number into the new profile.
+// copies the name, phone number and birthday into the new profile.
 
 import Link from "next/link";
 import { useActionState } from "react";
@@ -62,6 +62,19 @@ export function SignupForm({ next }: { next: string | null }) {
         required
         defaultValue={values.mobile}
         error={errors.mobile}
+      />
+      {/* Required (Revisions part 1). The sign-up trigger saves it on the
+          profile, and the client can't change it later (migration 12). */}
+      <Input
+        label="Birthday"
+        name="birthday"
+        type="date"
+        min="1900-01-01"
+        autoComplete="bday"
+        required
+        defaultValue={values.birthday}
+        error={errors.birthday}
+        hint="You can't change this later without messaging the cafe."
       />
       <Input
         label="Email"

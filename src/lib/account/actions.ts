@@ -3,19 +3,17 @@
 // Where it's used:
 //   My Bookings (src/components/account/CancelBookingButton.tsx):  cancelBooking()
 //   Transfer page (src/components/account/TransferForm.tsx):       transferBooking()
-//   My Profile (src/components/account/ProfileForms.tsx):          updateProfile(),
-//                                                                  changePassword(),
-//                                                                  deactivateAccount()
+//   My Profile (src/components/account/ProfileForms.tsx):          updateProfileField()
+//   Add your birthday (src/app/(client)/account/birthday/):         saveBirthday()
+// (Change password and Deactivate my account were taken off My Profile in
+// Revisions part 1. deactivate_my_account() stays in the database, unused.)
 //   Notifications (src/components/account/ReminderSwitch.tsx):     setEmailReminders()
+//   Notifications (src/components/account/MarkNotificationsRead.tsx): markNotificationsRead()
 //
 // "use server" = these run ONLY on our server. The browser just sends the
-// form here. The real rules live in the database: cancel_my_booking(),
-// transfer_my_booking() and deactivate_my_account() check that the booking or
-// account is the caller's own, and Row Level Security only lets a person
-// change their OWN profile row.
-//
-// SECURITY: passwords are never logged, never sent back to the page, and
-// never kept in "values".
+// form here. The real rules live in the database: cancel_my_booking() and
+// transfer_my_booking() check that the booking is the caller's own, and Row
+// Level Security only lets a person change their OWN profile row.
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
@@ -25,7 +23,7 @@ import type {
   ReminderState,
   TransferBookingState,
 } from "@/lib/account/form-state";
-import { MIN_PASSWORD_LENGTH, friendlyAuthError } from "@/lib/auth/errors";
+import { safeNextPath } from "@/lib/auth/safe-next";
 import { STAFF_ACCOUNT_ERROR, isStaffAccount } from "@/lib/auth/client-guard";
 import { cancelTiming } from "@/lib/booking-rules";
 import { loadMyBookings } from "@/lib/data/account";
@@ -152,40 +150,42 @@ export async function transferBooking(
 }
 
 // ---------------------------------------------------------------------------
-// MY PROFILE: personal details
+// MY PROFILE: edit one detail (name, mobile or Instagram)
 // ---------------------------------------------------------------------------
 
-// Saves the person's name, mobile, Instagram and birthday.
-// Takes: the previous state, and the form: full_name, mobile, instagram
-// (optional), birthday (optional, YYYY-MM-DD).
-// Gives back: field errors, a general error, or a success message.
-// The email can't be changed here (it's the login email; see My Profile).
-export async function updateProfile(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
-  // Squash double spaces in the name ("Juan  Cruz" -> "Juan Cruz")
-  const fullName = readText(formData, "full_name").replace(/\s+/g, " ");
-  const mobile = readText(formData, "mobile");
-  const instagram = readText(formData, "instagram");
-  const birthday = readText(formData, "birthday");
-  const values = { full_name: fullName, mobile, instagram, birthday };
+// The details a client may edit on My Profile (their column names).
+// (Revisions part 1, item 7: ONLY these three. The email and birthday are
+// read-only there; the database blocks changing them too, migration 12.)
+const EDITABLE_FIELDS = ["full_name", "mobile", "instagram"] as const;
 
-  // Check every field first, so the person sees all problems at once
-  const fieldErrors: Record<string, string> = {};
-  if (!fullName) {
-    fieldErrors.full_name = "Please enter your full name.";
-  } else if (fullName.length > 120) {
-    fieldErrors.full_name = "Please use 120 characters or fewer.";
+// Saves ONE of the person's details (the pen icon on My Profile).
+// Takes: the previous state, and the form: field (full_name, mobile or
+// instagram) and value.
+// Gives back: a field error, a general error, or a success message, with the
+// value as it was saved (so the row can show it straight away).
+export async function updateProfileField(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
+  const field = readText(formData, "field");
+  // Squash double spaces ("Juan  Cruz" -> "Juan Cruz")
+  const value = readText(formData, "value").replace(/\s+/g, " ");
+  const values = { value };
+
+  // Only the three editable details; anything else is refused
+  if (!(EDITABLE_FIELDS as readonly string[]).includes(field)) {
+    return { error: "That detail can't be changed here.", values };
   }
-  if (!isValidMobile(mobile)) {
-    fieldErrors.mobile = "Please enter a valid mobile number, for example 0917 123 4567.";
+
+  // Check the new value, with the same rules as sign-up and booking
+  let problem: string | null = null;
+  if (field === "full_name") {
+    if (!value) problem = "Please enter your full name.";
+    else if (value.length > 120) problem = "Please use 120 characters or fewer.";
+  } else if (field === "mobile") {
+    if (!isValidMobile(value)) problem = "Please enter a valid mobile number, for example 0917 123 4567.";
+  } else if (value && !isValidInstagram(value)) {
+    problem = "Please enter just your Instagram name, for example @yourname.";
   }
-  if (instagram && !isValidInstagram(instagram)) {
-    fieldErrors.instagram = "Please enter just your Instagram name, for example @yourname.";
-  }
-  if (birthday && !isValidBirthday(birthday)) {
-    fieldErrors.birthday = "Please pick a real date in the past.";
-  }
-  if (Object.keys(fieldErrors).length > 0) {
-    return { fieldErrors, values };
+  if (problem) {
+    return { fieldErrors: { value: problem }, values };
   }
 
   const supabase = await createClient();
@@ -194,104 +194,64 @@ export async function updateProfile(_previous: AccountFormState, formData: FormD
   // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
   if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR, values };
 
-  // Row Level Security only lets them change their OWN row, and the
-  // database trigger (migration 2) blocks role / is_active changes anyway.
+  // Instagram is saved without the "@" (and empty = none)
+  const saved = field === "instagram" ? value.replace(/^@/, "") || null : value;
+  // The one column to change (written out, so TypeScript checks each name)
+  const change =
+    field === "full_name" ? { full_name: value } : field === "mobile" ? { mobile: value } : { instagram: saved };
+
+  // Row Level Security only lets them change their OWN row; the database
+  // triggers block role / is_active (migration 2) and email / birthday
+  // (migration 12) anyway.
   const { error } = await supabase
     .from("profiles")
-    .update({
-      full_name: fullName,
-      mobile,
-      instagram: instagram.replace(/^@/, "") || null, // saved without the "@"
-      birthday: birthday || null,
-    })
+    .update(change)
     .eq("id", userId);
   if (error) {
     console.error("Profile was not saved:", error.code);
     return { error: GENERIC_ERROR, values };
   }
 
-  // Draw the page again, so the header shows the new name straight away
+  // Draw the page again, so the header and the avatar show the new name
   refresh();
-  return { success: "Your details are saved.", values };
+  return { success: "Saved.", values: { value: saved ?? "" } };
 }
 
 // ---------------------------------------------------------------------------
-// MY PROFILE: change password
+// MY BIRTHDAY: saved once (the /account/birthday page)
 // ---------------------------------------------------------------------------
 
-// Changes the person's password, after checking their CURRENT password.
-// Takes: the previous state, and the form: current_password, new_password,
-// confirm_password.
-// Gives back: field errors, a general error, or a success message.
-// The current password is checked by Supabase itself: we send it as
-// current_password, and the project setting "Require current password when
-// updating" (Authentication > Providers > Email) makes Supabase refuse a
-// wrong one. (Forgot password links are allowed without it, by Supabase's
-// design, so /reset-password keeps working.)
-export async function changePassword(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
-  const currentPassword = readPassword(formData, "current_password");
-  const newPassword = readPassword(formData, "new_password");
-  const confirmPassword = readPassword(formData, "confirm_password");
+// Saves the person's birthday, for accounts that don't have one yet.
+// Takes: the previous state, and the form: birthday (YYYY-MM-DD) and next
+// (the page they were going to, checked by safeNextPath()).
+// Gives back: a field error or a general error, or (when it works) sends
+// them on to "next" (or My Profile).
+// The database only allows this ONCE: a saved birthday can't be changed
+// from the website (migration 12's trigger), so this can't be used to edit it.
+export async function saveBirthday(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
+  const birthday = readText(formData, "birthday");
+  const next = safeNextPath(formData.get("next"));
+  const values = { birthday };
 
-  const fieldErrors: Record<string, string> = {};
-  if (!currentPassword) {
-    fieldErrors.current_password = "Please enter your current password.";
-  }
-  if (newPassword.length < MIN_PASSWORD_LENGTH) {
-    fieldErrors.new_password = `Please use at least ${MIN_PASSWORD_LENGTH} characters.`;
-  } else if (newPassword === currentPassword) {
-    fieldErrors.new_password = "Please choose a password that's different from your current one.";
-  }
-  if (confirmPassword !== newPassword) {
-    fieldErrors.confirm_password = "The two new passwords don't match.";
-  }
-  if (Object.keys(fieldErrors).length > 0) {
-    return { fieldErrors };
+  if (!isValidBirthday(birthday)) {
+    return { fieldErrors: { birthday: "Please pick a real date in the past." }, values };
   }
 
   const supabase = await createClient();
-  if (!(await loggedInUserId(supabase))) return { error: LOGGED_OUT_ERROR };
+  const userId = await loggedInUserId(supabase);
+  if (!userId) return { error: LOGGED_OUT_ERROR, values };
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR, values };
 
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword,
-    current_password: currentPassword,
-  });
+  // Only fills it in when it's still empty (.is("birthday", null)), so a
+  // second click or an old tab changes nothing
+  const { error } = await supabase.from("profiles").update({ birthday }).eq("id", userId).is("birthday", null);
   if (error) {
-    // A wrong current password belongs next to that field
-    if (error.code === "current_password_mismatch" || error.code === "current_password_required") {
-      return { fieldErrors: { current_password: friendlyAuthError(error) } };
-    }
-    // Log only the error code, never the passwords
-    console.error("Password was not changed:", error.code ?? error.status);
-    return { error: friendlyAuthError(error) };
+    // The trigger's own messages (e.g. "already saved") are plain English
+    return { error: friendlyDatabaseError(error), values };
   }
 
-  return { success: "Your password has been changed. Use the new one next time you log in." };
-}
-
-// ---------------------------------------------------------------------------
-// MY PROFILE: deactivate my account
-// ---------------------------------------------------------------------------
-
-// Deactivates the person's own account, then logs them out everywhere.
-// Takes: the previous state, and the form: confirm = "on" (the "I understand"
-// tick in the confirm step).
-// Gives back: an error to show, or (when it works) sends them to
-// /auth/deactivated, which logs them out on all devices and shows the login
-// page with a message. Only the cafe (an admin) can reactivate the account.
-export async function deactivateAccount(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
-  if (formData.get("confirm") !== "on") {
-    return { fieldErrors: { confirm: "Please tick this to confirm." } };
-  }
-
-  const supabase = await createClient();
-  // deactivate_my_account() (migration 3) only ever changes the caller's own row
-  const { error } = await supabase.rpc("deactivate_my_account");
-  if (error) {
-    return { error: friendlyDatabaseError(error) };
-  }
-
-  redirect("/auth/deactivated");
+  // On to where they were going (redirect() must be last, outside try/catch)
+  redirect(next ?? "/account/profile");
 }
 
 // ---------------------------------------------------------------------------
@@ -320,6 +280,25 @@ export async function setEmailReminders(previous: ReminderState, formData: FormD
 }
 
 // ---------------------------------------------------------------------------
+// NOTIFICATIONS: mark the in-app updates as read
+// ---------------------------------------------------------------------------
+
+// Marks all of the person's own notifications as read (migration 12).
+// Takes: nothing.
+// Gives back: nothing. Called once by the Notifications page after it has
+// shown the list (src/components/account/MarkNotificationsRead.tsx), so the
+// "New" labels are seen first. mark_my_notifications_read() only ever
+// touches the caller's OWN rows. A problem is only logged: the updates just
+// stay "new" until the next visit.
+export async function markNotificationsRead(): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mark_my_notifications_read");
+  if (error) {
+    console.error("Notifications were not marked as read:", error.code);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Small helpers (not exported, so the browser can't call them)
 // ---------------------------------------------------------------------------
 
@@ -338,12 +317,4 @@ async function loggedInUserId(supabase: Awaited<ReturnType<typeof createClient>>
 function readText(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
-}
-
-// Reads a password field exactly as typed (spaces count in passwords).
-// Takes: the form data and the field name.
-// Gives back: the password, or "" if it's missing.
-function readPassword(formData: FormData, name: string): string {
-  const value = formData.get(name);
-  return typeof value === "string" ? value : "";
 }

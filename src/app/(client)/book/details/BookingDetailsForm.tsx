@@ -1,12 +1,23 @@
 "use client";
-// The booking step 2 form: your details, health questions, drink, mat,
-// voucher code, the two required ticks, and a live price summary.
+// The booking step 2 form: your details (shown from your profile), health
+// notes, drink, voucher code, the two required ticks, and a live price summary.
 // After "Change details" on the pay page it starts with the earlier choices.
 // Where it's used: src/app/(client)/book/details/page.tsx.
 //
+// Revisions part 1, item 5:
+//   - name, mobile and Instagram are SHOWN, not typed. They come from the
+//     profile; "Edit in My Profile" opens My Profile (with a link back here).
+//     holdSeat() reads them from the profile on the server.
+//   - the mat was chosen on step 1. It's sent as a hidden field and shown in
+//     the class card and the price summary ("Change" goes back to step 1).
+//   - no "Is this your first Pilates class?" question (the database column
+//     stays; book_seat() saves its default, false)
+//   - what's typed here (drink, notes, voucher code) is kept in this browser
+//     tab while the person goes back to step 1 and returns (sessionStorage)
+//
 // "use client" = it runs in the browser too, so the total changes straight
-// away when a mat is picked or a voucher is applied. The real work happens
-// on the server: previewVoucher() and holdSeat() in src/lib/booking/actions.ts.
+// away when a voucher is applied. The real work happens on the server:
+// previewVoucher() and holdSeat() in src/lib/booking/actions.ts.
 // The total shown here is only a preview. book_seat() in the database works
 // out the real one from the settings table.
 //
@@ -14,9 +25,18 @@
 // and even if two clicks got through, book_seat() refuses a second seat in
 // the same class and holdSeat() then simply opens the first hold's pay page.
 
-import { Tag, TriangleAlert, X } from "lucide-react";
+import { Pencil, Tag, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
-import { type FormEvent, type KeyboardEvent, type ReactNode, useActionState, useEffect, useRef, useState, useTransition } from "react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { BookingAside, BookingColumns } from "@/components/booking/BookingLayout";
 import { PriceSummary } from "@/components/booking/PriceSummary";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
@@ -24,7 +44,6 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormMessage } from "@/components/ui/FormMessage";
-import { Input } from "@/components/ui/Input";
 import { Overline } from "@/components/ui/Overline";
 import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
 import { Textarea } from "@/components/ui/Textarea";
@@ -32,6 +51,13 @@ import { holdSeat, previewVoucher } from "@/lib/booking/actions";
 import { emptyHoldSeatState, type VoucherPreview } from "@/lib/booking/form-state";
 import { cn } from "@/lib/cn";
 import { formatPeso } from "@/lib/format";
+
+// Where this tab keeps what was typed (only in this browser tab, cleared
+// when the tab is closed or the form is sent).
+const DRAFT_KEY = "b69-booking-draft";
+
+// What's kept while going back and forth between the steps.
+type Draft = { drink_choice?: string; health_notes?: string; voucher_code?: string };
 
 type BookingDetailsFormProps = {
   // The class being booked (already formatted by the page)
@@ -42,8 +68,11 @@ type BookingDetailsFormProps = {
     badgeLabel: string; // "3 of 4 left"
     badgeVariant: BadgeVariant;
   };
-  // What we already know about the person (from their profile)
+  // What we know about the person (from their profile), shown not edited
   profile: { fullName: string; mobile: string; email: string; instagram: string };
+  editProfileHref: string; // My Profile, with a link back to this page
+  matRental: boolean; // chosen on step 1 (or kept from a released hold)
+  changeClassHref: string; // step 1 with this class and mat tick picked again
   classPrice: number; // pesos, from settings
   matPrice: number; // pesos, from settings
   drinkOptions: string[]; // from the drink_options setting
@@ -61,7 +90,6 @@ type BookingDetailsFormProps = {
 export type KeptChoices = {
   drinkChoice: string; // "" if none
   matRental: boolean;
-  firstTime: boolean;
   healthNotes: string; // "" if none
   // The old hold's voucher, checked again just now: ok (still works, so it's
   // applied straight away) or not ok (with the reason), or null if none
@@ -71,6 +99,28 @@ export type KeptChoices = {
 // A voucher code that passed the "Apply" check.
 type AppliedVoucher = { code: string; label: string; discount: number };
 
+// Reads the kept draft from this browser tab.
+// Takes: nothing. Gives back: the draft, or null (none, or storage blocked).
+function readDraft(): Draft | null {
+  try {
+    const text = window.sessionStorage.getItem(DRAFT_KEY);
+    return text ? (JSON.parse(text) as Draft) : null;
+  } catch {
+    return null; // private mode or blocked storage: just start empty
+  }
+}
+
+// Saves (or, with null, deletes) the draft in this browser tab.
+// Takes: the draft or null. Gives back: nothing. Never throws.
+function writeDraft(draft: Draft | null) {
+  try {
+    if (draft) window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    else window.sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Storage blocked: the form still works, it just can't remember
+  }
+}
+
 // The step 2 form.
 // Takes: the props above.
 // Gives back: the form. On success the server sends the person to the pay
@@ -78,6 +128,9 @@ type AppliedVoucher = { code: string; label: string; discount: number };
 export function BookingDetailsForm({
   session,
   profile,
+  editProfileHref,
+  matRental,
+  changeClassHref,
   classPrice,
   matPrice,
   drinkOptions,
@@ -94,17 +147,7 @@ export function BookingDetailsForm({
   // empties the form after each send, then refills it from these), or else
   // the kept choices from a released hold, or else nothing
   const values: Partial<Record<string, string>> =
-    state.values ??
-    (kept
-      ? {
-          drink_choice: kept.drinkChoice,
-          first_time: kept.firstTime ? "yes" : "no",
-          health_notes: kept.healthNotes,
-        }
-      : {});
-
-  // The mat choice is "controlled" (kept in React) because the total uses it
-  const [mat, setMat] = useState<"yes" | "no">(kept?.matRental ? "yes" : "no");
+    state.values ?? (kept ? { drink_choice: kept.drinkChoice, health_notes: kept.healthNotes } : {});
 
   // The voucher box. A kept voucher that still works starts applied; one
   // that doesn't starts with the reason shown.
@@ -120,12 +163,17 @@ export function BookingDetailsForm({
   const codeRef = useRef<HTMLInputElement>(null);
 
   const formRef = useRef<HTMLFormElement>(null);
+  // Has the kept draft been put back yet? (Only once, when the page opens.)
+  const restoredRef = useRef(false);
 
   // The live price preview (the database works out the real one)
-  const matFee = mat === "yes" ? matPrice : 0;
+  const matFee = matRental ? matPrice : 0;
   const discount = applied ? Math.min(applied.discount, classPrice) : 0;
   const total = classPrice + matFee - discount;
   const discountLabel = applied ? `${applied.code} (${applied.label})` : undefined;
+
+  // The profile must have a name and a mobile number before booking
+  const profileMissing = !profile.fullName || !profile.mobile;
 
   // After the server answers with a problem, move to it: the first field
   // with an error, or else the message box. (Important on phones, where the
@@ -140,13 +188,53 @@ export function BookingDetailsForm({
     target?.focus({ preventScroll: true });
   }, [state]);
 
-  // Checks the typed voucher code ("Apply").
-  // Takes: nothing (reads the box). Gives back: nothing; shows the discount
-  // or the reason it can't be used.
-  function applyCode() {
+  // When the page opens: put back what was typed before going back to step 1
+  // (drink, notes, voucher code), unless the form already has better values
+  // (a released hold's choices). Runs once.
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    if (kept) return;
+    const draft = readDraft();
+    const form = formRef.current;
+    if (!draft || !form) return;
+
+    // The drink: tick the radio button with that name, if it's still an option
+    if (draft.drink_choice) {
+      const radio = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="drink_choice"]')).find(
+        (input) => input.value === draft.drink_choice,
+      );
+      if (radio) radio.checked = true;
+    }
+    // The notes
+    const notes = form.elements.namedItem("health_notes");
+    if (draft.health_notes && notes instanceof HTMLTextAreaElement && !notes.value) {
+      notes.value = draft.health_notes;
+    }
+    // The voucher code: checked again, as if Apply was pressed
+    if (draft.voucher_code) checkCode(draft.voucher_code);
+  }, [kept]);
+
+  // Saves what's typed so far in this tab (on every change in the form).
+  // Takes: nothing (reads the form). Gives back: nothing.
+  function saveDraft() {
+    const form = formRef.current;
+    if (!form) return;
+    const data = new FormData(form);
+    writeDraft({
+      drink_choice: String(data.get("drink_choice") ?? ""),
+      health_notes: String(data.get("health_notes") ?? ""),
+      voucher_code: String(data.get("voucher_code") ?? ""),
+    });
+  }
+
+  // Checks a voucher code and shows the discount or the reason it can't be used.
+  // Takes: the code. Gives back: nothing.
+  function checkCode(code: string) {
     setVoucherError(null);
+    setCodeInput(code);
     startCheckingCode(async () => {
-      const result = await previewVoucher(codeInput);
+      const result = await previewVoucher(code);
       if (result.ok) {
         setApplied({ code: result.code, label: result.label, discount: result.discount });
         setCodeInput(result.code); // show it the way it's saved (capitals)
@@ -155,6 +243,11 @@ export function BookingDetailsForm({
         setVoucherError(result.error);
       }
     });
+  }
+
+  // The "Apply" button: checks the typed code.
+  function applyCode() {
+    checkCode(codeInput);
   }
 
   // Takes the voucher off again ("Remove").
@@ -175,39 +268,47 @@ export function BookingDetailsForm({
 
   // Runs just before the form is sent.
   // A code that was typed but never checked would surprise people (it might
-  // not work), so ask them to Apply it, or clear it, first.
+  // not work), so ask them to Apply it, or clear it, first. Otherwise the
+  // kept draft is no longer needed (after an error, the server's answer
+  // fills the form back in).
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     if (codeInput.trim() && !applied) {
       event.preventDefault(); // stops the form being sent
       setVoucherError("Tap Apply to check your code first, or clear the box.");
       codeRef.current?.focus();
+      return;
     }
+    writeDraft(null);
   }
 
   // Error text for one field, from the server's last answer
   const fieldError = (name: string) => state.fieldErrors?.[name];
 
   return (
-    <form ref={formRef} action={formAction} onSubmit={onSubmit} noValidate>
-      {/* Which class: sent with the form (book_seat checks it again) */}
+    <form ref={formRef} action={formAction} onSubmit={onSubmit} onChange={saveDraft} noValidate>
+      {/* Which class and mat: sent with the form (book_seat checks it again) */}
       <input type="hidden" name="session_id" value={session.id} />
+      <input type="hidden" name="mat_rental" value={matRental ? "yes" : "no"} />
 
       <BookingColumns>
         <div className="flex min-w-0 flex-col gap-6">
-          {/* ===== The class you picked ===== */}
+          {/* ===== The class (and mat) you picked on step 1 ===== */}
           <Card className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-ink">
                 {session.dateLabel} · {session.timeLabel}
               </p>
-              <p className="text-xs text-muted">Mindful Mat Pilates · Beginner</p>
+              <p className="text-xs text-muted">
+                Mindful Mat Pilates · Beginner ·{" "}
+                {matRental ? `Renting a mat (+${formatPeso(matPrice)}, to the strays)` : "Bringing my own mat"}
+              </p>
             </div>
             <Badge variant={session.badgeVariant}>{session.badgeLabel}</Badge>
             <Link
-              href={`/book?session=${session.id}`}
+              href={changeClassHref}
               className="inline-flex min-h-11 items-center text-[13px] font-semibold text-brown underline-offset-4 hover:underline"
             >
-              Change<span className="sr-only"> class</span>
+              Change<span className="sr-only"> class or mat</span>
             </Link>
           </Card>
 
@@ -242,56 +343,32 @@ export function BookingDetailsForm({
             </div>
           )}
 
-          {/* ===== About you ===== */}
-          <section aria-labelledby="about-you" className="flex flex-col gap-4">
-            <Overline as="h2" id="about-you">
-              About you
-            </Overline>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                label="Full name"
-                name="full_name"
-                autoComplete="name"
-                required
-                maxLength={120}
-                defaultValue={values.full_name ?? profile.fullName}
-                error={fieldError("full_name")}
-              />
-              <Input
-                label="Mobile number"
-                name="mobile"
-                type="tel"
-                autoComplete="tel"
-                inputMode="tel"
-                required
-                placeholder="0917 123 4567"
-                defaultValue={values.mobile ?? profile.mobile}
-                error={fieldError("mobile")}
-              />
-              <Input
-                label="Email"
-                name="email_display"
-                type="email"
-                // Only shown: the login email is changed in My Account, not here
-                readOnly
-                aria-readonly="true"
-                required
-                value={profile.email}
-                hint="Your login email. Change it in My Account."
-              />
-              <Input
-                label="Instagram"
-                name="instagram"
-                autoComplete="off"
-                placeholder="@yourname"
-                maxLength={31}
-                defaultValue={values.instagram ?? profile.instagram}
-                error={fieldError("instagram")}
-              />
+          {/* ===== About you (from the profile, not edited here) ===== */}
+          <section aria-labelledby="about-you" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-4">
+              <Overline as="h2" id="about-you">
+                About you
+              </Overline>
+              <Link
+                href={editProfileHref}
+                className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-brown underline-offset-4 hover:underline"
+              >
+                <Pencil aria-hidden="true" className="size-3.5" />
+                Edit in My Profile
+              </Link>
             </div>
-            <p className="text-xs text-muted">
-              We save your name, mobile and Instagram to your profile for next time.
-            </p>
+            {profileMissing && (
+              <FormMessage tone="error">
+                Please add your full name and mobile number in My Profile before booking, so the
+                cafe can reach you.
+              </FormMessage>
+            )}
+            <dl className="grid gap-x-4 gap-y-3 rounded-[20px] border border-line bg-card p-4 sm:grid-cols-2">
+              <ShownDetail label="Full name" value={profile.fullName} />
+              <ShownDetail label="Mobile number" value={profile.mobile} />
+              <ShownDetail label="Email" value={profile.email} />
+              <ShownDetail label="Instagram" value={profile.instagram} optional />
+            </dl>
           </section>
 
           {/* ===== Health ===== */}
@@ -299,15 +376,6 @@ export function BookingDetailsForm({
             <Overline as="h2" id="health">
               Health
             </Overline>
-            <RadioGroup
-              legend="Is this your first Pilates class?"
-              name="first_time"
-              error={fieldError("first_time")}
-              className="grid grid-cols-2 gap-2"
-            >
-              <RadioOption name="first_time" value="yes" label="Yes" defaultChecked={values.first_time === "yes"} />
-              <RadioOption name="first_time" value="no" label="No" defaultChecked={values.first_time === "no"} />
-            </RadioGroup>
             <Textarea
               label="Injuries or medical notes"
               name="health_notes"
@@ -319,12 +387,12 @@ export function BookingDetailsForm({
             />
           </section>
 
-          {/* ===== Drink and mat ===== */}
-          <section aria-labelledby="extras" className="flex flex-col gap-5">
-            <Overline as="h2" id="extras">
-              Your drink and mat
-            </Overline>
-            {drinkOptions.length > 0 && (
+          {/* ===== Drink ===== */}
+          {drinkOptions.length > 0 && (
+            <section aria-labelledby="extras" className="flex flex-col gap-5">
+              <Overline as="h2" id="extras">
+                Your drink
+              </Overline>
               <RadioGroup
                 legend="Your free upsized drink"
                 name="drink_choice"
@@ -341,26 +409,8 @@ export function BookingDetailsForm({
                   />
                 ))}
               </RadioGroup>
-            )}
-            <RadioGroup legend="Mat" name="mat_rental" error={fieldError("mat_rental")}>
-              <RadioOption
-                name="mat_rental"
-                value="yes"
-                label="Rent a mat"
-                aside={`+${formatPeso(matPrice)} to the strays`}
-                description="All of the rental is donated to feed stray animals."
-                checked={mat === "yes"}
-                onChange={() => setMat("yes")}
-              />
-              <RadioOption
-                name="mat_rental"
-                value="no"
-                label="I'll bring my own mat"
-                checked={mat === "no"}
-                onChange={() => setMat("no")}
-              />
-            </RadioGroup>
-          </section>
+            </section>
+          )}
 
           {whatToBring}
 
@@ -480,11 +530,19 @@ export function BookingDetailsForm({
                 <br />
                 <span className="font-normal text-muted">{session.timeLabel}</span>
               </p>
-              <PriceSummary classFee={classPrice} matFee={matFee} discount={discount} discountLabel={discountLabel} total={total} />
+              {/* The total is shown right under this list, so it's left out here */}
+              <PriceSummary
+                classFee={classPrice}
+                matFee={matFee}
+                discount={discount}
+                discountLabel={discountLabel}
+                total={total}
+                showTotal={false}
+              />
             </div>
           }
           action={
-            <Button type="submit" fullWidth disabled={pending}>
+            <Button type="submit" fullWidth disabled={pending || profileMissing}>
               {pending ? "Holding your seat…" : "Confirm and hold seat"}
             </Button>
           }
@@ -492,6 +550,23 @@ export function BookingDetailsForm({
         />
       </BookingColumns>
     </form>
+  );
+}
+
+// One detail from the profile, shown as text (not a box to type in).
+// Takes: the label, the value, and optional = shows "(optional)" and
+// "Not added" when empty.
+// Gives back: a <div> with a <dt> and <dd> (inside the details <dl>).
+function ShownDetail({ label, value, optional = false }: { label: string; value: string; optional?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-semibold text-brown">
+        {label} {optional && <span className="font-normal text-muted">(optional)</span>}
+      </dt>
+      <dd className="break-all text-sm text-ink">
+        {value || <span className="text-muted">{optional ? "Not added" : "Missing"}</span>}
+      </dd>
+    </div>
   );
 }
 

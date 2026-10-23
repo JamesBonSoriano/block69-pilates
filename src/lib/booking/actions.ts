@@ -23,7 +23,7 @@ import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
 import { getPublicSettings } from "@/lib/data/settings";
 import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
-import { isUuid, isValidInstagram, isValidMobile } from "@/lib/validation";
+import { isUuid, isValidMobile } from "@/lib/validation";
 
 // The longest health note book_seat() accepts (it refuses longer ones).
 const MAX_HEALTH_NOTES = 1000;
@@ -74,9 +74,11 @@ export async function previewVoucher(code: unknown): Promise<VoucherPreview> {
 
 // Holds a seat for the logged-in client by calling book_seat().
 // Takes: the previous form state, and the step 2 form:
-//   session_id, full_name, mobile, instagram (optional), first_time (yes/no),
-//   health_notes (optional), drink_choice, mat_rental (yes/no),
-//   voucher_code (optional), not_pregnant (on), agreed (on).
+//   session_id, health_notes (optional), drink_choice, mat_rental (yes/no,
+//   chosen on step 1), voucher_code (optional), not_pregnant (on), agreed (on).
+// Name, mobile and Instagram are NOT in the form any more (Revisions part 1):
+// they come from the person's profile, which must have a name and mobile.
+// "First Pilates class?" isn't asked any more; book_seat() saves false.
 // Gives back: field errors or a general error to show. When it works it
 // doesn't give anything back: it sends the person to the pay page.
 // Special cases (both send the person on instead of showing an error):
@@ -85,11 +87,6 @@ export async function previewVoucher(code: unknown): Promise<VoucherPreview> {
 //   - they are already booked and paid for this class: go to its booked page
 export async function holdSeat(_previous: HoldSeatState, formData: FormData): Promise<HoldSeatState> {
   const sessionId = readText(formData, "session_id");
-  // Squash double spaces in the name ("Juan  Cruz" -> "Juan Cruz")
-  const fullName = readText(formData, "full_name").replace(/\s+/g, " ");
-  const mobile = readText(formData, "mobile");
-  const instagram = readText(formData, "instagram");
-  const firstTime = readText(formData, "first_time");
   const healthNotes = readText(formData, "health_notes");
   const drinkChoice = readText(formData, "drink_choice");
   const matRental = readText(formData, "mat_rental");
@@ -100,10 +97,6 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
 
   // Everything typed, so the form can fill it back in after an error
   const values = {
-    full_name: fullName,
-    mobile,
-    instagram,
-    first_time: firstTime,
     health_notes: healthNotes,
     drink_choice: drinkChoice,
     mat_rental: matRental,
@@ -120,20 +113,6 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
   //        (book_seat checks the important ones again.)
   const settings = await getPublicSettings();
   const fieldErrors: Record<string, string> = {};
-  if (!fullName) {
-    fieldErrors.full_name = "Please enter your full name.";
-  } else if (fullName.length > 120) {
-    fieldErrors.full_name = "Please use 120 characters or fewer.";
-  }
-  if (!isValidMobile(mobile)) {
-    fieldErrors.mobile = "Please enter a valid mobile number, for example 0917 123 4567.";
-  }
-  if (instagram && !isValidInstagram(instagram)) {
-    fieldErrors.instagram = "Please enter just your Instagram name, for example @yourname.";
-  }
-  if (firstTime !== "yes" && firstTime !== "no") {
-    fieldErrors.first_time = "Please tell us if this is your first Pilates class.";
-  }
   if (healthNotes.length > MAX_HEALTH_NOTES) {
     fieldErrors.health_notes = `Please keep this under ${MAX_HEALTH_NOTES} characters.`;
   }
@@ -141,7 +120,8 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
     fieldErrors.drink_choice = "Please pick your free drink.";
   }
   if (matRental !== "yes" && matRental !== "no") {
-    fieldErrors.mat_rental = "Please choose if you'll rent a mat or bring your own.";
+    // A hidden field from step 1; only a changed page could send anything else
+    return { error: "Please pick your class and mat again.", values, pickAnother: true };
   }
   if (!notPregnant) {
     fieldErrors.not_pregnant = "Please confirm this. The class is not suitable during pregnancy.";
@@ -166,6 +146,24 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
     return { error: STAFF_ACCOUNT_ERROR, values };
   }
 
+  // The name and mobile come from their profile now. Row Level Security only
+  // lets them read their OWN profile row.
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("full_name, mobile")
+    .eq("id", userId)
+    .maybeSingle();
+  if (profileError) {
+    console.error("Could not read the profile before booking:", profileError.code);
+    return { error: GENERIC_ERROR, values };
+  }
+  if (!profile?.full_name?.trim() || !isValidMobile(profile.mobile ?? "")) {
+    return {
+      error: "Please add your full name and a valid mobile number in My Profile first, so the cafe can reach you.",
+      values,
+    };
+  }
+
   // --- 3. Hold the seat. book_seat() does it all in ONE locked step: seat
   //        check, cutoff, one seat per person, prices from settings, voucher
   //        (class fee only), and a 15-minute hold. We never send a price.
@@ -175,7 +173,6 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
     p_agreed: agreed,
     p_mat_rental: matRental === "yes",
     p_drink_choice: drinkChoice || undefined,
-    p_first_time: firstTime === "yes",
     p_health_notes: healthNotes || undefined,
     p_voucher_code: voucherCode || undefined,
   });
@@ -206,19 +203,7 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
     return { error: GENERIC_ERROR, values };
   }
 
-  // --- 4. Save the name, mobile and Instagram to their profile, so next
-  //        time the form is already filled in. (book_seat doesn't save them.
-  //        Row Level Security only lets them change their OWN profile.)
-  //        If this fails the seat is still held, so we only log it.
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({ full_name: fullName, mobile, instagram: instagram.replace(/^@/, "") || null })
-    .eq("id", userId);
-  if (profileError) {
-    console.error("Booking saved, but the profile was not updated:", profileError.code);
-  }
-
-  // --- 5. On to step 3. (redirect() must be the last step, outside try/catch.)
+  // --- 4. On to step 3. (redirect() must be the last step, outside try/catch.)
   redirect(`/book/pay/${booking.booking_id}`);
 }
 

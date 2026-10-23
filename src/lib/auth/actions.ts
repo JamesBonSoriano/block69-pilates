@@ -30,7 +30,7 @@ import {
 import { safeNextPath } from "@/lib/auth/safe-next";
 import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
-import { isValidMobile } from "@/lib/validation";
+import { isValidBirthday, isValidMobile } from "@/lib/validation";
 
 // A simple "looks like an email" check (Supabase does the real check).
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -63,7 +63,7 @@ export async function adminLogIn(_previous: AuthFormState, formData: FormData): 
 // ---------------------------------------------------------------------------
 
 // Makes a new client account.
-// Takes: the previous form state, and the form (full_name, mobile, email,
+// Takes: the previous form state, and the form (full_name, mobile, birthday, email,
 // password, optional hidden "next").
 // Gives back: field errors, a general error, or a "check your email" message.
 // If Supabase logs them in straight away ("Confirm email" is off), it sends
@@ -75,10 +75,11 @@ export async function adminLogIn(_previous: AuthFormState, formData: FormData): 
 export async function signUp(_previous: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const fullName = readText(formData, "full_name").replace(/\s+/g, " ");
   const mobile = readText(formData, "mobile");
+  const birthday = readText(formData, "birthday");
   const email = readText(formData, "email").toLowerCase();
   const password = readPassword(formData, "password");
   const next = safeNextPath(formData.get("next"));
-  const values = { full_name: fullName, mobile, email };
+  const values = { full_name: fullName, mobile, birthday, email };
 
   // Check every field first, so the person sees all problems at once
   const fieldErrors: Record<string, string> = {};
@@ -89,6 +90,10 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
   }
   if (!isValidMobile(mobile)) {
     fieldErrors.mobile = "Please enter a valid mobile number, for example 0917 123 4567.";
+  }
+  // Required since Revisions part 1 (it can't be changed later by the client)
+  if (!isValidBirthday(birthday)) {
+    fieldErrors.birthday = "Please pick your birthday (a real date in the past).";
   }
   if (!EMAIL_PATTERN.test(email)) {
     fieldErrors.email = "Please enter a valid email address.";
@@ -106,7 +111,7 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
     password,
     options: {
       // Saved on the auth user as "metadata"; the sign-up trigger reads it
-      data: { full_name: fullName, mobile },
+      data: { full_name: fullName, mobile, birthday },
       // Where the "confirm your email" link sends them (only used when
       // "Confirm email" is on). /auth/confirm logs them in, then goes to next.
       emailRedirectTo: `${getSiteUrl()}/auth/confirm?next=${encodeURIComponent(next ?? "/")}`,

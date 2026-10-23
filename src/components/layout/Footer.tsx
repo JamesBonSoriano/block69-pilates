@@ -29,7 +29,9 @@ export async function Footer() {
   return (
     // print:hidden = left out when a page is printed (e.g. a payment receipt)
     <footer className="bg-brown text-sm text-tan-soft print:hidden">
-      <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 lg:grid-cols-3 lg:gap-12 lg:px-8 lg:py-14">
+      {/* pb-24 on phones: room under the last links, so the floating Chat
+          With Us button (ChatButton.tsx) never covers them */}
+      <div className="mx-auto grid max-w-6xl gap-8 px-5 pb-24 pt-10 lg:grid-cols-3 lg:gap-12 lg:px-8 lg:py-14">
         {/* Column 1: the cafe and how to reach it */}
         <div className="flex flex-col gap-1">
           <p className="mb-2 font-heading text-base font-semibold text-white">

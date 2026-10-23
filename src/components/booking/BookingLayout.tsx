@@ -6,6 +6,9 @@
 //     right that stays in view while scrolling
 // Where it's used: booking steps 1, 2 and 3.
 //
+// data-sticky-bar marks the bar, so the floating Chat With Us button
+// (src/components/layout/ChatButton.tsx) moves up above it on phones.
+//
 // How the sticky bar works: `position: sticky; bottom: 0` keeps the bar
 // pinned to the bottom of the screen while its box (BookingColumns) is on
 // screen, then lets it scroll away with the page before the footer. For that
@@ -31,6 +34,18 @@ export function BookingColumns({ children, className }: { children: ReactNode; c
   );
 }
 
+// The classes that make an <aside> the sticky bar on phones and a sticky
+// card on laptops. Shared with booking step 1's Booking details card
+// (src/components/booking/BookingDetailsCard.tsx).
+export const STICKY_ASIDE_CLASSES = cn(
+  // Phone: stuck to the bottom, full width (-mx-5 cancels the page's side
+  // padding), above the page content (z-10). The bottom padding grows on
+  // iPhones with a home bar (safe-area-inset-bottom).
+  "sticky bottom-0 z-10 -mx-5 flex flex-col gap-4 border-t border-line bg-card px-5 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]",
+  // Laptop: a normal card in the right column that sticks near the top
+  "lg:top-6 lg:bottom-auto lg:mx-0 lg:rounded-3xl lg:border lg:p-6",
+);
+
 type BookingAsideProps = {
   total: string; // e.g. "₱550", already formatted
   totalLabel?: string; // the small word above it (default "Total")
@@ -48,14 +63,8 @@ export function BookingAside({ total, totalLabel = "Total", details, action, not
   return (
     <aside
       aria-label="Booking summary"
-      className={cn(
-        // Phone: stuck to the bottom, full width (-mx-5 cancels the page's
-        // side padding), above the page content (z-10). The bottom padding
-        // grows on iPhones with a home bar (safe-area-inset-bottom).
-        "sticky bottom-0 z-10 -mx-5 flex flex-col gap-4 border-t border-line bg-card px-5 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]",
-        // Laptop: a normal card in the right column that sticks near the top
-        "lg:top-6 lg:bottom-auto lg:mx-0 lg:rounded-3xl lg:border lg:p-6",
-      )}
+      data-sticky-bar
+      className={STICKY_ASIDE_CLASSES}
     >
       {details && <div className="hidden lg:block">{details}</div>}
       <div className="flex items-center gap-3 lg:flex-col lg:items-stretch lg:gap-4">

@@ -116,9 +116,10 @@ export default async function run(t) {
     where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'
     order by 1`);
   const weak = tables.filter((x) => !x.rls || x.policies === 0);
-  // (10 = the 9 from migration 1 + booking_admin_actions from migration 10)
-  check('RLS is on, with policies, for every table', '10 tables, all protected',
-    tables.length === 10 && weak.length === 0,
+  // (11 = the 9 from migration 1 + booking_admin_actions from migration 10
+  // + notifications from migration 12)
+  check('RLS is on, with policies, for every table', '11 tables, all protected',
+    tables.length === 11 && weak.length === 0,
     `${tables.length} tables` + (weak.length ? `; NOT protected: ${weak.map((x) => x.name).join(', ')}` : ', all protected'));
 
   // Which of our functions each browser role may call. (Trigger functions are
@@ -151,8 +152,10 @@ export default async function run(t) {
     'book_seat', 'cancel_my_booking', 'check_voucher', 'confirm_free_booking', 'deactivate_my_account', 'generate_sessions',
     // migration 6 (booking pages): read only the caller's own bookings
     // migration 8 (My Account) adds get_my_bookings, get_my_payments, get_my_vouchers
-    'get_my_booking', 'get_my_bookings', 'get_my_payments', 'get_my_session_booking', 'get_my_vouchers',
-    'get_open_sessions', 'is_admin',
+    // migration 12 (client revisions) adds get_my_notifications, mark_my_notifications_read
+    // and my_unread_notification_count (each only touches the caller's own rows)
+    'get_my_booking', 'get_my_bookings', 'get_my_notifications', 'get_my_payments', 'get_my_session_booking', 'get_my_vouchers',
+    'get_open_sessions', 'is_admin', 'mark_my_notifications_read', 'my_unread_notification_count',
     // migration 7 (pay page "Change details"): checks the owner inside
     'release_my_hold', 'save_online_checkout',
     'seats_left', 'start_online_payment', 'submit_manual_payment', 'transfer_my_booking',
