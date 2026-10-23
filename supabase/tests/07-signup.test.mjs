@@ -35,6 +35,34 @@ export default async function run(t) {
   check('Google login\'s "name" is used when there is no full_name', 'Google Name', p?.full_name === 'Google Name', p?.full_name);
 
   // ===========================================================================
+  t.section('Google sign-in (Change 17)');
+  // ===========================================================================
+  // The metadata Supabase saves for a real Google sign-in. Google gives no
+  // phone number or birthday, so both must stay empty: the website then asks
+  // for them on "Finish your profile" before booking.
+  const googleMeta = {
+    iss: 'https://accounts.google.com',
+    sub: '112233445566778899',
+    name: 'Maria Santos',
+    full_name: 'Maria Santos',
+    email: 'maria.santos@school.example',
+    email_verified: true,
+    phone_verified: false,
+    picture: 'https://lh3.googleusercontent.com/a/example',
+    avatar_url: 'https://lh3.googleusercontent.com/a/example',
+    provider_id: '112233445566778899',
+  };
+  const googleId = crypto.randomUUID();
+  await one('insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)',
+    [googleId, 'maria.santos@school.example', googleMeta]);
+  const g = await one('select full_name, email, mobile, birthday, role from public.profiles where id = $1', [googleId]);
+  check('Google account: name and email saved, any email domain allowed', 'Maria Santos / maria.santos@school.example',
+    g?.full_name === 'Maria Santos' && g?.email === 'maria.santos@school.example', g && `${g.full_name} / ${g.email}`);
+  check('Google account: no mobile or birthday yet (asked on "Finish your profile")', 'null / null',
+    g?.mobile === null && g?.birthday === null, g && `${g.mobile} / ${g.birthday}`);
+  check('Google account is a client', 'client', g?.role === 'client', g?.role);
+
+  // ===========================================================================
   t.section('Sign-up can\'t make an admin');
   // ===========================================================================
   // Anyone can call Supabase's sign-up directly and add their own metadata,

@@ -4,7 +4,7 @@
 //   My Bookings (src/components/account/CancelBookingButton.tsx):  cancelBooking()
 //   Transfer page (src/components/account/TransferForm.tsx):       transferBooking()
 //   My Profile (src/components/account/ProfileForms.tsx):          updateProfileField()
-//   Add your birthday (src/app/(client)/account/birthday/):         saveBirthday()
+//   Finish your profile (src/app/(client)/account/finish-profile/): finishProfile()
 // (Change password and Deactivate my account were taken off My Profile in
 // Revisions part 1. deactivate_my_account() stays in the database, unused.)
 //   Notifications (src/components/account/ReminderSwitch.tsx):     setEmailReminders()
@@ -34,7 +34,15 @@ import type { MyNotification } from "@/lib/data/notifications";
 import { formatManilaDate } from "@/lib/format";
 import { toNotificationListItem } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
-import { isUuid, isValidBirthday, isValidInstagram, isValidMobile } from "@/lib/validation";
+import {
+  BIRTHDAY_ERROR,
+  PH_MOBILE_ERROR,
+  isUuid,
+  isValidInstagram,
+  isValidPhMobile,
+  normalizePhMobile,
+  parseBirthdayInput,
+} from "@/lib/validation";
 
 // Shown when the login has run out (e.g. logged out in another tab).
 const LOGGED_OUT_ERROR = "Please log in again to continue.";
@@ -184,7 +192,8 @@ export async function updateProfileField(_previous: AccountFormState, formData: 
     if (!value) problem = "Please enter your full name.";
     else if (value.length > 120) problem = "Please use 120 characters or fewer.";
   } else if (field === "mobile") {
-    if (!isValidMobile(value)) problem = "Please enter a valid mobile number, for example 0917 123 4567.";
+    // Change 17: 11 digits starting with 09, the same rule as sign-up
+    if (!isValidPhMobile(value)) problem = PH_MOBILE_ERROR;
   } else if (value && !isValidInstagram(value)) {
     problem = "Please enter just your Instagram name, for example @yourname.";
   }
@@ -198,11 +207,13 @@ export async function updateProfileField(_previous: AccountFormState, formData: 
   // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
   if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR, values };
 
-  // Instagram is saved without the "@" (and empty = none)
-  const saved = field === "instagram" ? value.replace(/^@/, "") || null : value;
+  // Instagram is saved without the "@" (and empty = none); the mobile number
+  // without spaces or dashes ("09171234567")
+  const saved =
+    field === "instagram" ? value.replace(/^@/, "") || null : field === "mobile" ? normalizePhMobile(value) : value;
   // The one column to change (written out, so TypeScript checks each name)
   const change =
-    field === "full_name" ? { full_name: value } : field === "mobile" ? { mobile: value } : { instagram: saved };
+    field === "full_name" ? { full_name: value } : field === "mobile" ? { mobile: saved ?? "" } : { instagram: saved };
 
   // Row Level Security only lets them change their OWN row; the database
   // triggers block role / is_active (migration 2) and email / birthday
@@ -222,36 +233,69 @@ export async function updateProfileField(_previous: AccountFormState, formData: 
 }
 
 // ---------------------------------------------------------------------------
-// MY BIRTHDAY: saved once (the /account/birthday page)
+// FINISH YOUR PROFILE (the /account/finish-profile page, Change 17)
 // ---------------------------------------------------------------------------
 
-// Saves the person's birthday, for accounts that don't have one yet.
-// Takes: the previous state, and the form: birthday (YYYY-MM-DD) and next
-// (the page they were going to, checked by safeNextPath()).
-// Gives back: a field error or a general error, or (when it works) sends
-// them on to "next" (or My Profile).
-// The database only allows this ONCE: a saved birthday can't be changed
-// from the website (migration 12's trigger), so this can't be used to edit it.
-export async function saveBirthday(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
-  const birthday = readText(formData, "birthday");
+// Fills in the details a client is missing (new Google accounts, and accounts
+// made before the sign-up form asked for them).
+// Takes: the previous state, and the form: full_name, mobile, birthday
+// (MM/DD/YYYY), only for the ones the page asked for, and next (the page they
+// were going to, checked by safeNextPath()).
+// Gives back: field errors or a general error, or (when it works) sends them
+// on to "next" (or My Profile).
+// It looks at the SAVED profile first and only fills in what is still empty,
+// so it can't be used to change a detail (My Profile does that).
+export async function finishProfile(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
+  const fullName = readText(formData, "full_name").replace(/\s+/g, " ");
+  const mobile = readText(formData, "mobile");
+  const birthdayText = readText(formData, "birthday");
   const next = safeNextPath(formData.get("next"));
-  const values = { birthday };
-
-  if (!isValidBirthday(birthday)) {
-    return { fieldErrors: { birthday: "Please pick a real date in the past." }, values };
-  }
+  const values = { full_name: fullName, mobile, birthday: birthdayText };
 
   const supabase = await createClient();
   const userId = await loggedInUserId(supabase);
   if (!userId) return { error: LOGGED_OUT_ERROR, values };
   if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR, values };
 
-  // Only fills it in when it's still empty (.is("birthday", null)), so a
-  // second click or an old tab changes nothing
-  const { error } = await supabase.from("profiles").update({ birthday }).eq("id", userId).is("birthday", null);
-  if (error) {
-    // The trigger's own messages (e.g. "already saved") are plain English
-    return { error: friendlyDatabaseError(error), values };
+  // What is missing right now? (Row Level Security: their own row only)
+  const { data: profile, error: readError } = await supabase
+    .from("profiles")
+    .select("full_name, mobile, birthday")
+    .eq("id", userId)
+    .maybeSingle();
+  if (readError || !profile) {
+    console.error("Could not read the profile:", readError?.code);
+    return { error: GENERIC_ERROR, values };
+  }
+
+  // Check only the missing ones, with the sign-up rules (src/lib/validation.ts)
+  const fieldErrors: Record<string, string> = {};
+  const change: { full_name?: string; mobile?: string; birthday?: string } = {};
+  if (!profile.full_name.trim()) {
+    if (!fullName) fieldErrors.full_name = "Please enter your full name.";
+    else if (fullName.length > 120) fieldErrors.full_name = "Please use 120 characters or fewer.";
+    else change.full_name = fullName;
+  }
+  if (!profile.mobile?.trim()) {
+    if (!isValidPhMobile(mobile)) fieldErrors.mobile = PH_MOBILE_ERROR;
+    else change.mobile = normalizePhMobile(mobile);
+  }
+  if (!profile.birthday) {
+    const birthday = parseBirthdayInput(birthdayText);
+    if (!birthday) fieldErrors.birthday = BIRTHDAY_ERROR;
+    else change.birthday = birthday;
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    return { fieldErrors, values };
+  }
+
+  if (Object.keys(change).length > 0) {
+    // The database triggers check the birthday again (a real past date)
+    const { error } = await supabase.from("profiles").update(change).eq("id", userId);
+    if (error) {
+      // The trigger's own messages are plain English
+      return { error: friendlyDatabaseError(error), values };
+    }
   }
 
   // On to where they were going (redirect() must be last, outside try/catch)

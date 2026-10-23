@@ -7,6 +7,8 @@
 //   ?error=deactivated      the account was deactivated and has been logged out
 //   ?error=link-expired     an email link was old or already used
 //   ?error=other-browser    an email link was opened in a different browser
+//   ?error=google-failed    Google sign-in was cancelled or didn't work
+//   ?error=admin-google     a staff account tried Google sign-in here
 // Clients who log in (with no "next") go to the Home page. ADMIN accounts
 // can't log in here: they are pointed to /admin/login (src/lib/auth/actions.ts).
 
@@ -31,6 +33,16 @@ const NOTICES = {
   "other-browser": {
     tone: "info",
     text: "Your email link was opened in a different browser, so we couldn't log you in automatically. If you were confirming your email, it's done. Just log in below.",
+  },
+  // Google sign-in (Change 17): cancelled on Google's page, or not set up
+  "google-failed": {
+    tone: "error",
+    text: "Google sign-in didn't finish, so you're not logged in. Please try again, or log in with your email and password.",
+  },
+  // A staff account used Google on the client login (staff use /admin/login)
+  "admin-google": {
+    tone: "error",
+    text: "That Google account belongs to cafe staff. Please use the admin login page instead.",
   },
 } as const;
 

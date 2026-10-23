@@ -13,7 +13,7 @@
 
 # Installed packages (anyone can re-create them with `npm install`)
 node_modules/
-
+hfjh
 # Next.js build output (re-created by `npm run dev` / `npm run build`)
 .next/
 out/

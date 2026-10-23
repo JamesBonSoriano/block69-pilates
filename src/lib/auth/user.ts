@@ -96,19 +96,30 @@ export async function requireUser(nextPath: string): Promise<CurrentUser> {
   return user;
 }
 
-// The one-time "add your birthday" page (Revisions part 1, item 7).
-export const BIRTHDAY_PATH = "/account/birthday";
+// The "Finish your profile" page (Change 17; it replaced Revisions part 1's
+// "add your birthday" page, /account/birthday, which now just forwards here).
+export const FINISH_PROFILE_PATH = "/account/finish-profile";
+
+// Checks if a client still has to fill in "Finish your profile".
+// Takes: the CurrentUser.
+// Gives back: true when the mobile number or the birthday is missing. That's
+// always the case for a new Google account (Google gives neither), and for
+// accounts made before the sign-up form asked for them. Booking needs the
+// mobile number (holdSeat()), so the cafe can reach them.
+export function needsFinishProfile(user: Pick<CurrentUser, "mobile" | "birthday">): boolean {
+  return !user.mobile?.trim() || !user.birthday;
+}
 
 // Use at the top of every CLIENT-only page (booking steps, My Account).
 // Takes: the path of the page (for coming back after logging in, or after
-// adding a birthday).
+// finishing the profile).
 // Gives back: the CurrentUser, but only for a client. Otherwise it sends
 // them somewhere else:
 //   - guests and deactivated accounts: see requireUser()
 //   - an admin: to the admin Dashboard (admins don't book or use My Account;
 //     Revisions part 1, item 1)
-//   - a client with no birthday yet (accounts made before it was required):
-//     to /account/birthday?next=<path>, ONCE. After saving it they come back.
+//   - a client with no mobile number or no birthday yet: to
+//     /account/finish-profile?next=<path>. After saving they come back.
 export async function requireClient(nextPath: string): Promise<CurrentUser> {
   const user = await requireUser(nextPath);
   // requireUser() has already checked the account is active, so an active
@@ -116,9 +127,9 @@ export async function requireClient(nextPath: string): Promise<CurrentUser> {
   if (user.role === "admin") {
     redirect("/admin");
   }
-  // The birthday page itself must not send people to itself
-  if (!user.birthday && !nextPath.startsWith(BIRTHDAY_PATH)) {
-    redirect(`${BIRTHDAY_PATH}?next=${encodeURIComponent(nextPath)}`);
+  // The finish-profile page itself must not send people to itself
+  if (needsFinishProfile(user) && !nextPath.startsWith(FINISH_PROFILE_PATH)) {
+    redirect(`${FINISH_PROFILE_PATH}?next=${encodeURIComponent(nextPath)}`);
   }
   return user;
 }

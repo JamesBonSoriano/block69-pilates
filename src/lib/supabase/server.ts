@@ -20,14 +20,18 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
 import { getSupabaseEnv } from "./env";
+import { REMEMBER_COOKIE, applyRememberChoice, readRememberChoice, type RememberChoice } from "./remember";
 
 // Makes a Supabase client for the current visitor.
-// Takes: nothing (it reads the visitor's cookies itself).
+// Takes: optionally { remember }, the "Save login next time" choice to use
+// (the login actions pass the choice just made on the form). Without it, the
+// choice saved in the b69_remember cookie is used (see ./remember.ts).
 // Gives back: a typed Supabase client acting as the logged-in user (or as a
 // guest if nobody is logged in). Make a NEW one for every request, never share it.
-export async function createClient() {
+export async function createClient(options: { remember?: RememberChoice } = {}) {
   const { url, publishableKey } = getSupabaseEnv();
   const cookieStore = await cookies();
+  const remember = options.remember ?? readRememberChoice(cookieStore.get(REMEMBER_COOKIE)?.value);
 
   return createServerClient<Database>(url, publishableKey, {
     cookies: {
@@ -35,11 +39,12 @@ export async function createClient() {
       getAll() {
         return cookieStore.getAll();
       },
-      // Lets Supabase save refreshed login cookies.
+      // Lets Supabase save new or refreshed login cookies. "Never" makes
+      // them session cookies (deleted when the browser closes).
       setAll(cookiesToSet) {
         try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
+          cookiesToSet.forEach(({ name, value, options: cookieOptions }) =>
+            cookieStore.set(name, value, applyRememberChoice(cookieOptions, remember)),
           );
         } catch {
           // Server Components are not allowed to change cookies, so this fails

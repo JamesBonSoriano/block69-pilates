@@ -17,7 +17,8 @@
 -- -----------------------------------------------------------------------------
 -- PART 1: make the test client "an old account with no birthday"
 -- Then log in as them and open My Account or Book a Class: you should be sent
--- to "One more thing" (/account/birthday) once, and back afterwards.
+-- to "Finish your profile" (/account/finish-profile; Change 17 replaced the
+-- old /account/birthday page) once, and back afterwards.
 -- -----------------------------------------------------------------------------
 update public.profiles
 set birthday = null

@@ -1,11 +1,11 @@
 "use client";
-// The forms on My Profile and on the one-time "Add your birthday" page:
-//   ProfileField  one editable detail (name, mobile or Instagram): shown as
-//                 text with a pen icon; the pen turns it into an input with
-//                 Save and Cancel (Revisions part 1, item 7)
-//   BirthdayForm  the birthday, asked once (/account/birthday)
+// The forms on My Profile and on the "Finish your profile" page:
+//   ProfileField       one editable detail (name, mobile or Instagram): shown
+//                      as text with a pen icon; the pen turns it into an input
+//                      with Save and Cancel (Revisions part 1, item 7)
+//   FinishProfileForm  the missing mobile number / birthday (/account/finish-profile)
 // Where it's used: src/app/(client)/account/profile/page.tsx and
-// src/app/(client)/account/birthday/page.tsx.
+// src/app/(client)/account/finish-profile/page.tsx.
 //
 // "use client" = they switch between showing and editing, and show "Saving…"
 // and errors without a page reload. The work happens in Server Actions
@@ -14,10 +14,11 @@
 
 import { Pencil } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { BirthdayInput } from "@/components/ui/BirthdayInput";
 import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
-import { saveBirthday, updateProfileField } from "@/lib/account/actions";
+import { finishProfile, updateProfileField } from "@/lib/account/actions";
 import { type AccountFormState, emptyAccountFormState } from "@/lib/account/form-state";
 
 // ---------------------------------------------------------------------------
@@ -157,33 +158,65 @@ export function ProfileField({
 }
 
 // ---------------------------------------------------------------------------
-// The birthday (asked once)
+// Finish your profile (Change 17)
 // ---------------------------------------------------------------------------
 
-// The "Add your birthday" form.
-// Takes: next = the safe page to go on to afterwards (or null), and today =
-// today's date "YYYY-MM-DD" (the latest date the picker allows).
-// Gives back: a date field and a Save button. When it works the server
-// sends them on; on a problem it shows the error.
-export function BirthdayForm({ next, today }: { next: string | null; today: string }) {
-  const [state, formAction, pending] = useActionState(saveBirthday, emptyAccountFormState);
+// The "Finish your profile" form: only the details that are missing.
+// Takes: next = the safe page to go on to afterwards (or null), and missing =
+// which details to ask for.
+// Gives back: those fields and a "Save and continue" button. When it works
+// the server sends them on; on a problem it shows the errors and keeps what
+// was typed.
+export function FinishProfileForm({
+  next,
+  missing,
+}: {
+  next: string | null;
+  missing: { fullName: boolean; mobile: boolean; birthday: boolean };
+}) {
+  const [state, formAction, pending] = useActionState(finishProfile, emptyAccountFormState);
+  const errors = state.fieldErrors ?? {};
+  const values = state.values ?? {};
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
       {state.error && <FormMessage tone="error">{state.error}</FormMessage>}
       {next && <input type="hidden" name="next" value={next} />}
-      <Input
-        label="Birthday"
-        name="birthday"
-        type="date"
-        min="1900-01-01"
-        max={today}
-        autoComplete="bday"
-        required
-        defaultValue={state.values?.birthday}
-        error={state.fieldErrors?.birthday}
-        hint="You can only set this once. To change it later, message the cafe."
-      />
+      {missing.fullName && (
+        <Input
+          label="Full name"
+          name="full_name"
+          autoComplete="name"
+          maxLength={120}
+          required
+          defaultValue={values.full_name}
+          error={errors.full_name}
+        />
+      )}
+      {missing.mobile && (
+        <Input
+          label="Mobile number"
+          name="mobile"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="0917 123 4567"
+          required
+          defaultValue={values.mobile}
+          error={errors.mobile}
+          hint="11 digits starting with 09. The cafe uses it to reach you about your class."
+        />
+      )}
+      {missing.birthday && (
+        // key: after an error, start from what they typed
+        <BirthdayInput
+          key={values.birthday ?? ""}
+          name="birthday"
+          required
+          defaultValue={values.birthday}
+          error={errors.birthday}
+        />
+      )}
       <Button type="submit" disabled={pending} className="sm:self-start">
         {pending ? "Saving…" : "Save and continue"}
       </Button>

@@ -7,15 +7,27 @@
 // and the error message without reloading the page. The real work happens on
 // the server in logIn() / adminLogIn() (src/lib/auth/actions.ts), which also
 // refuse an account on the wrong login page.
+//
+// Change 17 (client login only; the admin login is unchanged apart from the
+// show / hide password button):
+//   - "Save login next time": Never (preselected) or Always. Sent as
+//     "remember"; see src/lib/supabase/remember.ts for how it works.
+//   - "or continue with" + "Continue with Google". That button sends THIS
+//     form to signInWithGoogle() instead (formAction), so the Save login
+//     choice goes with it; formNoValidate lets it go without an email or
+//     password typed in.
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { GoogleButton, OrDivider } from "@/components/auth/GoogleButton";
 import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
-import { adminLogIn, logIn } from "@/lib/auth/actions";
+import { PasswordInput } from "@/components/ui/PasswordInput";
+import { adminLogIn, logIn, signInWithGoogle } from "@/lib/auth/actions";
 import { emptyFormState } from "@/lib/auth/form-state";
 import type { LoginPortal } from "@/lib/auth/login-portal";
+import { cn } from "@/lib/cn";
 
 type LoginFormProps = {
   portal: LoginPortal; // "client" (/login) or "admin" (/admin/login)
@@ -67,13 +79,7 @@ export function LoginForm({ portal, next, notice }: LoginFormProps) {
         required
         defaultValue={state.values?.email}
       />
-      <Input
-        label="Password"
-        name="password"
-        type="password"
-        autoComplete="current-password"
-        required
-      />
+      <PasswordInput label="Password" name="password" autoComplete="current-password" required />
 
       <Link
         href="/forgot-password"
@@ -82,9 +88,18 @@ export function LoginForm({ portal, next, notice }: LoginFormProps) {
         Forgot password?
       </Link>
 
+      {portal === "client" && <SaveLoginChoice />}
+
       <Button type="submit" fullWidth disabled={pending}>
         {pending ? "Logging in…" : "Log in"}
       </Button>
+
+      {portal === "client" && (
+        <>
+          <OrDivider />
+          <GoogleButton label="Continue with Google" formAction={signInWithGoogle} formNoValidate />
+        </>
+      )}
 
       {/* Clients can make an account; staff accounts are made by an admin */}
       {portal === "client" ? (
@@ -103,5 +118,39 @@ export function LoginForm({ portal, next, notice }: LoginFormProps) {
         </p>
       )}
     </form>
+  );
+}
+
+// The "Save login next time" choice: two pill-shaped radio buttons.
+// Takes: nothing.
+// Gives back: a fieldset sending remember = "never" (preselected) or "always".
+// The server never stores the password either way; "Never" just makes the
+// login end when the browser is closed.
+function SaveLoginChoice() {
+  // One pill (the radio is hidden but still reachable with the keyboard and
+  // screen readers; the whole pill is its label)
+  const pill = cn(
+    "flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-full border border-line bg-white px-4 text-sm font-semibold text-brown",
+    "has-checked:border-primary has-checked:bg-primary has-checked:text-on-primary",
+    "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
+  );
+  return (
+    <fieldset className="flex flex-col gap-1.5">
+      <legend className="mb-1.5 text-xs font-semibold text-brown">Save login next time</legend>
+      <div className="flex gap-2">
+        <label className={pill}>
+          <input type="radio" name="remember" value="never" defaultChecked className="sr-only" />
+          Never
+        </label>
+        <label className={pill}>
+          <input type="radio" name="remember" value="always" className="sr-only" />
+          Always
+        </label>
+      </div>
+      <p className="text-xs leading-relaxed text-muted">
+        Never: you&apos;re logged out when you close the browser. Pick Always only on your own phone or computer.
+        (If your browser reopens your last tabs, it may keep you logged in.)
+      </p>
+    </fieldset>
   );
 }

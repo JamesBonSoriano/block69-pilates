@@ -1,7 +1,8 @@
 "use server";
 // Server Actions for logging in and out, signing up and passwords.
 // Where it's used: the forms on /login, /admin/login, /signup,
-// /forgot-password and /reset-password, and every Log out button.
+// /forgot-password and /reset-password, the "Continue with Google" /
+// "Sign up with Google" buttons, and every Log out button.
 //
 // "use server" = these functions run ONLY on our server. The browser just
 // sends the form to them. So the checks here can't be skipped by someone
@@ -11,6 +12,7 @@
 // useActionState) and the form's data, and gives back a new AuthFormState,
 // or sends the person to another page with redirect().
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   DEACTIVATED_MESSAGE,
@@ -29,19 +31,23 @@ import {
 } from "@/lib/auth/login-portal";
 import { safeNextPath } from "@/lib/auth/safe-next";
 import { getSiteUrl } from "@/lib/site-url";
+import {
+  REMEMBER_COOKIE,
+  rememberChoiceFromForm,
+  rememberCookieOptions,
+  type RememberChoice,
+} from "@/lib/supabase/remember";
 import { createClient } from "@/lib/supabase/server";
-import { isValidBirthday, isValidMobile } from "@/lib/validation";
-
-// A simple "looks like an email" check (Supabase does the real check).
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { checkSignupFields, isValidEmail, normalizePhMobile, parseBirthdayInput } from "@/lib/validation";
 
 // ---------------------------------------------------------------------------
 // LOG IN
 // ---------------------------------------------------------------------------
 
 // Logs a CLIENT in with their email and password (the /login page).
-// Takes: the previous form state, and the form (email, password, and an
-// optional hidden "next" path to go back to).
+// Takes: the previous form state, and the form (email, password, remember =
+// "never" or "always" for "Save login next time", and an optional hidden
+// "next" path to go back to).
 // Gives back: an error to show, or (on success) sends them on to "next" if
 // it's a safe path on our site, otherwise to the Home page.
 // An ADMIN account is refused here and pointed to /admin/login.
@@ -63,55 +69,50 @@ export async function adminLogIn(_previous: AuthFormState, formData: FormData): 
 // ---------------------------------------------------------------------------
 
 // Makes a new client account.
-// Takes: the previous form state, and the form (full_name, mobile, birthday, email,
-// password, optional hidden "next").
+// Takes: the previous form state, and the form (full_name, mobile, birthday
+// as MM/DD/YYYY, email, password, optional hidden "next").
 // Gives back: field errors, a general error, or a "check your email" message.
 // If Supabase logs them in straight away ("Confirm email" is off), it sends
 // them to "next" or the Home page instead.
 //
+// The rules (Change 17) are checkSignupFields() in src/lib/validation.ts, the
+// same function the form runs in the browser: mobile = 11 digits starting
+// with 09, birthday = a real past date typed MM/DD/YYYY, email = @gmail.com
+// or @yahoo.com only, password = 8+ characters.
+// The sign-up page has no "Save login" choice, so a new login starts as
+// "Never" (the same as the login page's preselected choice).
+//
 // The profile row is made by the database itself: the handle_new_user()
-// trigger (migration 1) copies full_name and mobile from the sign-up
-// "metadata" below into public.profiles. The role is always "client".
+// trigger (migrations 1 and 12) copies full_name, mobile and birthday from the
+// sign-up "metadata" below into public.profiles. The role is always "client".
 export async function signUp(_previous: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const fullName = readText(formData, "full_name").replace(/\s+/g, " ");
   const mobile = readText(formData, "mobile");
-  const birthday = readText(formData, "birthday");
+  const birthdayText = readText(formData, "birthday");
   const email = readText(formData, "email").toLowerCase();
   const password = readPassword(formData, "password");
   const next = safeNextPath(formData.get("next"));
-  const values = { full_name: fullName, mobile, birthday, email };
+  const values = { full_name: fullName, mobile, birthday: birthdayText, email };
 
   // Check every field first, so the person sees all problems at once
-  const fieldErrors: Record<string, string> = {};
-  if (!fullName) {
-    fieldErrors.full_name = "Please enter your full name.";
-  } else if (fullName.length > 120) {
-    fieldErrors.full_name = "Please use 120 characters or fewer.";
-  }
-  if (!isValidMobile(mobile)) {
-    fieldErrors.mobile = "Please enter a valid mobile number, for example 0917 123 4567.";
-  }
-  // Required since Revisions part 1 (it can't be changed later by the client)
-  if (!isValidBirthday(birthday)) {
-    fieldErrors.birthday = "Please pick your birthday (a real date in the past).";
-  }
-  if (!EMAIL_PATTERN.test(email)) {
-    fieldErrors.email = "Please enter a valid email address.";
-  }
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    fieldErrors.password = `Please use at least ${MIN_PASSWORD_LENGTH} characters.`;
-  }
+  const fieldErrors = checkSignupFields({ full_name: fullName, mobile, birthday: birthdayText, email, password });
   if (Object.keys(fieldErrors).length > 0) {
     return { fieldErrors, values };
   }
 
-  const supabase = await createClient();
+  // Saved the same way for everyone: "09171234567" and "YYYY-MM-DD"
+  const cleanMobile = normalizePhMobile(mobile);
+  const birthday = parseBirthdayInput(birthdayText);
+
+  const remember: RememberChoice = "never";
+  await saveRememberChoice(remember);
+  const supabase = await createClient({ remember });
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       // Saved on the auth user as "metadata"; the sign-up trigger reads it
-      data: { full_name: fullName, mobile, birthday },
+      data: { full_name: fullName, mobile: cleanMobile, birthday },
       // Where the "confirm your email" link sends them (only used when
       // "Confirm email" is on). /auth/confirm logs them in, then goes to next.
       emailRedirectTo: `${getSiteUrl()}/auth/confirm?next=${encodeURIComponent(next ?? "/")}`,
@@ -144,6 +145,52 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
 }
 
 // ---------------------------------------------------------------------------
+// GOOGLE SIGN-IN (Change 17)
+// ---------------------------------------------------------------------------
+
+// Starts a REAL Google sign-in through Supabase ("Continue with Google" on
+// /login, "Sign up with Google" on /signup).
+// Takes: the form: remember ("never" / "always", from the login form; the
+// sign-up page sends none, which counts as "never") and an optional "next".
+// Gives back: nothing; it sends the browser to Google. After the person
+// agrees, Google sends them to Supabase, and Supabase sends them to our
+// /auth/confirm?flow=google&next=... with a one-time code, which logs them
+// in (src/app/auth/confirm/route.ts also refuses deactivated and admin
+// accounts there). A first-time Google user gets a new client account; the
+// sign-up trigger saves their Google name, and "Finish your profile" asks for
+// the mobile number and birthday Google doesn't give us.
+// Any Google account is accepted (you approved this: Google has already
+// checked the address). The gmail/yahoo rule is only for email sign-up and
+// email changes.
+export async function signInWithGoogle(formData: FormData): Promise<void> {
+  const next = safeNextPath(formData.get("next"));
+  const remember = rememberChoiceFromForm(formData.get("remember"));
+  // Save the choice first, so the login cookies made when they come back
+  // follow it too (/auth/confirm reads it from this cookie)
+  await saveRememberChoice(remember);
+
+  const supabase = await createClient({ remember });
+  const back = new URLSearchParams({ flow: "google" });
+  if (next) back.set("next", next);
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      // Must be allowed in Supabase: Authentication > URL Configuration >
+      // Redirect URLs (http://localhost:3000/** is already there)
+      redirectTo: `${getSiteUrl()}/auth/confirm?${back.toString()}`,
+    },
+  });
+
+  if (error || !data.url) {
+    // Most likely the Google provider isn't switched on in Supabase yet
+    console.error("Google sign-in could not start:", error?.code ?? error?.status ?? "no url");
+    redirect("/login?error=google-failed");
+  }
+  // To Google's own page (redirect() must stay outside try/catch)
+  redirect(data.url);
+}
+
+// ---------------------------------------------------------------------------
 // FORGOT PASSWORD
 // ---------------------------------------------------------------------------
 
@@ -158,7 +205,7 @@ export async function requestPasswordReset(
 ): Promise<AuthFormState> {
   const email = readText(formData, "email").toLowerCase();
 
-  if (!EMAIL_PATTERN.test(email)) {
+  if (!isValidEmail(email)) {
     return { fieldErrors: { email: "Please enter a valid email address." }, values: { email } };
   }
 
@@ -233,6 +280,8 @@ export async function logOut(): Promise<void> {
   const supabase = await createClient();
   // "local" = only this browser. Their other devices stay logged in.
   await supabase.auth.signOut({ scope: "local" });
+  // Forget the "Save login next time" choice too; the next login asks again
+  (await cookies()).delete(REMEMBER_COOKIE);
   redirect("/");
 }
 
@@ -244,6 +293,10 @@ export async function logOut(): Promise<void> {
 // Takes: which login page was used ("client" or "admin") and the form.
 // Gives back: an error to show, or sends them to their start page.
 // Steps:
+//   0. "Save login next time": the client login sends "never" or "always"
+//      (the admin login has no choice and keeps the normal long login).
+//      The choice is saved in the b69_remember cookie, and the login cookies
+//      below follow it (src/lib/supabase/remember.ts).
 //   1. Supabase checks the email and password.
 //   2. Deactivated accounts are logged straight back out.
 //   3. The database's is_admin() says if it's an active admin. An account on
@@ -261,7 +314,11 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
     return { error: "Please enter your email and password.", values };
   }
 
-  const supabase = await createClient();
+  // --- 0. Save login next time?
+  const remember: RememberChoice = portal === "admin" ? "always" : rememberChoiceFromForm(formData.get("remember"));
+  await saveRememberChoice(remember);
+
+  const supabase = await createClient({ remember });
   // --- 1. Checks the password. If it's right, Supabase saves the login in cookies.
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
@@ -306,6 +363,14 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
   // --- 4. Where to go now. redirect() works by stopping this function, so
   //        it must be the last step (and never inside a try/catch).
   redirect(landingPath(isAdmin, next));
+}
+
+// Saves the "Save login next time" choice in the b69_remember cookie.
+// Takes: "never" or "always".
+// Gives back: nothing. "never" = a cookie that disappears when the browser
+// closes; "always" = kept 400 days. It holds no secret, only the word.
+async function saveRememberChoice(choice: RememberChoice): Promise<void> {
+  (await cookies()).set(REMEMBER_COOKIE, choice, rememberCookieOptions(choice, getSiteUrl().startsWith("https://")));
 }
 
 // Reads a text field from a form and trims spaces from both ends.

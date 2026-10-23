@@ -7,6 +7,7 @@
 // on the code, never on the English text, because the text can change.
 
 import type { AuthError } from "@supabase/supabase-js";
+import { MIN_PASSWORD } from "@/lib/validation";
 
 // Shown when a deactivated account tries to log in or is logged out.
 export const DEACTIVATED_MESSAGE =
@@ -18,7 +19,9 @@ export const RESET_EMAIL_SENT_MESSAGE =
   "If an account uses that email, we've sent it a link to reset your password. It can take a few minutes, so check your spam folder too.";
 
 // The shortest password we accept (also shown as a hint on the forms).
-export const MIN_PASSWORD_LENGTH = 8;
+// The number itself lives in src/lib/validation.ts (shared with the sign-up
+// checks that also run in the browser).
+export const MIN_PASSWORD_LENGTH = MIN_PASSWORD;
 
 // Works out the message to show for a Supabase Auth error.
 // Takes: the error Supabase gave back.
