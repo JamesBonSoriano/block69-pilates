@@ -29,11 +29,14 @@ Start each step with `/clear`, then paste the start message. Answer the plan it 
 | --- | --- | --- |
 | 11 part 2 | `Continue Step 11 part 2 from where docs/PROGRESS.md says you stopped. Follow @docs/prompts/11-admin-part2.md, including item 6.` | Yes |
 | 12 | `Follow @docs/prompts/12-paymongo.md` | **Yes, the core of the demo** |
+| R1 | Attach revisions.pdf, then: `Follow @docs/prompts/R1-revisions-client.md` | Yes (group revisions) |
+| R2 | Attach revisions.pdf, then: `Follow @docs/prompts/R2-revisions-admin.md` | Yes (group revisions) |
+| R3 | Attach revisions.pdf, then: `Follow @docs/prompts/R3-revisions-email.md` | Nice to have. The buttons show "Coming soon" without it. |
 | 13 | `Follow @docs/prompts/13-deploy.md` | **Yes, aim for Friday** |
 | 14 | `Follow @docs/prompts/14-emails-reminders.md` | Nice to have. Skip if short on time and call it "next phase". |
 | 15 | `Follow @docs/prompts/15-final-check.md` | Yes, at least the demo data and demo script parts |
 
-**If time is short, do it in this order: 11 part 2, then 12, then 13, then 15 (demo data and script), then 14.**
+**If time is short, do it in this order: 11 part 2, 12, R1, R2, 13 (deploy), 15 (demo data and script), R3, then 14.**
 
 ---
 
