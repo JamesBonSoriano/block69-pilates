@@ -9,6 +9,7 @@
 //   ?error=other-browser    an email link was opened in a different browser
 //   ?error=google-failed    Google sign-in was cancelled or didn't work
 //   ?error=admin-google     a staff account tried Google sign-in here
+//   ?error=account-deleted  (not an error) the person just deleted their account
 // Clients who log in (with no "next") go to the Home page. ADMIN accounts
 // can't log in here: they are pointed to /admin/login (src/lib/auth/actions.ts).
 
@@ -38,6 +39,11 @@ const NOTICES = {
   "google-failed": {
     tone: "error",
     text: "Google sign-in didn't finish, so you're not logged in. Please try again, or log in with your email and password.",
+  },
+  // After Delete account on My Profile (Change 17)
+  "account-deleted": {
+    tone: "info",
+    text: "Your account has been deleted and you've been logged out. Thank you for joining our classes.",
   },
   // A staff account used Google on the client login (staff use /admin/login)
   "admin-google": {

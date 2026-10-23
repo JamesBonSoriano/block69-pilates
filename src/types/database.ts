@@ -400,6 +400,7 @@ export type Database = {
         Row: {
           birthday: string | null
           created_at: string
+          deleted_at: string | null
           email: string
           email_reminders: boolean
           full_name: string
@@ -413,6 +414,7 @@ export type Database = {
         Insert: {
           birthday?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string
           email_reminders?: boolean
           full_name?: string
@@ -426,6 +428,7 @@ export type Database = {
         Update: {
           birthday?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string
           email_reminders?: boolean
           full_name?: string
@@ -983,6 +986,7 @@ export type Database = {
           percent_off: number
         }[]
       }
+      close_my_account: { Args: never; Returns: { has_bookings: boolean }[] }
       confirm_free_booking: {
         Args: { p_booking_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]
@@ -1160,6 +1164,10 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       manila_today: { Args: never; Returns: string }
       mark_my_notifications_read: { Args: never; Returns: number }
+      my_account_deletion_blockers: {
+        Args: never
+        Returns: { first_date: string; how_many: number; kind: string }[]
+      }
       my_seat_status: {
         Args: { p_session_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]

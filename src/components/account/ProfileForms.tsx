@@ -1,8 +1,9 @@
 "use client";
 // The forms on My Profile and on the "Finish your profile" page:
-//   ProfileField       one editable detail (name, mobile or Instagram): shown
-//                      as text with a pen icon; the pen turns it into an input
-//                      with Save and Cancel (Revisions part 1, item 7)
+//   ProfileField       one editable detail (name, mobile, Instagram, and since
+//                      Change 17 the birthday): shown as text with a pen icon;
+//                      the pen turns it into an input with Save and Cancel
+//                      (Revisions part 1, item 7)
 //   FinishProfileForm  the missing mobile number / birthday (/account/finish-profile)
 // Where it's used: src/app/(client)/account/profile/page.tsx and
 // src/app/(client)/account/finish-profile/page.tsx.
@@ -10,7 +11,8 @@
 // "use client" = they switch between showing and editing, and show "Saving…"
 // and errors without a page reload. The work happens in Server Actions
 // (src/lib/account/actions.ts), which check everything again.
-// (Change password and Deactivate my account were removed from My Profile.)
+// (Change email, Change password, Deactivate and Delete are in
+// AccountSettingsForms.tsx.)
 
 import { Pencil } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
@@ -20,13 +22,17 @@ import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
 import { finishProfile, updateProfileField } from "@/lib/account/actions";
 import { type AccountFormState, emptyAccountFormState } from "@/lib/account/form-state";
+import { formatBirthdayLong } from "@/lib/format";
+import { formatBirthdayInput } from "@/lib/validation";
 
 // ---------------------------------------------------------------------------
 // One editable detail
 // ---------------------------------------------------------------------------
 
 type ProfileFieldProps = {
-  field: "full_name" | "mobile" | "instagram"; // which detail (the action checks it again)
+  // which detail (the action checks it again). "birthday" (Change 17) is
+  // shown as "January 15, 2000" and typed as MM/DD/YYYY.
+  field: "full_name" | "mobile" | "instagram" | "birthday";
   label: string; // e.g. "Mobile number"
   initialValue: string; // the saved value ("" if none)
   optional?: boolean; // shows "(optional)" and allows an empty value
@@ -76,8 +82,14 @@ export function ProfileField({
     emptyAccountFormState,
   );
 
-  // Instagram is saved without the "@"; show it with one
-  const shown = field === "instagram" && saved ? `@${saved.replace(/^@/, "")}` : saved;
+  // Instagram is saved without the "@"; show it with one. The birthday is
+  // saved as "YYYY-MM-DD"; show it in words.
+  const shown =
+    field === "instagram" && saved
+      ? `@${saved.replace(/^@/, "")}`
+      : field === "birthday" && saved
+        ? formatBirthdayLong(saved)
+        : saved;
 
   // When the input closes after Save or Cancel, keyboard users carry on
   // from the pen button (not from the top of the page)
@@ -128,23 +140,37 @@ export function ProfileField({
     <form action={formAction} className="flex flex-col gap-3 border-b border-line py-4 last:border-b-0">
       <input type="hidden" name="field" value={field} />
       {state.error && <FormMessage tone="error">{state.error}</FormMessage>}
-      <Input
-        label={label}
-        name="value"
-        // Each detail has its own id (they all send "value")
-        id={`profile-${field}`}
-        type={type}
-        inputMode={type === "tel" ? "tel" : undefined}
-        autoComplete={autoComplete}
-        autoCapitalize={field === "instagram" ? "none" : undefined}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        required={!optional}
-        // After an error, keep what they typed; otherwise start from the saved value
-        defaultValue={state.error || state.fieldErrors ? (state.values?.value ?? "") : shown}
-        error={state.fieldErrors?.value}
-        autoFocus
-      />
+      {field === "birthday" ? (
+        // Typed MM/DD/YYYY (src/components/ui/BirthdayInput.tsx)
+        <BirthdayInput
+          label={label}
+          name="value"
+          id="profile-birthday"
+          required
+          // After an error, keep what they typed; otherwise the saved date
+          defaultValue={state.error || state.fieldErrors ? (state.values?.value ?? "") : formatBirthdayInput(saved)}
+          error={state.fieldErrors?.value}
+          autoFocus
+        />
+      ) : (
+        <Input
+          label={label}
+          name="value"
+          // Each detail has its own id (they all send "value")
+          id={`profile-${field}`}
+          type={type}
+          inputMode={type === "tel" ? "tel" : undefined}
+          autoComplete={autoComplete}
+          autoCapitalize={field === "instagram" ? "none" : undefined}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          required={!optional}
+          // After an error, keep what they typed; otherwise start from the saved value
+          defaultValue={state.error || state.fieldErrors ? (state.values?.value ?? "") : shown}
+          error={state.fieldErrors?.value}
+          autoFocus
+        />
+      )}
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save"}

@@ -4,9 +4,11 @@
 //   My Bookings (src/components/account/CancelBookingButton.tsx):  cancelBooking()
 //   Transfer page (src/components/account/TransferForm.tsx):       transferBooking()
 //   My Profile (src/components/account/ProfileForms.tsx):          updateProfileField()
+//   My Profile (src/components/account/AccountSettingsForms.tsx):  startEmailChange(),
+//     confirmEmailChange(), changePassword(), deactivateAccount(), deleteAccount()
+//     (Change 17 brought Change password and Deactivate back, and added the
+//     email change and Delete account)
 //   Finish your profile (src/app/(client)/account/finish-profile/): finishProfile()
-// (Change password and Deactivate my account were taken off My Profile in
-// Revisions part 1. deactivate_my_account() stays in the database, unused.)
 //   Notifications (src/components/account/ReminderSwitch.tsx):     setEmailReminders()
 //   The header's bell (src/components/layout/NotificationBell.tsx): loadMyUpdates(),
 //                                                                   markNotificationsRead()
@@ -17,27 +19,39 @@
 // Level Security only lets a person change their OWN profile row.
 
 import { refresh } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type {
   AccountFormState,
   CancelBookingState,
+  EmailChangeState,
   MyUpdatesResult,
   ReminderState,
   TransferBookingState,
 } from "@/lib/account/form-state";
-import { safeNextPath } from "@/lib/auth/safe-next";
 import { STAFF_ACCOUNT_ERROR, isStaffAccount } from "@/lib/auth/client-guard";
+import { friendlyAuthError } from "@/lib/auth/errors";
+import { checkCurrentPassword } from "@/lib/auth/password-check";
+import { safeNextPath } from "@/lib/auth/safe-next";
+import { hasPasswordLogin } from "@/lib/auth/sign-in-methods";
 import { cancelTiming } from "@/lib/booking-rules";
 import { loadMyBookings } from "@/lib/data/account";
 import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
 import type { MyNotification } from "@/lib/data/notifications";
 import { formatManilaDate } from "@/lib/format";
 import { toNotificationListItem } from "@/lib/notifications";
+import { getSiteUrl } from "@/lib/site-url";
+import { REMEMBER_COOKIE } from "@/lib/supabase/remember";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import {
   BIRTHDAY_ERROR,
+  EMAIL_DOMAIN_ERROR,
+  MIN_PASSWORD,
   PH_MOBILE_ERROR,
+  isAllowedEmailDomain,
   isUuid,
+  isValidEmail,
   isValidInstagram,
   isValidPhMobile,
   normalizePhMobile,
@@ -168,11 +182,14 @@ export async function transferBooking(
 // The details a client may edit on My Profile (their column names).
 // (Revisions part 1, item 7: ONLY these three. The email and birthday are
 // read-only there; the database blocks changing them too, migration 12.)
-const EDITABLE_FIELDS = ["full_name", "mobile", "instagram"] as const;
+// Change 17 adds the birthday (migration 16 lets clients change it). The
+// EMAIL is not here: it changes through Supabase's verified flow
+// (startEmailChange / confirmEmailChange below).
+const EDITABLE_FIELDS = ["full_name", "mobile", "instagram", "birthday"] as const;
 
 // Saves ONE of the person's details (the pen icon on My Profile).
-// Takes: the previous state, and the form: field (full_name, mobile or
-// instagram) and value.
+// Takes: the previous state, and the form: field (full_name, mobile,
+// instagram or birthday, typed MM/DD/YYYY) and value.
 // Gives back: a field error, a general error, or a success message, with the
 // value as it was saved (so the row can show it straight away).
 export async function updateProfileField(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
@@ -194,6 +211,9 @@ export async function updateProfileField(_previous: AccountFormState, formData: 
   } else if (field === "mobile") {
     // Change 17: 11 digits starting with 09, the same rule as sign-up
     if (!isValidPhMobile(value)) problem = PH_MOBILE_ERROR;
+  } else if (field === "birthday") {
+    // Change 17: a real past date typed MM/DD/YYYY (the database checks too)
+    if (!parseBirthdayInput(value)) problem = BIRTHDAY_ERROR;
   } else if (value && !isValidInstagram(value)) {
     problem = "Please enter just your Instagram name, for example @yourname.";
   }
@@ -208,28 +228,278 @@ export async function updateProfileField(_previous: AccountFormState, formData: 
   if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR, values };
 
   // Instagram is saved without the "@" (and empty = none); the mobile number
-  // without spaces or dashes ("09171234567")
+  // without spaces or dashes ("09171234567"); the birthday as "YYYY-MM-DD"
   const saved =
-    field === "instagram" ? value.replace(/^@/, "") || null : field === "mobile" ? normalizePhMobile(value) : value;
+    field === "instagram"
+      ? value.replace(/^@/, "") || null
+      : field === "mobile"
+        ? normalizePhMobile(value)
+        : field === "birthday"
+          ? parseBirthdayInput(value)
+          : value;
   // The one column to change (written out, so TypeScript checks each name)
   const change =
-    field === "full_name" ? { full_name: value } : field === "mobile" ? { mobile: saved ?? "" } : { instagram: saved };
+    field === "full_name"
+      ? { full_name: value }
+      : field === "mobile"
+        ? { mobile: saved ?? "" }
+        : field === "birthday"
+          ? { birthday: saved }
+          : { instagram: saved };
 
   // Row Level Security only lets them change their OWN row; the database
-  // triggers block role / is_active (migration 2) and email / birthday
-  // (migration 12) anyway.
+  // triggers block role / is_active (migration 2) and the email, and check
+  // the birthday (migration 16) anyway.
   const { error } = await supabase
     .from("profiles")
     .update(change)
     .eq("id", userId);
   if (error) {
     console.error("Profile was not saved:", error.code);
-    return { error: GENERIC_ERROR, values };
+    // The birthday trigger's own messages are plain English
+    return { error: field === "birthday" ? friendlyDatabaseError(error) : GENERIC_ERROR, values };
   }
 
   // Draw the page again, so the header and the avatar show the new name
   refresh();
   return { success: "Saved.", values: { value: saved ?? "" } };
+}
+
+// ---------------------------------------------------------------------------
+// CHANGE EMAIL, with 6-digit codes (My Profile > Account Information, Change 17)
+// ---------------------------------------------------------------------------
+// How it works ("Secure email change" is ON in Supabase, as agreed):
+//   1. startEmailChange(): Supabase's updateUser({ email }) sends a 6-digit
+//      code to the CURRENT email and another to the NEW email. Nothing
+//      changes yet.
+//   2. confirmEmailChange(): both codes are checked with verifyOtp(type
+//      "email_change"). Once both are right, Supabase changes the login email,
+//      and the database copies it into profiles.email (migration 16's trigger).
+// The emails need the "Change Email Address" template to show {{ .Token }}
+// (a Supabase dashboard setting, which needs our own email sender first).
+
+// Starts an email change: sends the two codes.
+// Takes: the previous state, and the form: new_email.
+// Gives back: { step: "codes" } when the codes were sent, or an error.
+// The new email must be @gmail.com or @yahoo.com (this version's rule).
+export async function startEmailChange(_previous: EmailChangeState, formData: FormData): Promise<EmailChangeState> {
+  const newEmail = readText(formData, "new_email").toLowerCase();
+
+  if (!isValidEmail(newEmail)) {
+    return { step: "start", newEmail, fieldErrors: { new_email: "Please enter a valid email address." } };
+  }
+  if (!isAllowedEmailDomain(newEmail)) {
+    return { step: "start", newEmail, fieldErrors: { new_email: EMAIL_DOMAIN_ERROR } };
+  }
+
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) return { step: "start", newEmail, error: LOGGED_OUT_ERROR };
+  if (await isStaffAccount(supabase)) return { step: "start", newEmail, error: STAFF_ACCOUNT_ERROR };
+  if (user.email?.toLowerCase() === newEmail) {
+    return { step: "start", newEmail, fieldErrors: { new_email: "That's already your email." } };
+  }
+
+  const { error } = await supabase.auth.updateUser(
+    { email: newEmail },
+    // Only used if the emails show a link instead of a code
+    { emailRedirectTo: `${getSiteUrl()}/auth/confirm?next=${encodeURIComponent("/account/profile")}` },
+  );
+  if (error) {
+    // e.g. "email_exists" (another account uses it) or too many tries
+    return {
+      step: "start",
+      newEmail,
+      error:
+        error.code === "email_exists"
+          ? "Another account already uses that email."
+          : friendlyAuthError(error),
+    };
+  }
+  return { step: "codes", newEmail };
+}
+
+// Finishes an email change: checks the two codes.
+// Takes: the previous state, and the form: new_email, code_current (sent to
+// the current email) and code_new (sent to the new email).
+// Gives back: { step: "done" } once the login email has changed; or
+// { step: "codes" } with a message (a wrong code, or only one code accepted).
+export async function confirmEmailChange(_previous: EmailChangeState, formData: FormData): Promise<EmailChangeState> {
+  const newEmail = readText(formData, "new_email").toLowerCase();
+  // Codes are digits only; spaces people type between them are taken out
+  const codeCurrent = readText(formData, "code_current").replace(/\s/g, "");
+  const codeNew = readText(formData, "code_new").replace(/\s/g, "");
+  const codes = { step: "codes" as const, newEmail };
+
+  const fieldErrors: Record<string, string> = {};
+  if (codeCurrent && !/^\d{6}$/.test(codeCurrent)) fieldErrors.code_current = "The code is 6 digits.";
+  if (!/^\d{6}$/.test(codeNew)) fieldErrors.code_new = "Please enter the 6-digit code sent to your new email.";
+  if (Object.keys(fieldErrors).length > 0) return { ...codes, fieldErrors };
+
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user?.email) return { ...codes, error: LOGGED_OUT_ERROR };
+  if (await isStaffAccount(supabase)) return { ...codes, error: STAFF_ACCOUNT_ERROR };
+  const currentEmail = user.email;
+
+  // 1. The code from the CURRENT email (if they typed it)
+  if (codeCurrent) {
+    const { error } = await supabase.auth.verifyOtp({ email: currentEmail, token: codeCurrent, type: "email_change" });
+    if (error) return { ...codes, fieldErrors: { code_current: friendlyAuthError(error) } };
+  }
+  // 2. The code from the NEW email
+  const { error } = await supabase.auth.verifyOtp({ email: newEmail, token: codeNew, type: "email_change" });
+  if (error) return { ...codes, fieldErrors: { code_new: friendlyAuthError(error) } };
+
+  // Did the login email change? (With "Secure email change" on, Supabase
+  // waits for BOTH codes.)
+  const { data: after } = await supabase.auth.getUser();
+  if (after.user?.email?.toLowerCase() !== newEmail) {
+    return {
+      ...codes,
+      info: `One code was accepted. Please also enter the code we sent to ${currentEmail}.`,
+    };
+  }
+
+  // Draw the page again with the new email (profiles.email was synced by the
+  // database trigger, migration 16)
+  refresh();
+  return { step: "done", newEmail };
+}
+
+// ---------------------------------------------------------------------------
+// CHANGE PASSWORD (My Profile > Account Information, Change 17)
+// ---------------------------------------------------------------------------
+
+// Changes the person's password.
+// Takes: the previous state, and the form: current_password, new_password
+// and confirm_password.
+// Gives back: field errors, a general error, or a success message.
+// The CURRENT password is checked first (checkCurrentPassword(), which doesn't
+// touch their login), and sent to Supabase too ("Require current password
+// when updating"). Passwords are never kept in the answer.
+// Google-only accounts have no password: the page shows Forgot password
+// instead (it sets a first password by email).
+export async function changePassword(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
+  const current = readPassword(formData, "current_password");
+  const next = readPassword(formData, "new_password");
+  const again = readPassword(formData, "confirm_password");
+
+  const fieldErrors: Record<string, string> = {};
+  if (!current) fieldErrors.current_password = "Please enter your current password.";
+  if (next.length < MIN_PASSWORD) fieldErrors.new_password = `Please use at least ${MIN_PASSWORD} characters.`;
+  if (again !== next) fieldErrors.confirm_password = "The two new passwords don't match.";
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user?.email) return { error: LOGGED_OUT_ERROR };
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
+
+  const check = await checkCurrentPassword(user.email, current);
+  if (check === "wrong") return { fieldErrors: { current_password: "Your current password isn't right." } };
+  if (check === "error") return { error: "We couldn't check your password right now. Please try again in a few minutes." };
+
+  const { error } = await supabase.auth.updateUser({ password: next, current_password: current });
+  if (error) return { error: friendlyAuthError(error) };
+  return { success: "Your password has been changed." };
+}
+
+// ---------------------------------------------------------------------------
+// ACCOUNT MANAGEMENT: deactivate / delete (My Profile, Change 17)
+// ---------------------------------------------------------------------------
+
+// Deactivates the person's own account.
+// Takes: the previous state, and the form: understand ("on" = the "I
+// understand" tick after the warning).
+// Gives back: an error, or (when it works) sends them to /auth/deactivated,
+// which logs them out everywhere with a message. Only an admin can reactivate.
+export async function deactivateAccount(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
+  if (formData.get("understand") !== "on") {
+    return { fieldErrors: { understand: "Please tick this to confirm." } };
+  }
+  const supabase = await createClient();
+  if (!(await loggedInUserId(supabase))) return { error: LOGGED_OUT_ERROR };
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
+
+  // The database function (migration 3) is the only way a client can set
+  // their own account inactive (a direct change is blocked by a trigger)
+  const { error } = await supabase.rpc("deactivate_my_account");
+  if (error) {
+    console.error("Account was not deactivated:", error.code);
+    return { error: GENERIC_ERROR };
+  }
+  redirect("/auth/deactivated");
+}
+
+// Deletes the person's own account (the approach you approved).
+// Takes: the previous state, and the form: confirm_text (must be "DELETE")
+// and password (only for accounts that have a password).
+// Gives back: an error (including what to do first, e.g. "cancel your
+// upcoming class"), or (when it works) logs them out and sends them to
+// /login with a "your account was deleted" message.
+// Steps:
+//   1. the checks: "DELETE" typed, the current password right (if any)
+//   2. close_my_account() (migration 16): refuses if anything is still going
+//      on, otherwise blanks the profile, deactivates it, turns off their
+//      codes and deletes their notifications; tells us if they ever booked
+//   3. the LOGIN is removed with the secret key: a "soft delete" if they have
+//      bookings (the row stays, so their bookings and payments stay with the
+//      cafe; nobody can log in), a full delete if they never booked
+//   4. log out on this device, forget "Save login", go to /login
+export async function deleteAccount(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
+  const confirmText = readText(formData, "confirm_text");
+  const password = readPassword(formData, "password");
+
+  if (confirmText !== "DELETE") {
+    return { fieldErrors: { confirm_text: 'Please type DELETE (in capital letters) to confirm.' } };
+  }
+
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) return { error: LOGGED_OUT_ERROR };
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
+
+  // --- 1. Their password, if the account has one (Google-only accounts don't)
+  if (hasPasswordLogin(user)) {
+    if (!password) return { fieldErrors: { password: "Please enter your password." } };
+    const check = await checkCurrentPassword(user.email ?? "", password);
+    if (check === "wrong") return { fieldErrors: { password: "That password isn't right." } };
+    if (check === "error") return { error: "We couldn't check your password right now. Please try again in a few minutes." };
+  }
+
+  // The secret key is needed for step 3: check it's set up BEFORE changing anything
+  let service: ReturnType<typeof createServiceClient>;
+  try {
+    service = createServiceClient();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : error);
+    return { error: "Deleting accounts isn't set up yet. Please message the cafe with Chat With Us." };
+  }
+
+  // --- 2. Close the account in the database (it says what to do first, if anything)
+  const { data, error } = await supabase.rpc("close_my_account");
+  if (error) {
+    return { error: friendlyDatabaseError(error) };
+  }
+  const hasBookings = data[0]?.has_bookings !== false;
+
+  // --- 3. Remove the login. true = "soft delete" (keeps the row for the bookings)
+  const { error: deleteError } = await service.auth.admin.deleteUser(user.id, hasBookings);
+  if (deleteError) {
+    // The profile is already closed and deactivated, so they can't book any
+    // more; the cafe can finish removing the login by hand
+    console.error("Login was not removed after closing the account:", deleteError.code ?? deleteError.status);
+  }
+
+  // --- 4. Log out on this device and forget the "Save login" choice
+  await supabase.auth.signOut({ scope: "local" });
+  (await cookies()).delete(REMEMBER_COOKIE);
+  redirect("/login?error=account-deleted");
 }
 
 // ---------------------------------------------------------------------------
@@ -386,4 +656,12 @@ async function loggedInUserId(supabase: Awaited<ReturnType<typeof createClient>>
 function readText(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
+}
+
+// Reads a password field exactly as typed (spaces count in passwords).
+// Takes: the form data and the field name.
+// Gives back: the password, or "" if it's missing.
+function readPassword(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value : "";
 }

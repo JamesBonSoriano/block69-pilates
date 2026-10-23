@@ -20,6 +20,11 @@ type ClassPickerInput = {
   askedMonth: string | null | undefined; // ?show_month= / ?month= from the address
   askedDate: string | null | undefined; // ?date= from the address
   pickedSessionId: string | null | undefined; // ?session= from the address
+  // Classes this person can't pick even if they have seats (the transfer
+  // page: the class being moved, and classes they're already booked in),
+  // with the badge to show instead, e.g. "Your booking". They stay in the
+  // list (greyed out), so a date never seems to be "missing".
+  unavailable?: ReadonlyMap<string, string>;
 };
 
 // What it gives back.
@@ -42,12 +47,17 @@ export type ClassPicker = {
 // The date chip shown first: ?date= (if that date has classes), else the
 // picked class's date, else the first date with a free seat, else the first date.
 export function buildClassPicker({
-  sessions,
+  sessions: allSessions,
   months,
   askedMonth,
   askedDate,
   pickedSessionId,
+  unavailable,
 }: ClassPickerInput): ClassPicker {
+  // Classes this person can't pick count as "not bookable" from here on
+  const sessions = unavailable?.size
+    ? allSessions.map((s) => (unavailable.has(s.session_id) ? { ...s, is_bookable: false } : s))
+    : allSessions;
   // A class picked in the address counts only if it can still be booked
   const picked = sessions.find((s) => s.session_id === pickedSessionId && s.is_bookable) ?? null;
   const has = (month: string, onlyBookable: boolean) =>
@@ -60,7 +70,7 @@ export function buildClassPicker({
 
   // The shown month's classes, grouped by date
   const inMonth = sessions.filter((s) => monthOf(s.date) === month);
-  const days = groupIntoDays(inMonth);
+  const days = groupIntoDays(inMonth, unavailable);
 
   const preselectedId = picked && monthOf(picked.date) === month ? picked.session_id : null;
   const hasDay = (date: string | null | undefined) => Boolean(date && days.some((day) => day.date === date));
@@ -87,10 +97,11 @@ export function buildClassPicker({
 }
 
 // Puts one month's classes into dates, ready for the chips.
-// Takes: the classes, earliest first.
+// Takes: the classes, earliest first, and optionally the classes this person
+// can't pick, with the badge to show for them (see ClassPickerInput).
 // Gives back: one PickerDay per date that has at least one class (in any
 // state), in the same order. EVERY class given is kept (none are dropped).
-export function groupIntoDays(sessions: OpenSession[]): PickerDay[] {
+export function groupIntoDays(sessions: OpenSession[], unavailable?: ReadonlyMap<string, string>): PickerDay[] {
   const days: PickerDay[] = [];
   for (const session of sessions) {
     let day = days[days.length - 1];
@@ -106,12 +117,15 @@ export function groupIntoDays(sessions: OpenSession[]): PickerDay[] {
       };
       days.push(day);
     }
-    day.anyBookable ||= session.is_bookable;
+    const ownLabel = unavailable?.get(session.session_id);
+    const bookable = session.is_bookable && !ownLabel;
+    day.anyBookable ||= bookable;
     day.sessions.push({
       id: session.session_id,
       time: formatTimeRange(session.start_time, session.end_time),
-      badge: seatBadge(session.seats_left, session.state, session.capacity),
-      bookable: session.is_bookable,
+      // Their own class: say so (beige), instead of a seats badge
+      badge: ownLabel ? { label: ownLabel, variant: "neutral" } : seatBadge(session.seats_left, session.state, session.capacity),
+      bookable,
     });
   }
   return days;

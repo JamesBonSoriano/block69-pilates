@@ -1,8 +1,15 @@
 // Transfer a booking: /account/bookings/<booking id>/transfer
 // Where it's used: the "Transfer" button on My Bookings, "Transfer instead"
 // in the Cancel box, and "Pick a new class" when the cafe cancelled a class.
-// Layout follows booking step 1 (docs/designs/PhoneBook1.html): the open
-// classes by day, and a sticky bar (laptop: side card) with the button.
+// Layout (Change 17, Part G): the same as booking step 1. A month navigator
+// (◀ October 2026 ▶, this month and next month), date chips for the dates
+// that have classes, that date's classes below, and the summary card on the
+// right (phone: the sticky bar) with "Move my booking". Above it: the
+// "Moving this booking" card and the once-only note.
+//
+// The class being moved, and classes the person is already booked in, are
+// SHOWN (greyed out, badge "Your booking" / "You're booked") instead of left
+// out, so no date or time ever seems to be missing from the list.
 //
 // ONLY THE BOOKING'S OWNER: requireClient() checks the login, and the booking
 // is found in get_my_bookings() (the caller's own bookings only). Someone
@@ -13,60 +20,77 @@
 //   - the cafe cancelled the class (free transfer, any time).
 // Otherwise the page explains why not. transfer_my_booking() checks all of
 // this again, with a lock, when the person clicks "Move my booking".
+//
+// The address can carry ?show_month= / ?month= / ?date= (the month picker's
+// buttons when JavaScript hasn't loaded, see ClassDayPicker.tsx).
 
 import { CircleAlert, Info } from "lucide-react";
 import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AccountHeading, AccountLoadError, AccountLoading } from "@/components/account/AccountHeading";
 import { TransferForm } from "@/components/account/TransferForm";
-import { Badge } from "@/components/ui/Badge";
+import { ClassDayPicker } from "@/components/booking/ClassDayPicker";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
-import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
+import { firstParam } from "@/lib/auth/safe-next";
 import { requireClient } from "@/lib/auth/user";
-import { bookingStatusBadge, seatBadge } from "@/lib/booking-rules";
+import { buildClassPicker } from "@/lib/booking/class-picker";
+import { bookingStatusBadge } from "@/lib/booking-rules";
 import { getMyBookings } from "@/lib/data/account";
 import { getBookingSessions } from "@/lib/data/booking";
 import { getPublicSettings } from "@/lib/data/settings";
-import { formatClassDate, formatPeso, formatTimeRange } from "@/lib/format";
+import { formatClassDate, formatPeso, formatTimeRange, manilaDateString } from "@/lib/format";
+import { bookableMonths, monthRange } from "@/lib/month";
+import { nowForThisVisit } from "@/lib/server-clock";
 import { isUuid } from "@/lib/validation";
 import type { MyBookingListItem, OpenSession } from "@/types/app";
 
 export const metadata = { title: "Transfer a booking" };
 
 // The transfer page.
-// Takes: params (the booking id from the address).
+// Takes: params (the booking id from the address) and searchParams (the
+// month picker's no-JavaScript buttons).
 // Gives back: the heading, then the live part inside <Suspense>.
-export default function TransferPage({ params }: PageProps<"/account/bookings/[bookingId]/transfer">) {
+export default function TransferPage({ params, searchParams }: PageProps<"/account/bookings/[bookingId]/transfer">) {
   return (
     <>
       <AccountHeading title="Transfer a booking" intro="Move your class to another day or time." />
       <Suspense fallback={<AccountLoading label="the classes" />}>
-        <TransferContent params={params} />
+        <TransferContent params={params} searchParams={searchParams} />
       </Suspense>
     </>
   );
 }
 
-// Loads the booking and the open classes, and draws the right thing.
-// Takes: the params promise.
+// Loads the booking and the classes, and draws the right thing.
+// Takes: the params and searchParams promises.
 // Gives back: the class picker, or an explanation if the booking can't be
 // moved right now. "Page not found" for a booking that isn't theirs.
 async function TransferContent({
   params,
-}: {
-  params: PageProps<"/account/bookings/[bookingId]/transfer">["params"];
-}) {
+  searchParams,
+}: Pick<PageProps<"/account/bookings/[bookingId]/transfer">, "params" | "searchParams">) {
   const { bookingId } = await params;
   if (!isUuid(bookingId)) notFound();
   await requireClient(`/account/bookings/${bookingId}/transfer`);
+  const query = await searchParams;
+
+  // Today in the Philippines, and the two months that can be booked
+  // (requireClient() has waited for a real visit, so reading the clock is fine)
+  const today = manilaDateString(nowForThisVisit());
+  const months = bookableMonths(today);
 
   let bookings: MyBookingListItem[];
   let sessions: OpenSession[];
   let settings;
   try {
-    [bookings, sessions, settings] = await Promise.all([getMyBookings(), getBookingSessions(), getPublicSettings()]);
+    [bookings, sessions, settings] = await Promise.all([
+      getMyBookings(),
+      // Today to the end of next month, like booking step 1
+      getBookingSessions({ from: today, to: monthRange(months[1]).last }),
+      getPublicSettings(),
+    ]);
   } catch (error) {
     unstable_rethrow(error); // pass on Next.js's own signals
     console.error(error);
@@ -107,13 +131,28 @@ async function TransferContent({
     );
   }
 
-  // Classes they could move to: bookable now, not this class, and not a
-  // class they already hold a seat in (the database refuses those anyway)
-  const myClasses = new Set(
-    bookings.filter((row) => row.is_upcoming && row.status !== "paid_needs_action").map((row) => row.session_id),
+  // Classes they can't move to (the database refuses them anyway): this
+  // class, and classes they already hold a seat in. Shown greyed out.
+  const unavailable = new Map<string, string>();
+  for (const row of bookings) {
+    if (row.is_upcoming && row.status !== "paid_needs_action") unavailable.set(row.session_id, "You're booked");
+  }
+  unavailable.set(booking.session_id, "Your booking");
+
+  const picker = buildClassPicker({
+    sessions,
+    months,
+    askedMonth: firstParam(query.show_month) ?? firstParam(query.month),
+    askedDate: firstParam(query.date),
+    pickedSessionId: null,
+    unavailable,
+  });
+  // Date and time of every class that can be picked, for the summary card
+  const sessionLabels = Object.fromEntries(
+    sessions
+      .filter((s) => s.is_bookable && !unavailable.has(s.session_id) && picker.monthSessionIds.has(s.session_id))
+      .map((s) => [s.session_id, { date: formatClassDate(s.date).full, time: formatTimeRange(s.start_time, s.end_time) }]),
   );
-  const choices = sessions.filter((session) => session.is_bookable && !myClasses.has(session.session_id));
-  const days = groupByDate(choices);
 
   return (
     <div className="flex flex-col gap-5">
@@ -142,48 +181,23 @@ async function TransferContent({
         </p>
       )}
 
-      {days.length === 0 ? (
-        <Card className="flex flex-col items-start gap-4">
-          <p className="text-sm text-muted">
-            No other class has a free seat right now. Please check again later, or message us with Chat With Us.
-          </p>
-          <ButtonLink href="/account/bookings" variant="secondary">
-            Back to My Bookings
-          </ButtonLink>
-        </Card>
-      ) : (
-        <TransferForm
-          bookingId={booking.booking_id}
-          paidLabel={formatPeso(booking.paid_amount ?? booking.total)}
-          note="Pick a class, then press the button. Your old seat is given up and the new one is yours."
-        >
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {days.map((day) => (
-              <li key={day.date}>
-                <Card>
-                  <RadioGroup legend={formatClassDate(day.date).full} name={`day-${day.date}`} legendStyle="heading">
-                    {day.sessions.map((session) => {
-                      const badge = seatBadge(session.seats_left, session.state, session.capacity);
-                      return (
-                        <RadioOption
-                          key={session.session_id}
-                          // All classes share one name, so only ONE can be picked
-                          name="session_id"
-                          value={session.session_id}
-                          required
-                          label={formatTimeRange(session.start_time, session.end_time)}
-                          description="Mindful Mat Pilates · Beginner"
-                          aside={<Badge variant={badge.variant}>{badge.label}</Badge>}
-                        />
-                      );
-                    })}
-                  </RadioGroup>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        </TransferForm>
-      )}
+      <TransferForm
+        bookingId={booking.booking_id}
+        paidLabel={formatPeso(booking.paid_amount ?? booking.total)}
+        sessionLabels={sessionLabels}
+        note="Pick a class, then press the button. Your old seat is given up and the new one is yours."
+      >
+        <ClassDayPicker
+          months={picker.months}
+          days={picker.days}
+          initialDate={picker.initialDate}
+          initialSessionId={null}
+          radioName="session_id"
+          reloadAction={`/account/bookings/${booking.booking_id}/transfer`}
+          reloadMethod="get"
+          emptyText={`There are no classes in ${picker.months.label} yet. Try the other month, or message us with Chat With Us.`}
+        />
+      </TransferForm>
     </div>
   );
 }
@@ -204,23 +218,4 @@ function notAllowedReason(booking: MyBookingListItem): string {
       // "voucher" or "no_credit": less than 24 hours before class
       return "Transfers close 24 hours before class. You can still cancel it from My Bookings (see what you'd get there first).";
   }
-}
-
-// One day with its classes.
-type ClassDay = { date: string; sessions: OpenSession[] };
-
-// Puts the classes into days.
-// Takes: the classes, earliest first (as get_open_sessions gives them).
-// Gives back: one entry per date, in the same order.
-function groupByDate(sessions: OpenSession[]): ClassDay[] {
-  const days: ClassDay[] = [];
-  for (const session of sessions) {
-    const last = days[days.length - 1];
-    if (last && last.date === session.date) {
-      last.sessions.push(session);
-    } else {
-      days.push({ date: session.date, sessions: [session] });
-    }
-  }
-  return days;
 }

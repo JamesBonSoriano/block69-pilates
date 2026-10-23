@@ -113,13 +113,16 @@ Home ──> Book Now ──> (not logged in? ──> Log in / Sign up ──> b
 - **Booking:** a 3-step flow (above). Step 1 (Change 17): a month navigator limited to this month and next month, date chips for only the dates that have classes (days come from `schedule_templates`), that date's sessions with seat badges, and the Booking details card (what to bring, Rent a mat, total). Step 2 shows the name, mobile, email and Instagram from the profile, and collects injuries or medical notes, drink choice (options come from settings), a voucher code, and the Registration Agreement checkbox (there is **no** not-pregnant checkbox since Change 17). Step 3 is payment.
 - **You're booked**, **Payment expired**, and **Manual transfer** (shows GCash and BPI details, plus a screenshot upload).
 - **My Account** (with a side menu on desktop and a list on phone):
-  - My Profile: name, email, mobile, Instagram, birthday, change password, deactivate account
-  - My Bookings: upcoming bookings (status badge, Cancel and Transfer buttons) and past bookings
-  - Payments: payment history with receipts
+  - My Profile (Change 17), three cards:
+    - Account Information: email (changed with two 6-digit codes, gmail/yahoo only), change password, forgot password
+    - Personal Information: full name, mobile (09 + 11 digits), Instagram, birthday (editable, a real past date)
+    - Account Management: deactivate account, delete account (bookings and payments are kept, the profile is blanked and the login removed)
+  - My Bookings: upcoming bookings (status badge, Cancel and Transfer buttons) and past bookings. Transfer uses the same month navigator + date chips as booking step 1
+  - Payments: payment history with receipts ("Payment Date"), with a Filter (status, method, month or date range)
   - My Vouchers: codes with their status and expiry date
-  - Notifications: email reminder on or off
+  - Notifications: email settings only (the booking updates are in the header's bell)
 
-The nav on every client page has Home, About Us, Book a Class, My Account, and Log in or Log out. On phones it collapses into a menu button. A **Chat With Us** button links to Messenger or Instagram.
+The nav on every client page has Home, About Us, Book a Class, a notifications bell, the person icon (My Account), and Log in or Log out (far right; not in the My Account menu). On phones it collapses into a menu button. A floating **Chat With Us** button links to Messenger or Instagram.
 
 ### Admin flow
 Admins use the same login page and are sent to `/admin`. On desktop the admin side has a brown sidebar. On phones it has a top bar with a menu.

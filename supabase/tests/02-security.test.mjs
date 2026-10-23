@@ -149,13 +149,15 @@ export default async function run(t) {
     'admin_list_vouchers', 'admin_review_manual_payment', 'admin_search_bookings', 'admin_set_attendance',
     'admin_set_promo_enabled', 'admin_set_user_active', 'admin_set_user_role', 'admin_transfer_booking', 'admin_update_session',
     'admin_update_settings', 'admin_walkin_booking',
-    'book_seat', 'cancel_my_booking', 'check_voucher', 'confirm_free_booking', 'deactivate_my_account', 'generate_sessions',
+    // migration 16 (Change 17) adds close_my_account and my_account_deletion_blockers
+    // (Delete account: each only touches the caller's own account)
+    'book_seat', 'cancel_my_booking', 'check_voucher', 'close_my_account', 'confirm_free_booking', 'deactivate_my_account', 'generate_sessions',
     // migration 6 (booking pages): read only the caller's own bookings
     // migration 8 (My Account) adds get_my_bookings, get_my_payments, get_my_vouchers
     // migration 12 (client revisions) adds get_my_notifications, mark_my_notifications_read
     // and my_unread_notification_count (each only touches the caller's own rows)
     'get_my_booking', 'get_my_bookings', 'get_my_notifications', 'get_my_payments', 'get_my_session_booking', 'get_my_vouchers',
-    'get_open_sessions', 'is_admin', 'mark_my_notifications_read', 'my_unread_notification_count',
+    'get_open_sessions', 'is_admin', 'mark_my_notifications_read', 'my_account_deletion_blockers', 'my_unread_notification_count',
     // migration 7 (pay page "Change details"): checks the owner inside
     'release_my_hold', 'save_online_checkout',
     'seats_left', 'start_online_payment', 'submit_manual_payment', 'transfer_my_booking',

@@ -14,6 +14,7 @@
 
 import "server-only"; // never sent to the browser
 import { io } from "next/cache";
+import { hasGoogleLogin, hasPasswordLogin } from "@/lib/auth/sign-in-methods";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/validation";
 import type { MyBookingListItem, MyPayment, MyVoucher } from "@/types/app";
@@ -84,6 +85,60 @@ export async function getMyVouchers(): Promise<MyVoucher[]> {
     throw new Error(`Could not load your vouchers: ${error.message}`);
   }
   return data as MyVoucher[];
+}
+
+// One thing that still stops the person deleting their account (migration
+// 16's my_account_deletion_blockers()).
+export type DeletionBlocker = {
+  kind: "upcoming_class" | "seat_on_hold" | "payment_checking";
+  howMany: number;
+  firstDate: string | null; // "YYYY-MM-DD", the earliest class it's about
+};
+
+// The login details My Profile's Account Information and Account Management
+// cards need (Change 17).
+export type MyAccountInfo = {
+  hasPassword: boolean; // false = only "Continue with Google"
+  hasGoogle: boolean; // Google is one of their logins
+  pendingEmail: string | null; // an email change that is waiting for its codes
+  // What blocks Delete account ([] = nothing), or null if it couldn't be
+  // checked (e.g. the database doesn't have migration 16 yet)
+  deletionBlockers: DeletionBlocker[] | null;
+};
+
+// Loads the login details and Delete account blockers (for My Profile).
+// Takes: nothing.
+// Gives back: MyAccountInfo. Never throws for the blockers (they show as
+// "couldn't check"); throws if the login can't be read.
+export async function getMyAccountInfo(): Promise<MyAccountInfo> {
+  await io();
+  const supabase = await createClient();
+  // getUser() asks Supabase for the full user (its logins and any email
+  // change waiting for codes); getClaims() alone doesn't have those
+  const { data: userData, error } = await supabase.auth.getUser();
+  if (error || !userData.user) {
+    throw new Error(`Could not load your login details: ${error?.message ?? "no user"}`);
+  }
+  const user = userData.user;
+
+  // Only the caller's own bookings are looked at (the function filters on the login)
+  const { data: blockers, error: blockersError } = await supabase.rpc("my_account_deletion_blockers");
+  if (blockersError) {
+    console.error("Could not check Delete account:", blockersError.code);
+  }
+
+  return {
+    hasPassword: hasPasswordLogin(user),
+    hasGoogle: hasGoogleLogin(user),
+    pendingEmail: user.new_email ?? null,
+    deletionBlockers: blockersError
+      ? null
+      : blockers.map((row) => ({
+          kind: row.kind as DeletionBlocker["kind"],
+          howMany: row.how_many,
+          firstDate: row.first_date ?? null,
+        })),
+  };
 }
 
 // The profile details My Profile and Notifications show, beyond what

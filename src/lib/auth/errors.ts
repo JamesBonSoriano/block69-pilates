@@ -77,6 +77,11 @@ export function friendlyAuthError(error: AuthError): string {
     case "session_not_found":
     case "session_expired":
       return "Your link has expired. Please ask for a new one.";
+
+    // A 6-digit code (Change email on My Profile) that is wrong, already
+    // used, or too old
+    case "otp_expired":
+      return "That code is wrong or has expired. Please check it, or send new codes.";
   }
 
   // Some rate-limit errors come without a code, only the "429" status

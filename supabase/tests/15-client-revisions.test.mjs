@@ -55,15 +55,18 @@ export default async function run(t) {
   let r = await attempt('A', `update public.profiles set full_name = 'New Name', mobile = '0918 111 2222', instagram = 'newig' where id = $1`, [A]);
   check('Client edits name, mobile and Instagram', 'allowed', r.ok, r.ok ? 'allowed' : r.err);
   r = await attempt('A', `update public.profiles set email = 'other@test.example' where id = $1`, [A]);
-  check('Client changes their own email', 'refused', !r.ok && /message the cafe/.test(r.err), r.ok ? 'allowed!' : r.err);
+  // (Change 17, migration 16: the message now points to "Change email")
+  check('Client changes their own email', 'refused', !r.ok && /Change email/.test(r.err), r.ok ? 'allowed!' : r.err);
   r = await attempt('A', `update public.profiles set birthday = current_date + 5 where id = $1`, [A]);
   check('Client sets a birthday in the future', 'refused', !r.ok && /real date/.test(r.err), r.ok ? 'allowed!' : r.err);
   r = await as('A', `update public.profiles set birthday = '2000-01-15' where id = $1`, [A]);
   check('Client saves a birthday for the first time', 'allowed', r.ok, r.ok ? 'allowed' : r.err);
+  // (Change 17, migration 16: a saved birthday CAN be changed now, to a real
+  // past date, but still not emptied. More in 18-r2-account.)
   r = await attempt('A', `update public.profiles set birthday = '2001-01-15' where id = $1`, [A]);
-  check('Client changes a saved birthday', 'refused', !r.ok && /already saved/.test(r.err), r.ok ? 'allowed!' : r.err);
+  check('Client changes a saved birthday (allowed since Change 17)', 'allowed', r.ok, r.ok ? 'allowed' : r.err);
   r = await attempt('A', `update public.profiles set birthday = null where id = $1`, [A]);
-  check('Client clears a saved birthday', 'refused', !r.ok && /already saved/.test(r.err), r.ok ? 'allowed!' : r.err);
+  check('Client clears a saved birthday', 'refused', !r.ok && /enter your birthday/.test(r.err), r.ok ? 'allowed!' : r.err);
   r = await attempt('A', `update public.profiles set email_reminders = false where id = $1`, [A]);
   check('Client still changes other settings (reminder switch)', 'allowed', r.ok, r.ok ? 'allowed' : r.err);
   r = await attempt('admin', `update public.profiles set birthday = '2001-01-15', email = 'a2@test.example' where id = $1`, [A]);

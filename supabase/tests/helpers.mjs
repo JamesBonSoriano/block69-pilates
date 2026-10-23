@@ -50,7 +50,9 @@ const SUPABASE_STAND_IN_SQL = `
   create table auth.users (
     id                 uuid primary key default gen_random_uuid(),
     email              text,
-    raw_user_meta_data jsonb
+    raw_user_meta_data jsonb,
+    -- Set by Supabase's "soft delete" (Change 17's Delete account)
+    deleted_at         timestamptz
   );
   -- A cut-down Supabase Storage (migration 10 makes buckets and file
   -- policies). Only the columns our migrations use; RLS on, like Supabase.

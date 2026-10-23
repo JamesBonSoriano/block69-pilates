@@ -59,6 +59,10 @@ type ClassDayPickerProps = {
   initialSessionId: string | null; // a class already picked
   radioName: string; // the form field the picked class is sent as ("session" / "session_id")
   reloadAction: string; // the page's own address, for the no-JavaScript buttons
+  // "get" when the form around the picker sends to a Server Action (the
+  // transfer page): the chips and arrows must then reload the page with GET.
+  // Booking step 1's form is already GET (next/form), so it leaves this out.
+  reloadMethod?: "get";
   emptyText: string; // shown when the month has no classes
 };
 
@@ -73,6 +77,7 @@ export function ClassDayPicker({
   initialSessionId,
   radioName,
   reloadAction,
+  reloadMethod,
   emptyText,
 }: ClassDayPickerProps) {
   // The date being looked at
@@ -92,11 +97,11 @@ export function ClassDayPicker({
 
       {/* ===== ◀ October 2026 ▶ ===== */}
       <div className="flex items-center justify-between gap-3 rounded-full border border-line bg-card p-1">
-        <MonthArrow direction="previous" month={months.previous} reloadAction={reloadAction} />
+        <MonthArrow direction="previous" month={months.previous} reloadAction={reloadAction} reloadMethod={reloadMethod} />
         <h2 aria-live="polite" className="font-heading text-lg font-semibold">
           {months.label}
         </h2>
-        <MonthArrow direction="next" month={months.next} reloadAction={reloadAction} />
+        <MonthArrow direction="next" month={months.next} reloadAction={reloadAction} reloadMethod={reloadMethod} />
       </div>
 
       {days.length === 0 ? (
@@ -116,6 +121,7 @@ export function ClassDayPicker({
                       name="date"
                       value={day.date}
                       formAction={reloadAction}
+                      formMethod={reloadMethod}
                       formNoValidate
                       onClick={(event) => showDate(event, day.date)}
                       aria-pressed={selected}
@@ -172,7 +178,8 @@ export function ClassDayPicker({
 }
 
 // One arrow of the month navigator.
-// Takes: which arrow, the month it opens (null = none), and the page address.
+// Takes: which arrow, the month it opens (null = none), the page address and
+// (on the transfer page) "get".
 // Gives back: a round submit button that reloads the page with
 // ?show_month=YYYY-MM (keeping the picked class and the mat tick, which are
 // in the same form), or a greyed-out one that does nothing.
@@ -180,10 +187,12 @@ function MonthArrow({
   direction,
   month,
   reloadAction,
+  reloadMethod,
 }: {
   direction: "previous" | "next";
   month: string | null;
   reloadAction: string;
+  reloadMethod?: "get";
 }) {
   const Icon = direction === "previous" ? ChevronLeft : ChevronRight;
   const label = direction === "previous" ? "Previous month" : "Next month";
@@ -193,6 +202,7 @@ function MonthArrow({
       name="show_month"
       value={month ?? ""}
       formAction={reloadAction}
+      formMethod={reloadMethod}
       formNoValidate
       disabled={!month}
       aria-label={month ? label : `${label} (only this month and next month can be booked)`}

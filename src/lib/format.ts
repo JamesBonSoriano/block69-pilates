@@ -176,6 +176,19 @@ export function manilaDateString(ms: number): string {
   return new Date(ms).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
 }
 
+// Writes a birthday for people, e.g. "January 15, 2000".
+// Takes: "YYYY-MM-DD". Gives back: the date in words. It's read and written
+// in UTC, so the visitor's time zone can never move it to the day before.
+// Where it's used: My Profile (the birthday row).
+export function formatBirthdayLong(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-PH", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 // Moves a date forwards or backwards by whole days.
 // Takes: a date "YYYY-MM-DD" and a number of days (negative = earlier).
 // Gives back: the new date, "YYYY-MM-DD". Worked out in UTC, so no time zone

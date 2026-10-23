@@ -44,6 +44,20 @@ export type AccountFormState = {
 // The starting state of each My Profile form.
 export const emptyAccountFormState: AccountFormState = {};
 
+// Where "Change email" is up to (My Profile, Change 17):
+//   "start" = typing the new email; "codes" = the codes were sent, typing
+//   them; "done" = the login email has changed.
+export type EmailChangeState = {
+  step: "start" | "codes" | "done";
+  newEmail?: string; // the new email asked for
+  info?: string; // e.g. "One code accepted, now enter the other one."
+  error?: string;
+  fieldErrors?: Partial<Record<string, string>>;
+};
+
+// The starting state of the Change email form.
+export const emptyEmailChangeState: EmailChangeState = { step: "start" };
+
 // What loadMyUpdates() answers (the header's bell): the updates, newest
 // first, or a message if they couldn't be loaded.
 export type MyUpdatesResult = { updates: NotificationListItem[] } | { error: string };
