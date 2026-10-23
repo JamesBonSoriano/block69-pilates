@@ -1,6 +1,6 @@
 Please read CLAUDE.md (sections 4–6) and docs/PROGRESS.md first. If PROGRESS.md shows this step is already half done, continue from where it stopped.
 
-Steps 6–13 are done and the site is live on Vercel. We are on **Phase E, Step 14: emails and timed jobs**. Only do this step. **Revisions part 3 already set up Gmail sending, `email_log`, Communications and most automatic emails. Skip anything PROGRESS.md says is done, and focus on the day-before reminder, pg_cron and the Supabase auth email settings.**
+Steps 6–13 are done and the site is live on Vercel. We are on **Phase E, Step 14: emails and timed jobs**. Only do this step.
 
 **Email sending:**
 - We don't own a domain, so Resend's free plan can only send to our own address. Instead, use **Gmail SMTP with an App Password** from the project's Gmail account (with `nodemailer`, server only).
