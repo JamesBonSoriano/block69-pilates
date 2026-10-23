@@ -1,6 +1,8 @@
 // Turns a notification row (a "kind" from the database) into the words the
-// client reads on My Account > Notifications.
-// Where it's used: src/app/(client)/account/notifications/page.tsx.
+// client reads in the header's bell (Change 17: the updates moved out of
+// My Account > Notifications and into the bell).
+// Where it's used: loadMyUpdates() in src/lib/account/actions.ts, which sends
+// the finished words to the bell (src/components/layout/NotificationBell.tsx).
 // The database only saves WHAT happened (migration 12), so the wording can be
 // changed here without touching the database.
 
@@ -16,6 +18,22 @@ export type NotificationText = {
   href: string; // where "See details" goes
   linkLabel: string; // the words on that link
 };
+
+// One update as the bell shows it: the words plus when it happened and
+// whether it's new. Plain values only, so a Server Action can send it to the
+// browser.
+export type NotificationListItem = NotificationText & {
+  id: string;
+  createdAt: string; // an exact moment (ISO text)
+  isNew: boolean; // not seen before this opening of the bell
+};
+
+// Makes the bell's version of one update.
+// Takes: the notification row.
+// Gives back: its words, time and "new" flag.
+export function toNotificationListItem(n: MyNotification): NotificationListItem {
+  return { ...notificationText(n), id: n.id, createdAt: n.created_at, isNew: !n.read_at };
+}
 
 // Writes the class an update is about, e.g. "Sat, 24 Oct at 9:00 AM".
 // Takes: the notification. Gives back: the text, or "your class" if the

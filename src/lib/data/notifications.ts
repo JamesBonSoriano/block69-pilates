@@ -1,11 +1,11 @@
-// Reads the logged-in client's in-app notifications (migration 12).
-// Where it's used: My Account > Notifications (the list) and the header
-// (the unread dot on the person icon).
+// Reads the logged-in client's in-app notifications (migration 12) for pages.
+// Where it's used: the header (the unread count on the bell). The list itself
+// is loaded only when the bell is opened, by loadMyUpdates() in
+// src/lib/account/actions.ts (Change 17).
 //
-// NO CACHING, on purpose: the list and the unread count must always be the
-// real values right now. Like src/lib/data/account.ts, these call
-// `await io()` before createClient() (the Step 7 rule), so pages must show
-// them inside <Suspense>.
+// NO CACHING, on purpose: the unread count must always be the real value
+// right now. Like src/lib/data/account.ts, this calls `await io()` before
+// createClient() (the Step 7 rule), so pages must show it inside <Suspense>.
 //
 // The database functions only ever give back the CALLER's own rows (they
 // filter on the login, and Row Level Security does too), so nobody can see
@@ -29,22 +29,7 @@ export type MyNotification = {
   end_time: string | null;
 };
 
-// Loads the logged-in client's notifications (for the Notifications page).
-// Takes: nothing.
-// Gives back: up to 50 updates, newest first. Throws if Supabase can't be reached.
-export async function getMyNotifications(): Promise<MyNotification[]> {
-  await io();
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_my_notifications", { p_limit: 50 });
-  if (error) {
-    throw new Error(`Could not load your notifications: ${error.message}`);
-  }
-  // The generated type says no column is ever empty; MyNotification says
-  // which ones can be.
-  return data as MyNotification[];
-}
-
-// Counts the logged-in client's unread notifications (for the header dot).
+// Counts the logged-in client's unread notifications (for the bell's count).
 // Takes: nothing.
 // Gives back: the number (0 for guests). Never throws: if Supabase can't be
 // reached the header just shows no dot.

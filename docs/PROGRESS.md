@@ -277,6 +277,13 @@ Claude Code: update this file at the end of every step. Keep it short.
     - Header: the active pill is Light Sage with dark text (so it shows on the sage-dark bar). The reminder switch is grey when off. The photo placeholder gradient is sage
     - CLAUDE.md §7 updated (both palettes, contrast rule, mockups note)
     - Checked: `tsc`, `lint`, `test:unit` 15/15, `test:db` 510/510, `npm run build` OK (the admin rule is in the built CSS)
+  - **Part B: header, bell, notifications** (done, no database change)
+    - Header for logged-in clients: Home, About Us, Book a Class, **bell**, person icon, **Log out** (far right). The phone bar has the bell + person icon + menu button. Admins get no bell (no notifications)
+    - **Bell** `src/components/layout/NotificationBell.tsx`: red unread count (9+), moved here from the person icon. On laptops it opens a dropdown under the bell; on phones a full-screen sheet. Escape / X / a click outside closes it, focus goes to its heading and back to the bell. Each opening loads the list with the new Server Action `loadMyUpdates()` (`get_my_notifications`, words from `toNotificationListItem()` in `src/lib/notifications.ts`), shows it with "New" labels, then calls `markNotificationsRead()`. A browser event clears the count on the other bell too. "Email notification settings" link at the bottom
+    - **Notifications page** = email settings only (confirmations "Always on", day-before reminder switch, class changes "Always on"). `MarkNotificationsRead.tsx` and `getMyNotifications()` deleted (unused)
+    - **Log out** removed from the My Account side menu (still in the header, and at the bottom of the phone menu). The side menu is Light Sage now, with white for the current page
+    - **Login / sign-up pages:** the guest header button says **Book Now** (→ `/book`) instead of Log in (`GuestHeaderButton.tsx`, laptop and phone menu)
+    - Checked: `tsc`, `lint`, `test:unit` 15/15, `test:db` 510/510, `npm run build` OK. Built site: `/login` shows Book Now and no Log in button; Home shows Log in. **Not checked by me:** the bell while logged in (your click-through)
 
 ## Next
 - **You:** click through Revisions part 1 (checklist in chat; SQL in `supabase/manual-tests/r1-setup.sql` / `r1-cleanup.sql`)

@@ -71,13 +71,15 @@ function AccountLinks({ variant, pathname }: { variant: Variant; pathname: strin
               className={cn(
                 "flex min-h-11 items-center gap-3 text-sm text-brown transition-colors",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown",
+                // Sidebar: the side card is Light Sage, so hover and the
+                // current page use white to stand out from it
                 variant === "sidebar"
-                  ? "rounded-xl px-4 py-3 hover:bg-tan-soft/60"
+                  ? "rounded-xl px-4 py-3 hover:bg-white/60"
                   : "rounded-full border border-line bg-white px-4 py-2 whitespace-nowrap",
                 active &&
                   (variant === "sidebar"
-                    ? "bg-tan-soft font-semibold hover:bg-tan-soft"
-                    : "border-brown bg-tan-soft font-semibold"),
+                    ? "bg-white font-semibold hover:bg-white"
+                    : "border-primary bg-tan-soft font-semibold"),
               )}
             >
               {Icon && <Icon aria-hidden="true" className="size-4.5 shrink-0" />}

@@ -8,7 +8,8 @@
 // (Change password and Deactivate my account were taken off My Profile in
 // Revisions part 1. deactivate_my_account() stays in the database, unused.)
 //   Notifications (src/components/account/ReminderSwitch.tsx):     setEmailReminders()
-//   Notifications (src/components/account/MarkNotificationsRead.tsx): markNotificationsRead()
+//   The header's bell (src/components/layout/NotificationBell.tsx): loadMyUpdates(),
+//                                                                   markNotificationsRead()
 //
 // "use server" = these run ONLY on our server. The browser just sends the
 // form here. The real rules live in the database: cancel_my_booking() and
@@ -20,6 +21,7 @@ import { redirect } from "next/navigation";
 import type {
   AccountFormState,
   CancelBookingState,
+  MyUpdatesResult,
   ReminderState,
   TransferBookingState,
 } from "@/lib/account/form-state";
@@ -28,7 +30,9 @@ import { STAFF_ACCOUNT_ERROR, isStaffAccount } from "@/lib/auth/client-guard";
 import { cancelTiming } from "@/lib/booking-rules";
 import { loadMyBookings } from "@/lib/data/account";
 import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
+import type { MyNotification } from "@/lib/data/notifications";
 import { formatManilaDate } from "@/lib/format";
+import { toNotificationListItem } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid, isValidBirthday, isValidInstagram, isValidMobile } from "@/lib/validation";
 
@@ -283,13 +287,34 @@ export async function setEmailReminders(previous: ReminderState, formData: FormD
 // NOTIFICATIONS: mark the in-app updates as read
 // ---------------------------------------------------------------------------
 
+// Loads the person's own updates for the header's bell (Change 17).
+// Takes: nothing.
+// Gives back: { updates } (up to 50, newest first, with their words already
+// written) or { error }. Only loaded when the bell is opened, so normal page
+// visits only pay for the small unread count.
+// get_my_notifications() only ever gives back the caller's OWN rows.
+export async function loadMyUpdates(): Promise<MyUpdatesResult> {
+  const supabase = await createClient();
+  if (!(await loggedInUserId(supabase))) return { error: LOGGED_OUT_ERROR };
+  // Admin accounts don't use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
+
+  const { data, error } = await supabase.rpc("get_my_notifications", { p_limit: 50 });
+  if (error) {
+    console.error("Could not load notifications:", error.code);
+    return { error: "Sorry, we couldn't load your updates. Please try again." };
+  }
+  // The generated type says no column is ever empty; MyNotification says
+  // which ones can be.
+  return { updates: (data as MyNotification[]).map(toNotificationListItem) };
+}
+
 // Marks all of the person's own notifications as read (migration 12).
 // Takes: nothing.
-// Gives back: nothing. Called once by the Notifications page after it has
-// shown the list (src/components/account/MarkNotificationsRead.tsx), so the
-// "New" labels are seen first. mark_my_notifications_read() only ever
-// touches the caller's OWN rows. A problem is only logged: the updates just
-// stay "new" until the next visit.
+// Gives back: nothing. Called by the bell (NotificationBell.tsx) right AFTER
+// it has shown the list, so the "New" labels are seen first.
+// mark_my_notifications_read() only ever touches the caller's OWN rows. A
+// problem is only logged: the updates just stay "new" until the next time.
 export async function markNotificationsRead(): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("mark_my_notifications_read");

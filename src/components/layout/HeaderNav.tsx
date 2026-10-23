@@ -25,8 +25,8 @@ import { cn } from "@/lib/cn";
 import { accountHomeHref, infoNavLinks, isActiveLink, mainNavLinks } from "./nav-links";
 
 type HeaderNavProps = {
-  desktopAccount: ReactNode; // laptop: Log in, or the person icon + Log out
-  phoneAvatar: ReactNode; // phone bar: the person icon next to the menu button
+  desktopAccount: ReactNode; // laptop: Log in (Book Now on the login pages), or bell + person icon + Log out
+  phoneAvatar: ReactNode; // phone bar: the bell + person icon next to the menu button
   phoneMenuUser: ReactNode; // top of the phone menu: name + email
   phoneMenuActions: ReactNode; // bottom of the phone menu: Log in or Log out
 };

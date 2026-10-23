@@ -4,6 +4,7 @@
 // (They live in their own file because a "use server" file may only export
 // functions, not types or plain values.)
 
+import type { NotificationListItem } from "@/lib/notifications";
 import type { ChangeRule } from "@/types/app";
 
 // What cancelBooking() answers (the Cancel box on My Bookings).
@@ -42,6 +43,10 @@ export type AccountFormState = {
 
 // The starting state of each My Profile form.
 export const emptyAccountFormState: AccountFormState = {};
+
+// What loadMyUpdates() answers (the header's bell): the updates, newest
+// first, or a message if they couldn't be loaded.
+export type MyUpdatesResult = { updates: NotificationListItem[] } | { error: string };
 
 // What setEmailReminders() answers (the switch on Notifications).
 export type ReminderState = {

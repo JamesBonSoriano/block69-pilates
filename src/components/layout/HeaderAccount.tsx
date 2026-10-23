@@ -1,11 +1,12 @@
 // The parts of the client Header that depend on WHO is logged in:
-//   - laptop:     "Log in", or the person icon + "Log out"
-//   - phone bar:  the person icon next to the menu button
+//   - laptop:     "Log in" (or "Book Now" on the login pages), or for a
+//                 client the bell + the person icon + "Log out"
+//   - phone bar:  the bell + the person icon next to the menu button
 //   - phone menu: name + email + My Account links at the top, and
 //                 Log in / Log out at the bottom
 // The person icon (Revisions part 1, item 6) is the "My Account" link: it
-// opens My Profile, and shows a small dot when the client has unread
-// notifications (migration 12).
+// opens My Profile. The bell (Change 17, NotificationBell.tsx) holds the
+// booking updates and the unread count (it used to be a dot on the person icon).
 // There is NO "Admin" link here (Revisions part 1, item 1): staff use
 // /admin/login. An admin who browses the public pages can tap their initials
 // to get back to the admin Dashboard; they don't get the My Account links,
@@ -21,12 +22,13 @@ import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { getCurrentUser } from "@/lib/auth/user";
 import { getMyUnreadCount } from "@/lib/data/notifications";
 import { initialsOf } from "@/lib/format";
-import { accountHomeHref, accountNavLinks, adminHomeHref, loginHref } from "./nav-links";
+import { GuestHeaderButton } from "./GuestHeaderButton";
+import { accountHomeHref, accountNavLinks, adminHomeHref } from "./nav-links";
+import { NotificationBell } from "./NotificationBell";
 
 // What the header shows about the logged-in person.
 type HeaderUser = {
@@ -69,8 +71,8 @@ const loadHeaderUser = cache(async (): Promise<HeaderUser | null> => {
   }
 });
 
-// The round person icon that opens My Account (My Profile), with a dot for
-// unread notifications. For an admin: their initials, linking to /admin.
+// The round person icon that opens My Account (My Profile).
+// For an admin: their initials, linking to /admin.
 // Takes: the header user, and size = "lg" (laptop) or "sm" (phone bar).
 // Gives back: the link. The tap area is always 44px; on phones the visible
 // circle inside it is a little smaller.
@@ -95,18 +97,10 @@ function AccountIcon({ user, size }: { user: HeaderUser; size: "lg" | "sm" }) {
     );
   }
 
-  // Screen readers hear "My Account", plus how many updates are new
-  const label =
-    user.unread > 0 ? `My Account (${user.unread} new notification${user.unread === 1 ? "" : "s"})` : "My Account";
   return (
-    <Link href={accountHomeHref} aria-label={label} title="My Account" className={tapArea}>
+    <Link href={accountHomeHref} aria-label="My Account" title="My Account" className={tapArea}>
       <span aria-hidden="true" className={circle}>
         <UserRound className={size === "lg" ? "size-5" : "size-4.5"} />
-        {/* The unread dot. data-unread-dot lets the Notifications page hide it
-            straight away once the updates are marked as read. */}
-        {user.unread > 0 && (
-          <span data-unread-dot className="absolute right-0 top-0 size-3 rounded-full border-2 border-primary bg-error" />
-        )}
       </span>
     </Link>
   );
@@ -117,23 +111,20 @@ function AccountIcon({ user, size }: { user: HeaderUser; size: "lg" | "sm" }) {
 // ---------------------------------------------------------------------------
 
 // The right-hand end of the laptop header.
-// Takes: nothing. Gives back: "Log in" for guests; for logged-in people the
-// person icon (My Account) and "Log out" (for admins, initials to /admin).
+// Takes: nothing. Gives back: "Log in" (or "Book Now" on the login pages) for
+// guests; for clients the bell, the person icon (My Account) and "Log out"
+// (Log out at the far right); for admins their initials (to /admin) and Log out.
 export async function DesktopAccount() {
   const user = await loadHeaderUser();
 
-  if (!user) {
-    return (
-      <ButtonLink href={loginHref} variant="light">
-        Log in
-      </ButtonLink>
-    );
-  }
+  if (!user) return <GuestHeaderButton />;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
+      {/* key: a new unread count from the server starts the bell afresh */}
+      {!user.isAdmin && <NotificationBell key={user.unread} initialUnread={user.unread} size="lg" />}
       <AccountIcon user={user} size="lg" />
-      <LogoutButton variant="lightOutline" />
+      <LogoutButton variant="lightOutline" formClassName="ml-1" />
     </div>
   );
 }
@@ -149,12 +140,19 @@ export function DesktopAccountFallback() {
 // PHONE (under 1024px)
 // ---------------------------------------------------------------------------
 
-// The person icon next to the phone menu button (PhoneMenu.html had initials).
-// Takes: nothing. Gives back: the icon link, or nothing for guests.
+// The bell and the person icon next to the phone menu button (PhoneMenu.html
+// had initials).
+// Takes: nothing. Gives back: the bell (clients only) and the icon link, or
+// nothing for guests.
 export async function PhoneAvatar() {
   const user = await loadHeaderUser();
   if (!user) return null;
-  return <AccountIcon user={user} size="sm" />;
+  return (
+    <>
+      {!user.isAdmin && <NotificationBell key={user.unread} initialUnread={user.unread} size="sm" />}
+      <AccountIcon user={user} size="sm" />
+    </>
+  );
 }
 
 // The top of the phone menu: who is logged in (PhoneMenu.html), and quick
@@ -189,8 +187,8 @@ export async function PhoneMenuUser() {
           )}
         </div>
       </div>
-      {/* My Account pages as small pills that wrap onto more lines (clients only).
-          Notifications shows how many are new. */}
+      {/* My Account pages as small pills that wrap onto more lines (clients
+          only). The unread count is on the bell in the top bar now. */}
       {!user.isAdmin && (
         <ul aria-label="My Account" className="flex flex-wrap gap-2">
           {accountNavLinks.map((link) => (
@@ -200,12 +198,6 @@ export async function PhoneMenuUser() {
                 className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 px-4 text-sm text-cream hover:bg-cream/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cream"
               >
                 {link.label}
-                {link.href === "/account/notifications" && user.unread > 0 && (
-                  <span data-unread-dot className="rounded-full bg-error px-1.5 text-[11px] font-semibold text-white">
-                    {user.unread}
-                    <span className="sr-only"> new</span>
-                  </span>
-                )}
               </Link>
             </li>
           ))}
@@ -216,18 +208,11 @@ export async function PhoneMenuUser() {
 }
 
 // The buttons at the bottom of the phone menu.
-// Takes: nothing. Gives back: "Log in" for guests, "Log out" for logged-in people.
+// Takes: nothing. Gives back: "Log in" for guests ("Book Now" on the login
+// pages), "Log out" for logged-in people (Log out stays reachable on phones).
 // (The menu closes itself when one of these is tapped; see HeaderNav.tsx.)
 export async function PhoneMenuActions() {
   const user = await loadHeaderUser();
-
-  if (!user) {
-    return (
-      <ButtonLink href={loginHref} variant="light" fullWidth>
-        Log in
-      </ButtonLink>
-    );
-  }
-
+  if (!user) return <GuestHeaderButton fullWidth />;
   return <LogoutButton variant="lightOutline" fullWidth />;
 }
