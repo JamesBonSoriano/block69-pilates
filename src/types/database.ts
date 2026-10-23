@@ -986,7 +986,12 @@ export type Database = {
           percent_off: number
         }[]
       }
-      close_my_account: { Args: never; Returns: { has_bookings: boolean }[] }
+      close_my_account: {
+        Args: never
+        Returns: {
+          has_bookings: boolean
+        }[]
+      }
       confirm_free_booking: {
         Args: { p_booking_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]
@@ -1166,7 +1171,11 @@ export type Database = {
       mark_my_notifications_read: { Args: never; Returns: number }
       my_account_deletion_blockers: {
         Args: never
-        Returns: { first_date: string; how_many: number; kind: string }[]
+        Returns: {
+          first_date: string
+          how_many: number
+          kind: string
+        }[]
       }
       my_seat_status: {
         Args: { p_session_id: string; p_user_id: string }
