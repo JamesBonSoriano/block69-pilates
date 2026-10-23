@@ -4,7 +4,7 @@
 // Layout follows booking step 1 (docs/designs/PhoneBook1.html): the open
 // classes by day, and a sticky bar (laptop: side card) with the button.
 //
-// ONLY THE BOOKING'S OWNER: requireUser() checks the login, and the booking
+// ONLY THE BOOKING'S OWNER: requireClient() checks the login, and the booking
 // is found in get_my_bookings() (the caller's own bookings only). Someone
 // else's booking id gives "page not found".
 //
@@ -24,7 +24,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
 import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { bookingStatusBadge, seatBadge } from "@/lib/booking-rules";
 import { getMyBookings } from "@/lib/data/account";
 import { getBookingSessions } from "@/lib/data/booking";
@@ -60,7 +60,7 @@ async function TransferContent({
 }) {
   const { bookingId } = await params;
   if (!isUuid(bookingId)) notFound();
-  await requireUser(`/account/bookings/${bookingId}/transfer`);
+  await requireClient(`/account/bookings/${bookingId}/transfer`);
 
   let bookings: MyBookingListItem[];
   let sessions: OpenSession[];

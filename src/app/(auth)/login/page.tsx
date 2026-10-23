@@ -7,14 +7,15 @@
 //   ?error=deactivated      the account was deactivated and has been logged out
 //   ?error=link-expired     an email link was old or already used
 //   ?error=other-browser    an email link was opened in a different browser
-// Admins who log in (with no "next") go to /admin; clients go to the Home page.
+// Clients who log in (with no "next") go to the Home page. ADMIN accounts
+// can't log in here: they are pointed to /admin/login (src/lib/auth/actions.ts).
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AuthFormSkeleton, AuthPage } from "@/components/auth/AuthPage";
 import { DEACTIVATED_MESSAGE } from "@/lib/auth/errors";
 import { firstParam, safeNextPath } from "@/lib/auth/safe-next";
-import { LoginForm } from "./LoginForm";
+import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata: Metadata = { title: "Log in" };
 
@@ -57,5 +58,5 @@ async function LoginFormWithParams({ searchParams }: Pick<PageProps<"/login">, "
   // Object.hasOwn: only OUR messages count (not built-in names like "toString")
   const notice = error && Object.hasOwn(NOTICES, error) ? NOTICES[error as keyof typeof NOTICES] : null;
 
-  return <LoginForm next={next} notice={notice} />;
+  return <LoginForm portal="client" next={next} notice={notice} />;
 }

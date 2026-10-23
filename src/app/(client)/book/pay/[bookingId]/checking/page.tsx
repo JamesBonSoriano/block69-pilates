@@ -11,7 +11,7 @@
 // If the booking got confirmed in the meantime (by the webhook), it goes
 // straight to the "You're booked" page.
 //
-// ONLY THE BOOKING'S OWNER: requireUser() + get_my_booking() (others get
+// ONLY THE BOOKING'S OWNER: requireClient() + get_my_booking() (others get
 // "page not found").
 
 import { Clock, RefreshCw } from "lucide-react";
@@ -22,7 +22,7 @@ import { Section } from "@/components/layout/Section";
 import { ButtonLink, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormMessage } from "@/components/ui/FormMessage";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { bookingReference } from "@/lib/booking-rules";
 import { getMyBooking } from "@/lib/data/booking";
 import { formatClassDate, formatPeso, formatTimeRange } from "@/lib/format";
@@ -57,7 +57,7 @@ async function Checking({
   if (!isUuid(bookingId)) notFound();
   const problem = (await searchParams).problem === "1";
 
-  await requireUser(`/book/pay/${bookingId}/checking`);
+  await requireClient(`/book/pay/${bookingId}/checking`);
 
   let booking: MyBooking | null;
   try {

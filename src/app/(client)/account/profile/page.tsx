@@ -3,7 +3,7 @@
 // Layout follows docs/designs/Profile.html: who you are (initials, name,
 // member since), your personal details, password, and deactivate account.
 //
-// ONLY YOUR OWN PROFILE: requireUser() reads the logged-in person, and the
+// ONLY YOUR OWN PROFILE: requireClient() reads the logged-in person, and the
 // save actions (src/lib/account/actions.ts) can only change their own row
 // (Row Level Security, migration 2). Role and "active" can't be changed here
 // (a database trigger blocks it); deactivating uses deactivate_my_account().
@@ -13,7 +13,7 @@ import { Suspense } from "react";
 import { AccountHeading, AccountLoadError, AccountLoading } from "@/components/account/AccountHeading";
 import { DeactivateForm, DetailsForm, PasswordForm } from "@/components/account/ProfileForms";
 import { Card } from "@/components/ui/Card";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { getMyBookings, getMyProfileExtras, type MyProfileExtras } from "@/lib/data/account";
 import { initialsOf } from "@/lib/format";
 
@@ -37,7 +37,7 @@ export default function ProfilePage() {
 // Takes: nothing.
 // Gives back: the cards, filled in from the person's profile.
 async function ProfileContent() {
-  const user = await requireUser("/account/profile");
+  const user = await requireClient("/account/profile");
 
   let extras: MyProfileExtras;
   let upcomingCount: number;

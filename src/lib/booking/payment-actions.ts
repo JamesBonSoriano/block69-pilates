@@ -14,6 +14,7 @@
 // is the caller's own. The secret Supabase key is NOT used here.
 
 import { redirect } from "next/navigation";
+import { STAFF_ACCOUNT_ERROR, isStaffAccount } from "@/lib/auth/client-guard";
 import { bookingReference } from "@/lib/booking-rules";
 import type { PaymentState } from "@/lib/booking/form-state";
 import { closeOpenCheckout } from "@/lib/booking/checkout";
@@ -68,6 +69,8 @@ export async function payOnline(_previous: PaymentState, formData: FormData): Pr
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
   if (!userId) redirect(`/login?next=${encodeURIComponent(`/book/pay/${bookingId}`)}`);
+  // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
 
   // The return check, as a FULL address: it's a route (not a page), so the
   // browser must load it fully instead of the app fetching it in the background
@@ -189,6 +192,8 @@ export async function submitManualTransfer(_previous: PaymentState, formData: Fo
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
   if (!userId) redirect(`/login?next=${encodeURIComponent(`/book/pay/${bookingId}`)}`);
+  // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
   // The file must be in their own folder (the database checks this too)
   if (!screenshotPath.startsWith(`${userId}/`)) return { error: "Please upload a screenshot of your transfer first." };
 
@@ -223,6 +228,8 @@ export async function confirmFreeBooking(_previous: PaymentState, formData: Form
   if (!isUuid(bookingId)) return { error: "Sorry, we couldn't find that booking." };
 
   const supabase = await createClient();
+  // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
   const { error } = await supabase.rpc("confirm_free_booking", { p_booking_id: bookingId });
   if (error) return { error: friendlyDatabaseError(error) };
   redirect(`/book/done/${bookingId}`);

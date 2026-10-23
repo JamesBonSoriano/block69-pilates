@@ -1,29 +1,32 @@
 // The parts of the client Header that depend on WHO is logged in:
-//   - laptop:     "Log in", or [Admin] + initials avatar + "Log out"
+//   - laptop:     "Log in", or initials avatar + "Log out"
 //   - phone bar:  the small initials avatar next to the menu button
 //   - phone menu: name + email + My Account links at the top, and
-//                 Log in / [Admin] + Log out at the bottom
+//                 Log in / Log out at the bottom
+// There is NO "Admin" link here any more (Revisions part 1, item 1): staff
+// use /admin/login. An admin who browses the public pages can tap their
+// avatar to get back to the admin Dashboard; they don't get the My Account
+// links, because admins can't use those pages (src/proxy.ts).
 // Where it's used: src/components/layout/Header.tsx, which puts EACH of these
 // inside its own <Suspense>. The rest of the header (logo, links, menu button)
 // stays static, so it shows at once and never waits for the login check.
 //
 // These are Server Components: they read the login cookies on the server.
 
-import { LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ButtonLink } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/auth/user";
 import { initialsOf } from "@/lib/format";
-import { accountNavLinks, adminNavLink, loginHref } from "./nav-links";
+import { accountNavLinks, adminHomeHref, loginHref } from "./nav-links";
 
 // What the header shows about the logged-in person.
 type HeaderUser = {
   name: string; // full name ("" if they haven't given one)
   email: string;
   initials: string; // e.g. "JS", for the round avatar
-  isAdmin: boolean; // show the Admin link? (display only; admin pages check again)
+  isAdmin: boolean; // avatar links to the admin Dashboard? (display only; pages check again)
 };
 
 // Gets the few details the header shows about the logged-in person.
@@ -39,7 +42,7 @@ async function loadHeaderUser(): Promise<HeaderUser | null> {
       name: user.fullName,
       email: user.email,
       initials: initialsOf(user.fullName, user.email),
-      // Only decides whether to SHOW the Admin link. The admin pages check
+      // Only decides what the avatar links to. The admin pages check
       // is_admin() on the server themselves.
       isAdmin: user.role === "admin" && user.isActive,
     };
@@ -58,8 +61,8 @@ async function loadHeaderUser(): Promise<HeaderUser | null> {
 // ---------------------------------------------------------------------------
 
 // The right-hand end of the laptop header.
-// Takes: nothing. Gives back: "Log in" for guests; for logged-in people an
-// Admin link (admins only), their initials and "Log out".
+// Takes: nothing. Gives back: "Log in" for guests; for logged-in people
+// their initials and "Log out" (for admins the initials link to /admin).
 export async function DesktopAccount() {
   const user = await loadHeaderUser();
 
@@ -73,22 +76,26 @@ export async function DesktopAccount() {
 
   return (
     <div className="flex items-center gap-3">
-      {user.isAdmin && (
+      {/* Initials avatar; the person's name is in its tooltip. For admins
+          it's a link back to the admin Dashboard. */}
+      {user.isAdmin ? (
         <Link
-          href={adminNavLink.href}
-          className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium text-cream transition-colors hover:bg-cream/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cream"
+          href={adminHomeHref}
+          title={`${user.name || user.email}: admin dashboard`}
+          className="flex size-11 items-center justify-center rounded-full bg-tan-soft text-xs font-semibold text-brown focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cream"
         >
-          {adminNavLink.label}
+          <span aria-hidden="true">{user.initials}</span>
+          <span className="sr-only">Admin dashboard (logged in as {user.name || user.email})</span>
         </Link>
+      ) : (
+        <span
+          title={user.name || user.email}
+          className="flex size-10 items-center justify-center rounded-full bg-tan-soft text-xs font-semibold text-brown"
+        >
+          <span aria-hidden="true">{user.initials}</span>
+          <span className="sr-only">Logged in as {user.name || user.email}</span>
+        </span>
       )}
-      {/* Initials avatar; the person's name is in its tooltip */}
-      <span
-        title={user.name || user.email}
-        className="flex size-10 items-center justify-center rounded-full bg-tan-soft text-xs font-semibold text-brown"
-      >
-        <span aria-hidden="true">{user.initials}</span>
-        <span className="sr-only">Logged in as {user.name || user.email}</span>
-      </span>
       <LogoutButton variant="lightOutline" />
     </div>
   );
@@ -123,7 +130,9 @@ export async function PhoneAvatar() {
 // The top of the phone menu: who is logged in (PhoneMenu.html), and quick
 // links to their My Account pages (Profile, Bookings, Payments, ...).
 // Takes: nothing. Gives back: avatar + name + email + account links, or
-// nothing for guests (they'd only be sent to the login page).
+// nothing for guests (they'd only be sent to the login page). Admins get no
+// account links (they can't use those pages); a small "Admin dashboard"
+// link under their email takes them back instead.
 export async function PhoneMenuUser() {
   const user = await loadHeaderUser();
   if (!user) return null;
@@ -140,28 +149,37 @@ export async function PhoneMenuUser() {
         <div className="min-w-0">
           {user.name && <p className="font-semibold text-white">{user.name}</p>}
           <p className="break-all text-xs text-tan">{user.email}</p>
+          {user.isAdmin && (
+            <Link
+              href={adminHomeHref}
+              className="inline-flex min-h-11 items-center text-sm font-semibold text-cream underline underline-offset-4"
+            >
+              Admin dashboard
+            </Link>
+          )}
         </div>
       </div>
-      {/* My Account pages as small pills that wrap onto more lines */}
-      <ul aria-label="My Account" className="flex flex-wrap gap-2">
-        {accountNavLinks.map((link) => (
-          <li key={link.href}>
-            <Link
-              href={link.href}
-              className="inline-flex min-h-11 items-center rounded-full border border-brown-line px-4 text-sm text-cream hover:bg-cream/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cream"
-            >
-              {link.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {/* My Account pages as small pills that wrap onto more lines (clients only) */}
+      {!user.isAdmin && (
+        <ul aria-label="My Account" className="flex flex-wrap gap-2">
+          {accountNavLinks.map((link) => (
+            <li key={link.href}>
+              <Link
+                href={link.href}
+                className="inline-flex min-h-11 items-center rounded-full border border-brown-line px-4 text-sm text-cream hover:bg-cream/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cream"
+              >
+                {link.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
 // The buttons at the bottom of the phone menu.
-// Takes: nothing. Gives back: "Log in" for guests; for logged-in people an
-// "Admin" button (admins only) and "Log out".
+// Takes: nothing. Gives back: "Log in" for guests, "Log out" for logged-in people.
 // (The menu closes itself when one of these is tapped; see HeaderNav.tsx.)
 export async function PhoneMenuActions() {
   const user = await loadHeaderUser();
@@ -174,15 +192,5 @@ export async function PhoneMenuActions() {
     );
   }
 
-  return (
-    <div className="flex flex-col gap-3">
-      {user.isAdmin && (
-        <ButtonLink href={adminNavLink.href} variant="light" fullWidth>
-          <LayoutDashboard aria-hidden="true" className="size-4" />
-          {adminNavLink.label}
-        </ButtonLink>
-      )}
-      <LogoutButton variant="lightOutline" fullWidth />
-    </div>
-  );
+  return <LogoutButton variant="lightOutline" fullWidth />;
 }

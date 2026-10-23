@@ -20,7 +20,7 @@ import { AccountHeading, AccountLoadError, AccountLoading } from "@/components/a
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { paymentMethodName, paymentStatusBadge } from "@/lib/booking-rules";
 import { getMyPayments } from "@/lib/data/account";
 import { formatClassDate, formatManilaDate, formatPeso, formatTime } from "@/lib/format";
@@ -49,7 +49,7 @@ export default function PaymentsPage() {
 // Takes: nothing.
 // Gives back: the three totals and the payments, or a "no payments yet" card.
 async function PaymentsList() {
-  await requireUser("/account/payments");
+  await requireClient("/account/payments");
 
   let payments: MyPayment[];
   try {

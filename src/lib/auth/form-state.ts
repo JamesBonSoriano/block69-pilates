@@ -15,6 +15,9 @@ export type AuthFormState = {
   values?: Partial<Record<string, string>>;
   // A success message (e.g. "Check your email"); the form shows it instead of the fields
   success?: string;
+  // Set when an account used the wrong login page (an admin on /login, or a
+  // client on /admin/login): the form shows a link to the right one
+  otherLogin?: { href: string; label: string };
 };
 
 // The starting state of every form: nothing to show yet.

@@ -31,9 +31,10 @@ export const accountNavLinks: NavLink[] = [
   { href: "/account/notifications", label: "Notifications" },
 ];
 
-// The admin area. The header adds it to the links ONLY for admins (and the
-// admin pages check is_admin() on the server anyway).
-export const adminNavLink: NavLink = { href: "/admin", label: "Admin" };
+// The admin Dashboard. The client header has no "Admin" link (Revisions
+// part 1): only an admin's own avatar links here (the admin pages check
+// is_admin() on the server anyway). Staff log in at /admin/login.
+export const adminHomeHref = "/admin";
 
 // The admin side menu (src/components/admin/AdminNav.tsx), in order.
 // `tab`  = also shown in the phone's bottom tab bar (the 4 pages the counter

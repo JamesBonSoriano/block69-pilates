@@ -1,6 +1,6 @@
 // Finds out who is logged in, and guards private pages ON THE SERVER.
-// Where it's used: the Header (to show Log in or Log out), the My Account
-// pages (requireUser) and the admin pages (requireAdmin).
+// Where it's used: the Header (to show Log in or Log out), the booking and
+// My Account pages (requireClient) and the admin pages (requireAdmin).
 //
 // src/proxy.ts already checks the login before a page loads. These checks
 // run AGAIN inside each private page, so a page stays protected even if the
@@ -11,8 +11,9 @@
 
 import "server-only"; // never sent to the browser
 import { io } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { cache } from "react";
+import { loginPathFor } from "@/lib/auth/login-portal";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
@@ -78,13 +79,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
 // Use at the top of every page that needs a logged-in, active user.
 // Takes: the path of the page (so we can come back to it after logging in).
-// Gives back: the CurrentUser. If nobody is logged in, it sends them to
-// /login?next=<path>. If the account is deactivated, it sends them to
+// Gives back: the CurrentUser. If nobody is logged in, it sends them to the
+// right login page with ?next=<path> (/admin/login for admin pages, /login
+// for the rest). If the account is deactivated, it sends them to
 // /auth/deactivated, which logs them out with a message.
 export async function requireUser(nextPath: string): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+    redirect(`${loginPathFor(nextPath)}?next=${encodeURIComponent(nextPath)}`);
   }
   if (!user.isActive) {
     redirect("/auth/deactivated");
@@ -92,11 +94,50 @@ export async function requireUser(nextPath: string): Promise<CurrentUser> {
   return user;
 }
 
+// Use at the top of every CLIENT-only page (booking steps, My Account).
+// Takes: the path of the page (for coming back after logging in).
+// Gives back: the CurrentUser, but only for a client. An admin is sent to the
+// admin Dashboard instead (admins don't book or use My Account; Revisions
+// part 1, item 1). Guests and deactivated accounts are handled by
+// requireUser() first.
+export async function requireClient(nextPath: string): Promise<CurrentUser> {
+  const user = await requireUser(nextPath);
+  // requireUser() has already checked the account is active, so an active
+  // account with role "admin" is exactly what is_admin() means
+  if (user.role === "admin") {
+    redirect("/admin");
+  }
+  return user;
+}
+
+// Use on a PUBLIC page that admins still shouldn't use (booking step 1,
+// /book, which guests may open). Must be called inside <Suspense>.
+// Takes: nothing.
+// Gives back: nothing for guests and clients. A logged-in admin is sent to
+// the admin Dashboard. If the database can't be reached, the visitor is
+// treated as a guest (every later booking step checks again with
+// requireClient(), and the proxy checks first anyway).
+export async function sendAdminsAway(): Promise<void> {
+  let user: CurrentUser | null = null;
+  try {
+    user = await getCurrentUser();
+  } catch (error) {
+    // Pass on Next.js's own internal signals, and the dev-mode AbortError
+    // (see the Home page's SessionList)
+    unstable_rethrow(error);
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    console.error(error);
+  }
+  if (user?.isActive && user.role === "admin") {
+    redirect("/admin");
+  }
+}
+
 // Use at the top of every admin page.
 // Takes: nothing.
 // Gives back: the CurrentUser, but only if the database's is_admin() says
 // they're an active admin. A client is sent to the Home page instead (not an
-// error page). Guests go to the login page first.
+// error page). Guests go to the admin login page (/admin/login) first.
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await requireUser("/admin");
 

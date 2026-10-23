@@ -8,7 +8,7 @@
 //     header's phone menu)
 //
 // Protection: src/proxy.ts sends guests to /login first, and EVERY page here
-// calls requireUser() again on the server before showing anything private.
+// calls requireClient() again on the server before showing anything private.
 // This layout itself shows nothing private, so it doesn't need a login check.
 
 import type { Metadata } from "next";

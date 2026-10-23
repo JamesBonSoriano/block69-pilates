@@ -1,7 +1,7 @@
 "use server";
 // Server Actions for logging in and out, signing up and passwords.
-// Where it's used: the forms on /login, /signup, /forgot-password and
-// /reset-password, and every Log out button.
+// Where it's used: the forms on /login, /admin/login, /signup,
+// /forgot-password and /reset-password, and every Log out button.
 //
 // "use server" = these functions run ONLY on our server. The browser just
 // sends the form to them. So the checks here can't be skipped by someone
@@ -19,6 +19,14 @@ import {
   friendlyAuthError,
 } from "@/lib/auth/errors";
 import type { AuthFormState } from "@/lib/auth/form-state";
+import {
+  ADMIN_LOGIN_PATH,
+  CLIENT_LOGIN_PATH,
+  isWrongPortal,
+  landingPath,
+  type LoginPortal,
+  wrongPortalMessage,
+} from "@/lib/auth/login-portal";
 import { safeNextPath } from "@/lib/auth/safe-next";
 import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
@@ -31,55 +39,23 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // LOG IN
 // ---------------------------------------------------------------------------
 
-// Logs someone in with their email and password.
+// Logs a CLIENT in with their email and password (the /login page).
 // Takes: the previous form state, and the form (email, password, and an
 // optional hidden "next" path to go back to).
-// Gives back: an error to show, or (on success) sends them on:
-//   - to "next" if it's a safe path on our site,
-//   - otherwise admins go to /admin and clients go to the Home page.
+// Gives back: an error to show, or (on success) sends them on to "next" if
+// it's a safe path on our site, otherwise to the Home page.
+// An ADMIN account is refused here and pointed to /admin/login.
 export async function logIn(_previous: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const email = readText(formData, "email").toLowerCase();
-  const password = readPassword(formData, "password");
-  const next = safeNextPath(formData.get("next"));
-  const values = { email };
+  return logInThrough("client", formData);
+}
 
-  if (!email || !password) {
-    return { error: "Please enter your email and password.", values };
-  }
-
-  const supabase = await createClient();
-  // Checks the password. If it's right, Supabase saves the login in cookies.
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    return { error: friendlyAuthError(error), values };
-  }
-
-  // Deactivated accounts may not log in: log them straight back out.
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("is_active")
-    .eq("id", data.user.id)
-    .maybeSingle();
-  if (profileError) {
-    await supabase.auth.signOut({ scope: "local" });
-    return { error: "Something went wrong on our side. Please try again in a moment.", values };
-  }
-  if (!profile?.is_active) {
-    await supabase.auth.signOut({ scope: "local" });
-    return { error: DEACTIVATED_MESSAGE, values };
-  }
-
-  // Where to go now
-  let destination = next;
-  if (!destination) {
-    // is_admin() is the database's own rule (an ACTIVE admin)
-    const { data: isAdmin } = await supabase.rpc("is_admin");
-    destination = isAdmin === true ? "/admin" : "/";
-  }
-
-  // redirect() works by stopping this function, so it must be the last step
-  // (and never inside a try/catch).
-  redirect(destination);
+// Logs an ADMIN in with their email and password (the /admin/login page).
+// Takes: the previous form state, and the form (email, password, optional "next").
+// Gives back: an error to show, or (on success) sends them on to "next" if
+// it's an admin page, otherwise to the admin Dashboard (/admin).
+// A CLIENT account is refused here and pointed to /login.
+export async function adminLogIn(_previous: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  return logInThrough("admin", formData);
 }
 
 // ---------------------------------------------------------------------------
@@ -258,6 +234,74 @@ export async function logOut(): Promise<void> {
 // ---------------------------------------------------------------------------
 // Small helpers (not exported, so the browser can't call them)
 // ---------------------------------------------------------------------------
+
+// The shared steps of both login pages.
+// Takes: which login page was used ("client" or "admin") and the form.
+// Gives back: an error to show, or sends them to their start page.
+// Steps:
+//   1. Supabase checks the email and password.
+//   2. Deactivated accounts are logged straight back out.
+//   3. The database's is_admin() says if it's an active admin. An account on
+//      the wrong login page is logged straight back out, with a link to the
+//      right page (Revisions part 1, item 1). We only say this AFTER the
+//      password was right, so it never helps a stranger guess accounts.
+//   4. They go to "next" or their usual start page (landingPath()).
+async function logInThrough(portal: LoginPortal, formData: FormData): Promise<AuthFormState> {
+  const email = readText(formData, "email").toLowerCase();
+  const password = readPassword(formData, "password");
+  const next = safeNextPath(formData.get("next"));
+  const values = { email };
+
+  if (!email || !password) {
+    return { error: "Please enter your email and password.", values };
+  }
+
+  const supabase = await createClient();
+  // --- 1. Checks the password. If it's right, Supabase saves the login in cookies.
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    return { error: friendlyAuthError(error), values };
+  }
+
+  // --- 2. Deactivated accounts may not log in: log them straight back out.
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("is_active")
+    .eq("id", data.user.id)
+    .maybeSingle();
+  if (profileError) {
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: "Something went wrong on our side. Please try again in a moment.", values };
+  }
+  if (!profile?.is_active) {
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: DEACTIVATED_MESSAGE, values };
+  }
+
+  // --- 3. Right login page for this account? (is_admin() = an ACTIVE admin)
+  const { data: isAdminAnswer, error: roleError } = await supabase.rpc("is_admin");
+  if (roleError) {
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: "Something went wrong on our side. Please try again in a moment.", values };
+  }
+  const isAdmin = isAdminAnswer === true;
+  if (isWrongPortal(portal, isAdmin)) {
+    // "local" = only this browser's brand-new login is ended
+    await supabase.auth.signOut({ scope: "local" });
+    return {
+      error: wrongPortalMessage(portal),
+      values,
+      otherLogin:
+        portal === "client"
+          ? { href: ADMIN_LOGIN_PATH, label: "Go to the admin login" }
+          : { href: CLIENT_LOGIN_PATH, label: "Go to the client login" },
+    };
+  }
+
+  // --- 4. Where to go now. redirect() works by stopping this function, so
+  //        it must be the last step (and never inside a try/catch).
+  redirect(landingPath(isAdmin, next));
+}
 
 // Reads a text field from a form and trims spaces from both ends.
 // Takes: the form data and the field name.

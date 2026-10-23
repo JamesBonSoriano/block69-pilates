@@ -4,7 +4,7 @@
 // (?moved=<new booking id> shows a "Done" message).
 // Layout follows docs/designs/PhoneMyBookings.html.
 //
-// ONLY THE PERSON'S OWN BOOKINGS: requireUser() checks the login on the
+// ONLY THE PERSON'S OWN BOOKINGS: requireClient() checks the login on the
 // server, and get_my_bookings() (migration 8) only ever gives back the
 // caller's own bookings, even for admins.
 //
@@ -22,7 +22,7 @@ import { Card } from "@/components/ui/Card";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { Overline } from "@/components/ui/Overline";
 import { firstParam } from "@/lib/auth/safe-next";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { cn } from "@/lib/cn";
 import { fillSettings, splitLines } from "@/lib/content-text";
 import { getMyBookings } from "@/lib/data/account";
@@ -60,7 +60,7 @@ async function BookingsList({ searchParams }: { searchParams: PageProps<"/accoun
   const tab = firstParam(params.tab) === "past" ? "past" : "upcoming";
   const movedId = firstParam(params.moved);
 
-  await requireUser(tab === "past" ? "/account/bookings?tab=past" : "/account/bookings");
+  await requireClient(tab === "past" ? "/account/bookings?tab=past" : "/account/bookings");
 
   let bookings: MyBookingListItem[];
   let aboutContent;
@@ -77,7 +77,7 @@ async function BookingsList({ searchParams }: { searchParams: PageProps<"/accoun
     return <AccountLoadError what="your bookings" />;
   }
 
-  // Read the clock ONCE (we're in a real visit: requireUser has run), so all
+  // Read the clock ONCE (we're in a real visit: requireClient has run), so all
   // cards agree on "in 18 hours" etc.
   const nowMs = nowForThisVisit();
   const upcoming = bookings.filter((booking) => booking.is_upcoming); // soonest first

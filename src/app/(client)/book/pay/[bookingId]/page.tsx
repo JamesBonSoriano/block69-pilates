@@ -4,7 +4,7 @@
 // they already have an unpaid hold for that class.
 // Layout follows docs/designs/PhoneBook3.html.
 //
-// ONLY THE BOOKING'S OWNER can open it: src/proxy.ts and requireUser() make
+// ONLY THE BOOKING'S OWNER can open it: src/proxy.ts and requireClient() make
 // sure someone is logged in, and get_my_booking() (migration 6) only ever
 // gives back the caller's OWN booking. Anyone else gets "page not found",
 // so nobody can even tell whether a booking id exists.
@@ -41,7 +41,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { Overline } from "@/components/ui/Overline";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { bookingReference, bookingStatusBadge, voucherLabel } from "@/lib/booking-rules";
 import { getMyBooking } from "@/lib/data/booking";
 import { getPublicSettings } from "@/lib/data/settings";
@@ -79,7 +79,7 @@ async function PayStep({
   const payment = (await searchParams).payment;
 
   // Logged in and active? (guests -> login page, then back here)
-  const user = await requireUser(`/book/pay/${bookingId}`);
+  const user = await requireClient(`/book/pay/${bookingId}`);
 
   let booking: MyBooking | null;
   let settings;

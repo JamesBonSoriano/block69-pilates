@@ -1,5 +1,8 @@
 // The frame shared by every admin page (/admin/...).
-// Where it's used: Next.js wraps each page in src/app/admin/ with it.
+// Where it's used: Next.js wraps each page in src/app/admin/(panel)/ with it.
+// "(panel)" in brackets is a route group: it adds nothing to the web address
+// (/admin/bookings stays /admin/bookings). It exists so the admin LOGIN page
+// (src/app/admin/login/) sits outside this frame and its menus.
 // Layout follows docs/designs/AdminBookings.html (laptop) and
 // PhoneAdminDashboard.html (phone):
 //   - laptop (1024px+): a 280px brown side menu on the left, the page on the
@@ -9,7 +12,7 @@
 // The menus and bars are left out when a page is printed (print:hidden), so
 // the Attendance list prints on its own.
 //
-// Protection: src/proxy.ts sends guests to /login and clients to Home before
+// Protection: src/proxy.ts sends guests to /admin/login and clients to Home before
 // any admin page loads, and EVERY admin page calls requireAdmin() again on the
 // server before showing anything. This frame shows only the admin's own
 // name, so it doesn't need its own check.

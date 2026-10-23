@@ -14,6 +14,7 @@
 // seat, cutoff, ticks, drink and voucher, and works out the price itself.
 
 import { redirect } from "next/navigation";
+import { STAFF_ACCOUNT_ERROR, isStaffAccount } from "@/lib/auth/client-guard";
 import { voucherLabel } from "@/lib/booking-rules";
 import { closeOpenCheckout } from "@/lib/booking/checkout";
 import type { HoldSeatState, ReleaseHoldState, VoucherPreview } from "@/lib/booking/form-state";
@@ -160,6 +161,10 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
     // Logged out in another tab: log in again, then come back to this class
     redirect(`/login?next=${encodeURIComponent(`/book/details?session=${sessionId}`)}`);
   }
+  // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) {
+    return { error: STAFF_ACCOUNT_ERROR, values };
+  }
 
   // --- 3. Hold the seat. book_seat() does it all in ONE locked step: seat
   //        check, cutoff, one seat per person, prices from settings, voucher
@@ -241,6 +246,8 @@ export async function releaseHold(_previous: ReleaseHoldState, formData: FormDat
   }
 
   const supabase = await createClient();
+  // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
   const closed = await closeOpenCheckout(supabase, bookingId);
   if (closed === "paid") redirect(`${getSiteUrl()}/book/pay/${bookingId}/return`);
   if (closed === "in_progress") {

@@ -15,7 +15,7 @@ import { AccountHeading, AccountLoadError, AccountLoading } from "@/components/a
 import { ReminderSwitch } from "@/components/account/ReminderSwitch";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { getMyProfileExtras } from "@/lib/data/account";
 
 export const metadata = { title: "Notifications" };
@@ -43,7 +43,7 @@ export default function NotificationsPage() {
 // Takes: nothing.
 // Gives back: the heading and a card with one row per kind of email.
 async function NotificationSettings() {
-  const user = await requireUser("/account/notifications");
+  const user = await requireClient("/account/notifications");
 
   let emailReminders: boolean;
   try {

@@ -3,7 +3,7 @@
 // PayMongo return check (/book/pay/<id>/return) after a payment.
 // Layout follows docs/designs/PhoneBooked.html (centred on laptops).
 //
-// ONLY THE BOOKING'S OWNER can open it (same as the pay page: requireUser()
+// ONLY THE BOOKING'S OWNER can open it (same as the pay page: requireClient()
 // plus get_my_booking(), which only gives back the caller's own booking).
 //
 // What it shows, by status:
@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { bookingReference, bookingStatusBadge, paymentMethodLabel } from "@/lib/booking-rules";
 import { fillSettings } from "@/lib/content-text";
 import { getMyBooking } from "@/lib/data/booking";
@@ -59,7 +59,7 @@ async function Booked({ params }: Pick<PageProps<"/book/done/[bookingId]">, "par
   const { bookingId } = await params;
   if (!isUuid(bookingId)) notFound();
 
-  const user = await requireUser(`/book/done/${bookingId}`);
+  const user = await requireClient(`/book/done/${bookingId}`);
 
   let booking: MyBooking | null;
   let settings;

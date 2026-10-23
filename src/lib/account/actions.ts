@@ -26,6 +26,7 @@ import type {
   TransferBookingState,
 } from "@/lib/account/form-state";
 import { MIN_PASSWORD_LENGTH, friendlyAuthError } from "@/lib/auth/errors";
+import { STAFF_ACCOUNT_ERROR, isStaffAccount } from "@/lib/auth/client-guard";
 import { cancelTiming } from "@/lib/booking-rules";
 import { loadMyBookings } from "@/lib/data/account";
 import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
@@ -63,6 +64,8 @@ export async function cancelBooking(
   }
 
   const supabase = await createClient();
+  // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
 
   // 1. Look at the booking again, as it is right now (only their own
   //    bookings are ever listed by get_my_bookings).
@@ -134,6 +137,8 @@ export async function transferBooking(
   }
 
   const supabase = await createClient();
+  // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
   const { data: newBookingId, error } = await supabase.rpc("transfer_my_booking", {
     p_booking_id: bookingId,
     p_new_session_id: sessionId,
@@ -186,6 +191,8 @@ export async function updateProfile(_previous: AccountFormState, formData: FormD
   const supabase = await createClient();
   const userId = await loggedInUserId(supabase);
   if (!userId) return { error: LOGGED_OUT_ERROR, values };
+  // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR, values };
 
   // Row Level Security only lets them change their OWN row, and the
   // database trigger (migration 2) blocks role / is_active changes anyway.
@@ -300,6 +307,8 @@ export async function setEmailReminders(previous: ReminderState, formData: FormD
   const supabase = await createClient();
   const userId = await loggedInUserId(supabase);
   if (!userId) return { error: LOGGED_OUT_ERROR, value: previous.value };
+  // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
+  if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR, value: previous.value };
 
   // Row Level Security: only their own row can be changed
   const { error } = await supabase.from("profiles").update({ email_reminders: value }).eq("id", userId);

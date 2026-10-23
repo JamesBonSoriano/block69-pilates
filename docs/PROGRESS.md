@@ -206,7 +206,19 @@ Claude Code: update this file at the end of every step. Keep it short.
     - as a guest, the pay, return and checking pages and `/admin/payments` → login
   - **Not checked by me:** real PayMongo calls (no `PAYMONGO_SECRET_KEY` here) and the logged-in click-through. That's your checklist
 
+- **Revisions part 1 (client side), in progress** (`docs/prompts/R1-revisions-client.md`). Plan agreed 2026-10-23: 1 separate logins → 2 Chat With Us button → 3 booking step 1 → 4 booking step 2 → 5 person icon + My Profile + birthday → 6 Policies Back → 7 notifications table → Home last (needs the Figma 103-26 screenshot; Figma isn't connected here)
+  - **Sub-step 1: separate admin and client logins** (done, 2026-10-23)
+    - `src/lib/auth/login-portal.ts` holds the rules as plain functions: wrong login page, where to land after logging in, client-only paths (`/book`, `/account`) and which login page a guest needs. Tested by the new `tests/unit/login-portal.test.mjs` (8 tests; `npm run test:unit` **15/15**)
+    - `logIn` (client `/login`) and the new `adminLogIn` (`/admin/login`) share `logInThrough()`. After the password is right, `is_admin()` decides. If the account is on the wrong page, it's logged straight back out, with a message and a link to the other login page. Admins land on `next` only if it's an admin page, otherwise `/admin`. Clients land on `next` only if it's not an admin page, otherwise Home
+    - The admin pages moved into the route group `src/app/admin/(panel)/` (web addresses unchanged), so **`/admin/login`** (`src/app/admin/login/page.tsx`) has no admin menu. Its style: admin background, white card, "69" logo, "Back to the website"
+    - `LoginForm` moved to `src/components/auth/LoginForm.tsx`, with `portal="client" | "admin"` (admin version: no sign-up link, "Go to the client login" instead)
+    - **Proxy:** guests on admin pages go to `/admin/login?next=…`. Logged-in admins on `/book…` or `/account…` go to `/admin`. Logged-in people on any login page go to `landingPath()`
+    - **In the pages:** `requireClient()` (new) on every booking and My Account page, `sendAdminsAway()` on `/book` step 1, and `requireUser()` picks the right login page. The client Server Actions (hold seat, release hold, pay, manual transfer, free booking, cancel, transfer, profile, reminders) refuse admins with `STAFF_ACCOUNT_ERROR` (`src/lib/auth/client-guard.ts`)
+    - Header: the **Admin link is gone**. For an admin only, the avatar links to `/admin`, and the phone menu shows "Admin dashboard" instead of the My Account links
+    - Checked: `tsc`, `lint` and `npm run build` clean (`/admin/login` is Partial Prerender). On the built site as a guest: `/admin` and `/admin/bookings?…` go to `/admin/login?next=…`, `/account/profile` goes to `/login?next=…`, and `/admin/login`, `/login`, `/book` and `/` return 200. No database change, so `test:db` wasn't needed
+
 ## Next
+- **Revisions part 1, sub-step 2:** Chat With Us as a floating button (then sub-steps 3 to 7, Home last)
 - **You:** add `SUPABASE_SECRET_KEY` and `PAYMONGO_SECRET_KEY` to `.env.local`, restart `npm run dev`, then click through Step 12 (checklist in chat; SQL in `supabase/manual-tests/step12-setup.sql` / `step12-cleanup.sql`)
 - **Phase D/E, Step 13:** deploy to Vercel, then add the PayMongo webhook `https://<your-site>.vercel.app/api/paymongo/webhook` (event `checkout_session.payment.paid`) and put its secret in Vercel as `PAYMONGO_WEBHOOK_SECRET`
 - **You:** click through Step 11 part 1 at 390px and 1440px (checklist in chat; test SQL in `supabase/manual-tests/step11-setup.sql` and `step11-cleanup.sql`, paste into the SQL Editor by hand, never pushed). Still open from Step 10, if not done yet: **Require current password when updating**, delete the throwaway `step10-check-…@example.com` users

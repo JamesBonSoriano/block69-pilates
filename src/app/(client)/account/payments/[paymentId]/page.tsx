@@ -3,7 +3,7 @@
 // It's made to be printed or saved as a PDF: the header, footer and account
 // menu are left out of the printout (print:hidden), and so is the Print button.
 //
-// ONLY THE PAYMENT'S OWNER: requireUser() checks the login, and
+// ONLY THE PAYMENT'S OWNER: requireClient() checks the login, and
 // get_my_payments(id) (migration 8) gives nothing back for someone else's
 // payment, so they get "page not found".
 // Money: the amounts are the ones SAVED on the booking and payment
@@ -18,7 +18,7 @@ import { AccountLoadError, AccountLoading } from "@/components/account/AccountHe
 import { PrintButton } from "@/components/account/PrintButton";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { bookingReference, paymentMethodName, paymentStatusBadge, receiptNumber } from "@/lib/booking-rules";
 import { getMyPayment } from "@/lib/data/account";
 import { getPublicSettings } from "@/lib/data/settings";
@@ -54,7 +54,7 @@ export default function ReceiptPage({ params }: PageProps<"/account/payments/[pa
 async function Receipt({ params }: { params: PageProps<"/account/payments/[paymentId]">["params"] }) {
   const { paymentId } = await params;
   if (!isUuid(paymentId)) notFound();
-  const user = await requireUser(`/account/payments/${paymentId}`);
+  const user = await requireClient(`/account/payments/${paymentId}`);
 
   let payment: MyPayment | null;
   let settings;

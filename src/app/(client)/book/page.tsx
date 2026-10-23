@@ -9,6 +9,8 @@
 // step 2 (/book/details?session=<id>), which needs a login: src/proxy.ts
 // sends guests to /login?next=/book/details?session=<id>, and after logging
 // in (or signing up) they come straight back to the same class.
+// Admins can't book: a logged-in admin is sent to /admin (src/proxy.ts first,
+// then sendAdminsAway() below).
 //
 // LIVE DATA: the class list comes from get_open_sessions() on every visit,
 // never cached (src/lib/data/booking.ts), so seats left are always real.
@@ -29,6 +31,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
 import { firstParam } from "@/lib/auth/safe-next";
+import { sendAdminsAway } from "@/lib/auth/user";
 import { seatBadge } from "@/lib/booking-rules";
 import { cn } from "@/lib/cn";
 import { getBookingSessions } from "@/lib/data/booking";
@@ -108,6 +111,9 @@ async function SessionPicker({
 }) {
   const params = await searchParams;
   const picked = firstParam(params.session);
+
+  // Admin accounts don't book (they use the admin Walk-in page instead)
+  await sendAdminsAway();
 
   let sessions: OpenSession[];
   try {

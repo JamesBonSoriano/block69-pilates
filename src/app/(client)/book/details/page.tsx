@@ -5,7 +5,7 @@
 //
 // What happens here (all on the server, before the form is shown):
 //   1. No (or a broken) ?session=  ->  back to step 1.
-//   2. Must be logged in (src/proxy.ts checks first, requireUser checks again).
+//   2. Must be logged in (src/proxy.ts checks first, requireClient checks again).
 //      Guests go to /login?next=/book/details?session=<id> and come back here.
 //   3. Already holding a seat in this class?
 //        unpaid hold still running  ->  straight to its pay page (no error)
@@ -28,7 +28,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
 import { firstParam } from "@/lib/auth/safe-next";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { isInNoCreditWindow, NO_CREDIT_HOURS, seatBadge, sessionStateMessage } from "@/lib/booking-rules";
 import { fillSettings } from "@/lib/content-text";
 import { getPageContent } from "@/lib/data/content";
@@ -76,7 +76,7 @@ async function DetailsStep({ searchParams }: Pick<PageProps<"/book/details">, "s
   }
 
   // 2. Logged in and active? (guests -> login page, then back here)
-  const user = await requireUser(`/book/details?session=${sessionId}`);
+  const user = await requireClient(`/book/details?session=${sessionId}`);
 
   let mine: MySessionBooking | null;
   let session;
@@ -159,7 +159,7 @@ async function DetailsStep({ searchParams }: Pick<PageProps<"/book/details">, "s
       drinkOptions={settings.drinkOptions}
       holdMinutes={settings.holdMinutes}
       // "Cancelling now gives no credit" warning (less than 12 hours to go).
-      // It reads the clock, which is fine here: requireUser() already waited
+      // It reads the clock, which is fine here: requireClient() already waited
       // for a real visit, so this is never frozen into a prebuilt page.
       lateWarning={isInNoCreditWindow(session.date, session.start_time)}
       noCreditHours={NO_CREDIT_HOURS}

@@ -17,7 +17,7 @@ import { VoucherCode } from "@/components/account/VoucherCode";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { requireUser } from "@/lib/auth/user";
+import { requireClient } from "@/lib/auth/user";
 import { voucherDiscount, voucherStateBadge } from "@/lib/booking-rules";
 import { cn } from "@/lib/cn";
 import { getMyVouchers } from "@/lib/data/account";
@@ -49,7 +49,7 @@ export default function VouchersPage() {
 // Takes: nothing.
 // Gives back: the cards (or a "no vouchers" card) and the small print.
 async function VoucherList() {
-  await requireUser("/account/vouchers");
+  await requireClient("/account/vouchers");
 
   let vouchers: MyVoucher[];
   let settings: PublicSettings;
