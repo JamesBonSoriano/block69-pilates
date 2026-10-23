@@ -87,10 +87,11 @@ function startsWithAny(pathname: string, prefixes: string[]): boolean {
   );
 }
 
-// Which requests the proxy runs for: everything EXCEPT Next.js's own files
-// and images, which never need a login check (this keeps the site fast).
+// Which requests the proxy runs for: everything EXCEPT Next.js's own files,
+// images, and the PayMongo webhook (PayMongo has no login, and the webhook
+// checks PayMongo's signature itself). This keeps the site fast.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/paymongo/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

@@ -24,6 +24,15 @@ const FILL_INS: Record<string, (settings: PublicSettings) => string> = {
   cafe_name: (s) => s.cafeName, // e.g. "Block 69 Cafe"
 };
 
+// Lists every fill-in word with what it becomes right now.
+// Where it's used: the admin Content page (the "Fill-in words" list and the
+// live preview under each text box).
+// Takes: the public settings.
+// Gives back: e.g. { class_price: "₱500", cutoff_time: "8:00 AM", ... }.
+export function fillInValues(settings: PublicSettings): Record<string, string> {
+  return Object.fromEntries(Object.entries(FILL_INS).map(([name, getValue]) => [name, getValue(settings)]));
+}
+
 // Swaps every {fill_in} word in a text for its current settings value.
 // Takes: the text (may be null/undefined) and the public settings.
 // Gives back: the finished text ("" if there was no text). A word in curly

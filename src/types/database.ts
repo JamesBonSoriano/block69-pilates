@@ -39,6 +39,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_admin_actions: {
+        Row: {
+          action: string
+          admin_id: string | null
+          booking_id: string
+          created_at: string
+          id: string
+          new_booking_id: string | null
+          normal_rule: string
+          note: string | null
+          overridden: boolean
+          voucher_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          booking_id: string
+          created_at?: string
+          id?: string
+          new_booking_id?: string | null
+          normal_rule: string
+          note?: string | null
+          overridden: boolean
+          voucher_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          booking_id?: string
+          created_at?: string
+          id?: string
+          new_booking_id?: string | null
+          normal_rule?: string
+          note?: string | null
+          overridden?: boolean
+          voucher_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_admin_actions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_admin_actions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_admin_actions_new_booking_id_fkey"
+            columns: ["new_booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_admin_actions_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           agreed_at: string | null
@@ -420,6 +488,7 @@ export type Database = {
           amount_off: number | null
           code: string
           created_at: string
+          disabled_at: string | null
           expires_at: string | null
           id: string
           owner_id: string | null
@@ -432,6 +501,7 @@ export type Database = {
           amount_off?: number | null
           code: string
           created_at?: string
+          disabled_at?: string | null
           expires_at?: string | null
           id?: string
           owner_id?: string | null
@@ -444,6 +514,7 @@ export type Database = {
           amount_off?: number | null
           code?: string
           created_at?: string
+          disabled_at?: string | null
           expires_at?: string | null
           id?: string
           owner_id?: string | null
@@ -467,7 +538,49 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_billing_summary: {
+        Args: never
+        Returns: {
+          awaiting_verification: number
+          mats_all_time: number
+          mats_this_month: number
+          paid_needs_action: number
+          paid_this_month: number
+          paid_this_week: number
+          paid_today: number
+          payments_today: number
+        }[]
+      }
+      admin_booking_change_info: {
+        Args: { p_booking_id: string }
+        Returns: {
+          actions: Json
+          can_change: boolean
+          normal_action: string
+          rule: string
+          voucher_allowed: boolean
+        }[]
+      }
+      admin_cancel_booking: {
+        Args: { p_booking_id: string; p_note?: string; p_outcome: string }
+        Returns: {
+          new_status: Database["public"]["Enums"]["booking_status"]
+          overridden: boolean
+          voucher_code: string
+          voucher_expires_at: string
+        }[]
+      }
       admin_cancel_session: { Args: { p_session_id: string }; Returns: number }
+      admin_change_rule: {
+        Args: {
+          p_booking_status: Database["public"]["Enums"]["booking_status"]
+          p_date: string
+          p_session_status: Database["public"]["Enums"]["session_status"]
+          p_start_time: string
+          p_transferred_from: string
+        }
+        Returns: string
+      }
       admin_class_rosters: {
         Args: { p_session_ids: string[] }
         Returns: {
@@ -493,6 +606,15 @@ export type Database = {
           total: number
         }[]
       }
+      admin_create_promo: {
+        Args: {
+          p_code: string
+          p_expires_on?: string
+          p_percent_off: number
+          p_uses: number
+        }
+        Returns: string
+      }
       admin_dashboard_summary: {
         Args: never
         Returns: {
@@ -508,6 +630,17 @@ export type Database = {
           today_capacity: number
           today_classes: number
           today_taken: number
+        }[]
+      }
+      admin_earnings: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          amount: number
+          day: string
+          mat_amount: number
+          method: Database["public"]["Enums"]["payment_method"]
+          payments: number
+          provider: Database["public"]["Enums"]["payment_provider"]
         }[]
       }
       admin_get_booking: {
@@ -555,6 +688,42 @@ export type Database = {
           voucher_source: Database["public"]["Enums"]["voucher_source"]
         }[]
       }
+      admin_list_payments: {
+        Args: {
+          p_from?: string
+          p_limit?: number
+          p_method?: string
+          p_search?: string
+          p_status?: string
+          p_to?: string
+          p_view?: string
+        }
+        Returns: {
+          amount: number
+          booking_id: string
+          booking_status: Database["public"]["Enums"]["booking_status"]
+          booking_total: number
+          class_date: string
+          created_at: string
+          end_time: string
+          guest_contact: string
+          guest_email: string
+          guest_name: string
+          is_walkin: boolean
+          mat_rental: boolean
+          method: Database["public"]["Enums"]["payment_method"]
+          paid_at: string
+          payment_id: string
+          paymongo_ref: string
+          provider: Database["public"]["Enums"]["payment_provider"]
+          screenshot_path: string
+          session_status: Database["public"]["Enums"]["session_status"]
+          start_time: string
+          status: Database["public"]["Enums"]["payment_status"]
+          total_matches: number
+          verified_by_name: string
+        }[]
+      }
       admin_list_sessions: {
         Args: { p_from_date: string; p_to_date: string }
         Returns: {
@@ -572,6 +741,45 @@ export type Database = {
           to_mark: number
         }[]
       }
+      admin_list_users: {
+        Args: { p_limit?: number; p_role?: string; p_search?: string }
+        Returns: {
+          bookings: number
+          created_at: string
+          email: string
+          full_name: string
+          instagram: string
+          is_active: boolean
+          is_me: boolean
+          last_class_date: string
+          mobile: string
+          role: Database["public"]["Enums"]["user_role"]
+          total_matches: number
+          upcoming: number
+          user_id: string
+        }[]
+      }
+      admin_list_vouchers: {
+        Args: never
+        Returns: {
+          amount_off: number
+          code: string
+          created_at: string
+          disabled_at: string
+          expires_at: string
+          owner_email: string
+          owner_name: string
+          percent_off: number
+          reserved: number
+          source: Database["public"]["Enums"]["voucher_source"]
+          state: string
+          times_used: number
+          used_for_date: string
+          uses_left: number
+          voucher_id: string
+        }[]
+      }
+      admin_normal_action: { Args: { p_rule: string }; Returns: string }
       admin_review_manual_payment: {
         Args: { p_approve: boolean; p_payment_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]
@@ -618,6 +826,45 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["booking_status"]
       }
+      admin_set_promo_enabled: {
+        Args: { p_enabled: boolean; p_voucher_id: string }
+        Returns: boolean
+      }
+      admin_set_user_active: {
+        Args: { p_active: boolean; p_user_id: string }
+        Returns: boolean
+      }
+      admin_set_user_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_user_id: string
+        }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      admin_transfer_booking: {
+        Args: {
+          p_booking_id: string
+          p_new_session_id: string
+          p_note?: string
+        }
+        Returns: {
+          new_booking_id: string
+          overridden: boolean
+        }[]
+      }
+      admin_update_session: {
+        Args: {
+          p_capacity: number
+          p_session_id: string
+          p_status: Database["public"]["Enums"]["session_status"]
+        }
+        Returns: {
+          capacity: number
+          seats_taken: number
+          status: Database["public"]["Enums"]["session_status"]
+        }[]
+      }
+      admin_update_settings: { Args: { p_values: Json }; Returns: number }
       admin_walkin_booking: {
         Args: {
           p_agreed: boolean
@@ -692,6 +939,23 @@ export type Database = {
           percent_off: number
         }[]
       }
+      confirm_free_booking: {
+        Args: { p_booking_id: string }
+        Returns: Database["public"]["Enums"]["booking_status"]
+      }
+      confirm_online_payment: {
+        Args: {
+          p_amount: number
+          p_booking_id: string
+          p_checkout_ref: string
+          p_method: Database["public"]["Enums"]["payment_method"]
+          p_paid_at?: string
+        }
+        Returns: {
+          booking_status: Database["public"]["Enums"]["booking_status"]
+          outcome: string
+        }[]
+      }
       deactivate_my_account: { Args: never; Returns: undefined }
       find_usable_voucher: {
         Args: { p_code: string; p_user_id: string }
@@ -699,6 +963,7 @@ export type Database = {
           amount_off: number | null
           code: string
           created_at: string
+          disabled_at: string | null
           expires_at: string | null
           id: string
           owner_id: string | null
@@ -843,12 +1108,45 @@ export type Database = {
       release_my_hold: { Args: { p_booking_id: string }; Returns: string }
       require_active_user: { Args: never; Returns: string }
       require_admin: { Args: never; Returns: string }
+      save_online_checkout: {
+        Args: {
+          p_booking_id: string
+          p_method: Database["public"]["Enums"]["payment_method"]
+          p_ref: string
+          p_replaces?: string
+        }
+        Returns: {
+          payment_id: string
+          paymongo_ref: string
+          saved: boolean
+        }[]
+      }
       seats_left: { Args: { p_session_id: string }; Returns: number }
       seats_taken: { Args: { p_session_id: string }; Returns: number }
       setting_number: { Args: { p_key: string }; Returns: number }
       setting_text: {
         Args: { p_default?: string; p_key: string }
         Returns: string
+      }
+      start_online_payment: {
+        Args: { p_booking_id: string }
+        Returns: {
+          class_date: string
+          hold_expires_at: string
+          method: Database["public"]["Enums"]["payment_method"]
+          payment_id: string
+          paymongo_ref: string
+          start_time: string
+          total: number
+        }[]
+      }
+      submit_manual_payment: {
+        Args: {
+          p_booking_id: string
+          p_method: Database["public"]["Enums"]["payment_method"]
+          p_screenshot_path: string
+        }
+        Returns: Database["public"]["Enums"]["booking_status"]
       }
       transfer_my_booking: {
         Args: { p_booking_id: string; p_new_session_id: string }

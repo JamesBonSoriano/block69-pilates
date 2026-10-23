@@ -43,3 +43,31 @@ export type CancelClassState = {
 
 // The starting state of the Cancel class box.
 export const emptyCancelClassState: CancelClassState = {};
+
+// What the admin SETUP actions answer (Step 11 part 2): Settings, Pricing,
+// promo codes, Schedule, Content, Users and the payment review buttons.
+// One shape for all of them, so one form component (AdminActionForm) can
+// show the result of any of them.
+export type AdminSaveState = {
+  error?: string; // what went wrong, in plain words (shown in red)
+  saved?: string; // what was done, e.g. "Prices saved." (shown in green)
+  savedAt?: number; // when, so the same message twice still shows as new
+};
+
+// The starting state of every setup form: nothing to show yet.
+export const emptySaveState: AdminSaveState = {};
+
+// What cancelOneBooking() / transferOneBooking() answer (the "Cancel or
+// transfer" box on the admin booking details page).
+export type BookingChangeState = {
+  error?: string;
+  done?: {
+    message: string; // e.g. "Moved to Sat, Oct 25 · 9:00 AM."
+    newBookingId?: string; // after a transfer: the new booking
+    voucherCode?: string; // after a cancel with a 50% code: the code
+    overridden: boolean; // true = it was an override (the reason was saved)
+  };
+};
+
+// The starting state of the Cancel / Transfer box.
+export const emptyBookingChangeState: BookingChangeState = {};

@@ -4,6 +4,7 @@
 //   Attendance buttons (src/components/admin/AttendanceButtons.tsx): setAttendance()
 //   Walk-in form       (src/components/admin/WalkInForm.tsx):        addWalkIn()
 //   Cancel class box   (src/components/admin/CancelClassButton.tsx): cancelClass()
+//   Change booking box (src/components/admin/BookingChangeBox.tsx):  changeOneBooking()
 //
 // "use server" = these run ONLY on our server; the browser just sends the
 // form here. Each one:
@@ -15,18 +16,13 @@
 // The website never writes to the tables directly.
 
 import { refresh } from "next/cache";
-import type { AttendanceState, CancelClassState, WalkInState } from "@/lib/admin/form-state";
+import { NOT_ADMIN, isAdmin, readText } from "@/lib/admin/action-helpers";
+import type { AttendanceState, BookingChangeState, CancelClassState, WalkInState } from "@/lib/admin/form-state";
 import { paymentMethodName } from "@/lib/booking-rules";
 import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
 import { formatClassDate, formatTimeRange } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid, isValidMobile } from "@/lib/validation";
-
-// Shown when the caller isn't (or is no longer) an active admin.
-const NOT_ADMIN = "Only admins can do this. Please log in again with an admin account.";
-
-// A logged-in Supabase client (what createClient() gives back).
-type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
 // ---------------------------------------------------------------------------
 // ATTENDANCE: mark a guest Attended or No-show
@@ -217,27 +213,99 @@ export async function cancelClass(_previous: CancelClassState, formData: FormDat
 }
 
 // ---------------------------------------------------------------------------
-// Small helpers (not exported, so the browser can't call them)
+// CANCEL OR TRANSFER ONE BOOKING (booking details page)
 // ---------------------------------------------------------------------------
 
-// Asks the database if the caller is an active admin (is_admin(), migration 2).
-// Takes: a Supabase client. Gives back: true only for an active admin.
-// (A logged-out caller or a client gets false.)
-async function isAdmin(supabase: ServerClient): Promise<boolean> {
-  const { data, error } = await supabase.rpc("is_admin");
-  return !error && data === true;
+// The longest reason the database accepts (migration 10).
+const MAX_NOTE = 500;
+
+// Cancels or moves ONE booking for a client.
+// Takes: the previous state, and the form: booking_id, choice ("transfer",
+// "voucher" = cancel with a 50% code, "no_credit" = cancel with nothing),
+// new_session_id (for a transfer) and note (the reason).
+// Gives back: { done } with a message (and the new booking / the 50% code),
+// or { error }.
+// The database decides everything (admin_transfer_booking /
+// admin_cancel_booking, migration 10): the normal rule needs no reason, a
+// different outcome (an override) needs one, and a transfer always needs a
+// free seat in an open class (both classes are locked, so no overbooking).
+// The reason is saved in booking_admin_actions, which clients can't read.
+export async function changeOneBooking(_previous: BookingChangeState, formData: FormData): Promise<BookingChangeState> {
+  const bookingId = readText(formData, "booking_id");
+  const choice = readText(formData, "choice");
+  const newSessionId = readText(formData, "new_session_id");
+  const note = readText(formData, "note");
+
+  if (!isUuid(bookingId)) {
+    return { error: "Sorry, we couldn't find that booking." };
+  }
+  if (choice !== "transfer" && choice !== "voucher" && choice !== "no_credit") {
+    return { error: "Please choose what to do with this booking." };
+  }
+  if (choice === "transfer" && !isUuid(newSessionId)) {
+    return { error: "Please pick the class to move them to." };
+  }
+  if (note.length > MAX_NOTE) {
+    return { error: `Please keep the reason to ${MAX_NOTE} characters or less.` };
+  }
+
+  const supabase = await createClient();
+  if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
+
+  if (choice === "transfer") {
+    // Move: the database checks the rule, the seat and the reason, with locks
+    const { data, error } = await supabase.rpc("admin_transfer_booking", {
+      p_booking_id: bookingId,
+      p_new_session_id: newSessionId,
+      p_note: note || undefined,
+    });
+    const result = data?.[0];
+    if (error || !result) {
+      return { error: error ? friendlyDatabaseError(error) : GENERIC_ERROR };
+    }
+    // For the message: the new class's date and time (admins may read classes)
+    const { data: session } = await supabase
+      .from("class_sessions")
+      .select("date, start_time, end_time")
+      .eq("id", newSessionId)
+      .single();
+    const label = session
+      ? `${formatClassDate(session.date).short} · ${formatTimeRange(session.start_time, session.end_time)}`
+      : "the class you picked";
+    return {
+      done: { message: `Moved to ${label}.`, newBookingId: result.new_booking_id, overridden: result.overridden },
+    };
+  }
+
+  // Cancel: with a 50% code ("voucher") or with nothing ("no_credit")
+  const { data, error } = await supabase.rpc("admin_cancel_booking", {
+    p_booking_id: bookingId,
+    p_outcome: choice,
+    p_note: note || undefined,
+  });
+  const result = data?.[0];
+  if (error || !result) {
+    return { error: error ? friendlyDatabaseError(error) : GENERIC_ERROR };
+  }
+  return {
+    done: {
+      message:
+        choice === "voucher"
+          ? "Cancelled. The client got a personal 50% code for the class fee (60 days, one use). It shows in their My Vouchers."
+          : "Cancelled with no credit (forfeited).",
+      voucherCode: result.voucher_code ?? undefined,
+      overridden: result.overridden,
+    },
+  };
 }
+
+// ---------------------------------------------------------------------------
+// Small helpers (not exported, so the browser can't call them; the shared
+// ones are in src/lib/admin/action-helpers.ts)
+// ---------------------------------------------------------------------------
 
 // Checks a walk-in payment method from the form.
 // Takes: the text sent. Gives back: true for "cash", "gcash" or "bpi".
 function isWalkInMethod(value: string): value is WalkInMethod {
   return (WALKIN_METHODS as readonly string[]).includes(value);
-}
-
-// Reads a text field from a form and trims spaces from both ends.
-// Takes: the form data and the field name.
-// Gives back: the text, or "" if it's missing.
-function readText(formData: FormData, name: string): string {
-  const value = formData.get(name);
-  return typeof value === "string" ? value.trim() : "";
 }

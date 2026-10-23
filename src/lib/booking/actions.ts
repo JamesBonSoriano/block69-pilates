@@ -15,10 +15,12 @@
 
 import { redirect } from "next/navigation";
 import { voucherLabel } from "@/lib/booking-rules";
+import { closeOpenCheckout } from "@/lib/booking/checkout";
 import type { HoldSeatState, ReleaseHoldState, VoucherPreview } from "@/lib/booking/form-state";
 import { findMySessionBooking, loadSession } from "@/lib/data/booking";
 import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
 import { getPublicSettings } from "@/lib/data/settings";
+import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid, isValidInstagram, isValidMobile } from "@/lib/validation";
 
@@ -228,6 +230,10 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
 // release_my_hold() (migration 7) checks everything: it must be the caller's
 // OWN booking and still 'pending_payment'. It becomes 'expired', which frees
 // the seat and any voucher use at once.
+// Step 12: a PayMongo checkout still open for this booking is closed FIRST,
+// so the old payment page can't be paid after the seat is given up. If it
+// was already paid, they go to the return page instead; if a payment is
+// going through on it right now, nothing is released.
 export async function releaseHold(_previous: ReleaseHoldState, formData: FormData): Promise<ReleaseHoldState> {
   const bookingId = readText(formData, "booking_id");
   if (!isUuid(bookingId)) {
@@ -235,6 +241,15 @@ export async function releaseHold(_previous: ReleaseHoldState, formData: FormDat
   }
 
   const supabase = await createClient();
+  const closed = await closeOpenCheckout(supabase, bookingId);
+  if (closed === "paid") redirect(`${getSiteUrl()}/book/pay/${bookingId}/return`);
+  if (closed === "in_progress") {
+    return { error: "A payment on your PayMongo page is still going through. Please finish it there, or wait a minute." };
+  }
+  if (closed === "error") {
+    return { error: "Sorry, we couldn't reach PayMongo to close your payment page. Please try again in a moment." };
+  }
+
   const { data: sessionId, error } = await supabase.rpc("release_my_hold", { p_booking_id: bookingId });
   if (error || !sessionId) {
     return { error: error ? friendlyDatabaseError(error) : GENERIC_ERROR };

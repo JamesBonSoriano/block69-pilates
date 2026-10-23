@@ -10,8 +10,8 @@
 //     background at most once a minute, and the copy expires after 1 hour.
 //     A browser that already loaded a page may keep showing its copy for up to
 //     5 minutes while clicking between pages.
-//   - cacheTag("settings"): when the admin saves Settings or Pricing (Step 11),
-//     that save will call updateTag("settings") to clear this cache instantly.
+//   - cacheTag("settings"): when the admin saves Settings or Pricing,
+//     saveSettings() calls updateTag("settings") to clear this cache instantly.
 //   It's safe for prices: the price shown here is only for display. book_seat()
 //   in the database reads the price again and works out the real total.
 

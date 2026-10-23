@@ -36,3 +36,12 @@ export type VoucherPreview =
   | { ok: true; code: string; label: string; discount: number }
   // The code can't be used: a plain-English reason
   | { ok: false; error: string };
+
+// What the pay page's actions answer when they could NOT go on (Step 12):
+// payOnline() (the Pay button), submitManualTransfer() (GCash / BPI
+// screenshot) and confirmFreeBooking() (a 0-peso booking). When they work,
+// they send the person on (to PayMongo, or to the next page) instead.
+export type PaymentState = { error?: string };
+
+// The starting state of those forms: nothing to show.
+export const emptyPaymentState: PaymentState = {};

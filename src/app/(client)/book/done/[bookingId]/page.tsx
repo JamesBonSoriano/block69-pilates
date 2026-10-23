@@ -1,6 +1,6 @@
 // "You're booked!": /book/done/<booking id>
-// Where it's used: the pay page sends paid bookings here. In Step 12 the
-// PayMongo return link and the webhook flow will land here too.
+// Where it's used: the pay page sends paid bookings here, and so does the
+// PayMongo return check (/book/pay/<id>/return) after a payment.
 // Layout follows docs/designs/PhoneBooked.html (centred on laptops).
 //
 // ONLY THE BOOKING'S OWNER can open it (same as the pay page: requireUser()
@@ -8,8 +8,11 @@
 //
 // What it shows, by status:
 //   confirmed / attended -> "You're booked!" with the class, extras, payment
-//   paid_needs_action    -> "Payment received" (paid after the hold ended
-//                           and the class filled up; the cafe sorts it out)
+//   paid_needs_action    -> "Payment received" (the money arrived, but the
+//                           booking needs the cafe: for example it came after
+//                           the hold ended and the class filled up, the cafe
+//                           cancelled the class, or the amount was different).
+//                           The cafe contacts them to move them or sort it out.
 //   anything else        -> sent to the pay page, which explains that status
 
 import { Check, CircleAlert, MapPin } from "lucide-react";
@@ -115,7 +118,7 @@ async function Booked({ params }: Pick<PageProps<"/book/done/[bookingId]">, "par
       </h1>
       <p className="text-sm leading-relaxed text-muted">
         {needsAction ? (
-          "Your payment arrived after your seat hold ended, and the class filled up in the meantime. Don't worry: the cafe will contact you to move you to another class or sort it out."
+          "We received your payment, but we couldn't confirm your seat automatically (for example, your payment arrived after the seat hold ended and the class filled up). Don't worry, your money is safe: the cafe will contact you to move you to another class or sort it out."
         ) : (
           <>
             See you at the cafe! Your booking is saved under{" "}

@@ -243,7 +243,11 @@ async function Dashboard() {
 
           {needsCount > 0 && (
             <p className="text-xs text-muted">
-              Approving or rejecting GCash / BPI screenshots comes with the Payments page (Step 11 part 2).
+              Check GCash / BPI screenshots in{" "}
+              <Link href="/admin/payments?view=review" className="font-semibold text-brown underline underline-offset-2">
+                Payments → Needs review
+              </Link>
+              . For a late payment, open the booking and use Cancel or transfer.
             </p>
           )}
           {summary.live_holds > 0 && (

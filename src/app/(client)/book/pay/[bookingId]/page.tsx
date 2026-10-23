@@ -11,15 +11,20 @@
 //
 // What it shows, by the booking's status:
 //   pending_payment, hold still running -> the summary, a live countdown, the
-//                                          (disabled) payment buttons, and
+//                                          GCash / Maya / card choice and Pay
+//                                          button (PayMongo), the manual
+//                                          transfer backup (if turned on), and
 //                                          "Change details" (gives up the hold
 //                                          and goes back to step 2)
 //   pending_payment after the hold, or expired -> "Your seat was released"
 //                                          (the Payment expired page)
 //   confirmed / attended / paid_needs_action -> sent on to /book/done/<id>
-//   awaiting_verification               -> "We're checking your transfer"
+//   awaiting_verification               -> "We're checking your payment"
+//                                          (a manual transfer screenshot)
 //   anything else (cancelled, transferred, ...) -> "This booking is closed"
-// Payment itself (PayMongo, manual transfer) is added in Step 12.
+// ?payment=cancelled = PayMongo's "back" link (cancel_url): a note that
+// nothing was paid and the seat is still held. ?payment=sent = the manual
+// transfer was just sent.
 
 import { Clock, Info } from "lucide-react";
 import type { Metadata } from "next";
@@ -34,6 +39,7 @@ import { Section } from "@/components/layout/Section";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { FormMessage } from "@/components/ui/FormMessage";
 import { Overline } from "@/components/ui/Overline";
 import { requireUser } from "@/lib/auth/user";
 import { bookingReference, bookingStatusBadge, voucherLabel } from "@/lib/booking-rules";
@@ -47,28 +53,33 @@ import type { MyBooking } from "@/types/app";
 export const metadata: Metadata = { title: "Review and pay", robots: { index: false } };
 
 // The pay page.
-// Takes: params (the booking id from the address).
+// Takes: params (the booking id from the address) and searchParams
+// (?payment=cancelled or ?payment=sent).
 // Gives back: the page; everything that needs the login is inside <Suspense>.
-export default function PayPage({ params }: PageProps<"/book/pay/[bookingId]">) {
+export default function PayPage({ params, searchParams }: PageProps<"/book/pay/[bookingId]">) {
   return (
     <Section className="flex flex-col gap-6 pt-6 lg:gap-8 lg:py-12">
       <Suspense fallback={<PayLoading />}>
-        <PayStep params={params} />
+        <PayStep params={params} searchParams={searchParams} />
       </Suspense>
     </Section>
   );
 }
 
 // Loads the booking and picks what to show (see the list at the top).
-// Takes: the params promise.
+// Takes: the params and searchParams promises.
 // Gives back: the right view for the booking's status. May redirect, or show
 // "page not found" for someone else's booking.
-async function PayStep({ params }: Pick<PageProps<"/book/pay/[bookingId]">, "params">) {
+async function PayStep({
+  params,
+  searchParams,
+}: Pick<PageProps<"/book/pay/[bookingId]">, "params" | "searchParams">) {
   const { bookingId } = await params;
   if (!isUuid(bookingId)) notFound();
+  const payment = (await searchParams).payment;
 
   // Logged in and active? (guests -> login page, then back here)
-  await requireUser(`/book/pay/${bookingId}`);
+  const user = await requireUser(`/book/pay/${bookingId}`);
 
   let booking: MyBooking | null;
   let settings;
@@ -105,7 +116,26 @@ async function PayStep({ params }: Pick<PageProps<"/book/pay/[bookingId]">, "par
           sessionId={booking.session_id}
           bookingId={booking.booking_id}
           total={formatPeso(booking.total)}
-          manualPaymentEnabled={settings.manualPaymentEnabled}
+          isFree={Number(booking.total) === 0}
+          manual={
+            settings.manualPaymentEnabled
+              ? {
+                  userId: user.id,
+                  gcashName: settings.gcashName,
+                  gcashNumber: settings.gcashNumber,
+                  bpiAccountName: settings.bpiAccountName,
+                  bpiAccountNumber: settings.bpiAccountNumber,
+                }
+              : null
+          }
+          notice={
+            payment === "cancelled" ? (
+              <FormMessage tone="info">
+                You left PayMongo&apos;s page, so nothing was paid. Your seat is still held until the timer ends:
+                pay below, or pick another way to pay.
+              </FormMessage>
+            ) : undefined
+          }
         >
           <BookingSummary booking={booking} />
         </PayHold>
@@ -131,7 +161,7 @@ async function PayStep({ params }: Pick<PageProps<"/book/pay/[bookingId]">, "par
       <StatusCard
         icon={<Clock aria-hidden="true" className="size-7" />}
         title="We're checking your payment"
-        text="Thanks! The cafe is checking your transfer. Your seat stays held while they do, and you'll see the booking as confirmed once it's approved."
+        text={`${payment === "sent" ? "Thanks, your screenshot was sent! " : ""}The cafe will check that your transfer of ${formatPeso(Number(booking.total))} arrived. Your seat stays held while they do. Once it's approved, the booking shows as confirmed in My Bookings. If there's a problem, the cafe will message you.`}
         booking={booking}
       />
     );

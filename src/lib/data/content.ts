@@ -10,7 +10,7 @@
 //     background at most once an hour, and the copy expires after 1 day.
 //     A browser may keep its copy for up to 5 minutes while clicking around.
 //   - cacheTag("site-content"): when the admin saves the Content Management
-//     page (Step 11), that save will call updateTag("site-content") so the new
+//     page, saveContent() / saveSiteImage() call updateTag("site-content") so the new
 //     text shows straight away.
 
 import { cacheLife, cacheTag } from "next/cache";

@@ -8,6 +8,9 @@
 // gives back payments for the caller's own bookings, even for admins.
 // After a transfer the payment stays on the ORIGINAL booking; it's listed
 // once, with "moved to <new class>".
+// PayMongo pages that were opened but never paid (pending / expired /
+// failed) are NOT listed: no money moved, so they aren't payments the
+// client made. Manual transfers being checked ARE listed.
 // LIVE DATA: loaded on every visit, never cached.
 
 import Link from "next/link";
@@ -50,7 +53,10 @@ async function PaymentsList() {
 
   let payments: MyPayment[];
   try {
-    payments = await getMyPayments();
+    // Leave out PayMongo pages that were never paid (see the top of this file)
+    payments = (await getMyPayments()).filter(
+      (payment) => payment.provider !== "paymongo" || payment.status === "paid" || payment.status === "refunded",
+    );
   } catch (error) {
     unstable_rethrow(error); // pass on Next.js's own signals
     console.error(error);

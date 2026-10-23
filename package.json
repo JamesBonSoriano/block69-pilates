@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:db": "node supabase/tests/run.mjs",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/unit/**/*.test.mjs\"",
     "gen:types": "supabase gen types typescript --linked > src/types/database.ts"
   },
   "dependencies": {

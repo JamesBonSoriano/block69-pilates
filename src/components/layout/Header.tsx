@@ -37,7 +37,7 @@ export async function Header() {
     // print:hidden = left out when a page is printed (e.g. a payment receipt)
     <header className="sticky top-0 z-40 bg-brown print:hidden">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 lg:h-24 lg:px-8">
-        {/* The "logo" (text for now; an uploaded logo image comes with Settings in Step 11) */}
+        {/* The "logo" (text for now; an uploaded logo image comes later, see docs/PROGRESS.md) */}
         <Link
           href="/"
           className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cream"

@@ -158,7 +158,8 @@ function StatusPart({
     case "paid_needs_action":
       return (
         <p className="text-sm text-error">
-          Your payment arrived after the class filled up. The cafe will contact you to sort it out.
+          We received your payment, but couldn&apos;t confirm your seat automatically (for example, it arrived
+          after the class filled up). The cafe will contact you to move you or sort it out.
         </p>
       );
     case "cancelled_with_voucher":

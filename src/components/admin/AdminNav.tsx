@@ -11,13 +11,16 @@
 // unhighlighted (the same trick as the client header in HeaderNav.tsx).
 
 import {
+  CalendarDays,
   ClipboardList,
+  FileText,
   LayoutDashboard,
   ListChecks,
   Receipt,
   Settings,
   Tag,
   UserPlus,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -33,7 +36,10 @@ const icons: Record<string, LucideIcon> = {
   "/admin/walk-in": UserPlus,
   "/admin/attendance": ListChecks,
   "/admin/payments": Receipt,
+  "/admin/schedule": CalendarDays,
   "/admin/pricing": Tag,
+  "/admin/content": FileText,
+  "/admin/users": Users,
   "/admin/settings": Settings,
 };
 
@@ -124,17 +130,6 @@ function AdminLinks({ variant, pathname }: { variant: Variant; pathname: string 
             >
               {Icon && <Icon aria-hidden="true" className="size-4.5 shrink-0" />}
               <span className="flex-1">{link.label}</span>
-              {/* Pages that come in Step 11 part 2 */}
-              {link.soon && (
-                <span
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                    active ? "bg-white/60 text-brown" : "bg-cream/10 text-tan",
-                  )}
-                >
-                  Soon
-                </span>
-              )}
             </Link>
           </li>
         );

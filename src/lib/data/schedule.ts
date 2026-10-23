@@ -11,7 +11,7 @@
 //   - cacheLife("hours"): re-read from Supabase in the background at most
 //     once an hour.
 //   - cacheTag("schedule"): when the admin saves Schedule Management
-//     (Step 11), that save must call updateTag("schedule") so the new days
+//     (saveTemplate / addTemplate), it calls updateTag("schedule") so the new days
 //     and times show straight away.
 
 import { cacheLife, cacheTag } from "next/cache";

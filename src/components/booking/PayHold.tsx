@@ -13,17 +13,27 @@
 // It's only a display: the database itself stops counting the seat at the
 // end of the hold, whatever this timer shows.
 //
-// PAYMENT BUTTONS: placeholders for now. PayMongo (GCash, Maya, card) and
-// the manual GCash / BPI transfer are built in Step 12.
+// PAYING (Step 12):
+//   - The client picks GCash, Maya or a card (like PhoneBook3.html), then
+//     the Pay button sends the booking id + method to payOnline()
+//     (src/lib/booking/payment-actions.ts), which opens PayMongo's page for
+//     the booking's total. No amount is ever sent from here.
+//   - A 0-peso booking (100% promo + own mat) gets "Confirm my free booking".
+//   - When the admin turned it on, "PayMongo not working?" opens the manual
+//     GCash / BPI transfer form (ManualTransfer.tsx).
 
 import { CreditCard, Landmark, Smartphone, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { BookingAside, BookingColumns } from "@/components/booking/BookingLayout";
 import { HoldExpired } from "@/components/booking/HoldExpired";
-import { Badge } from "@/components/ui/Badge";
+import { ManualTransfer } from "@/components/booking/ManualTransfer";
 import { Button } from "@/components/ui/Button";
+import { FormMessage } from "@/components/ui/FormMessage";
+import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
 import { formatCountdown } from "@/lib/booking-rules";
+import { emptyPaymentState } from "@/lib/booking/form-state";
+import { confirmFreeBooking, payOnline } from "@/lib/booking/payment-actions";
 import { cn } from "@/lib/cn";
 
 type PayHoldProps = {
@@ -32,9 +42,29 @@ type PayHoldProps = {
   sessionId: string; // for "Try this class again"
   bookingId: string; // so "Try this class again" keeps this hold's choices
   total: string; // already formatted, e.g. "₱500"
-  manualPaymentEnabled: boolean; // show the GCash / BPI transfer backup?
+  isFree: boolean; // total is 0: nothing to pay, just confirm
+  // The GCash / BPI transfer backup (null = the admin turned it off)
+  manual: {
+    userId: string;
+    gcashName: string;
+    gcashNumber: string;
+    bpiAccountName: string;
+    bpiAccountNumber: string;
+  } | null;
+  notice?: ReactNode; // a message from the server, e.g. "You left PayMongo's page"
   children: ReactNode; // the booking summary card (drawn on the server)
 };
+
+// The online methods, in the mockup's order: our name, the label and icon.
+const METHODS = [
+  { value: "gcash", label: "GCash", icon: Wallet },
+  { value: "maya", label: "Maya", icon: Smartphone },
+  { value: "card", label: "Credit or debit card", icon: CreditCard },
+] as const;
+type Method = (typeof METHODS)[number]["value"];
+
+// The short name on the Pay button, e.g. "Pay ₱550 with GCash".
+const BUTTON_NAMES: Record<Method, string> = { gcash: "GCash", maya: "Maya", card: "card" };
 
 // When to tell screen readers how much time is left (seconds).
 // (Reading out every second would be far too much.)
@@ -42,17 +72,24 @@ const ANNOUNCE_AT = [600, 300, 120, 60];
 
 // The live pay section.
 // Takes: the props above.
-// Gives back: the countdown, the summary, the payment placeholders and the
-// Pay bar; or "Your seat was released" once the time is up.
+// Gives back: the countdown, the summary, the payment choices and the Pay
+// bar; or "Your seat was released" once the time is up.
 export function PayHold({
   secondsLeft,
   holdMinutes,
   sessionId,
   bookingId,
   total,
-  manualPaymentEnabled,
+  isFree,
+  manual,
+  notice,
   children,
 }: PayHoldProps) {
+  // The picked online method (GCash first, like the mockup)
+  const [method, setMethod] = useState<Method>("gcash");
+  // The Pay button (or "Confirm my free booking"). pending = true while the
+  // server works, which also stops double clicks.
+  const [state, formAction, pending] = useActionState(isFree ? confirmFreeBooking : payOnline, emptyPaymentState);
   // Start from the database's number. The server and the browser both start
   // with it, so the first drawing matches (no "hydration" warning).
   const [left, setLeft] = useState(secondsLeft);
@@ -113,35 +150,67 @@ export function PayHold({
           {/* The booking summary (from the server) */}
           {children}
 
-          {/* Where the payment buttons go (Step 12) */}
-          <section aria-labelledby="pay-with" className="flex flex-col gap-2">
-            <h2 id="pay-with" className="font-sans text-xs font-semibold text-brown">
-              Pay with
-            </h2>
-            <ul className="flex flex-col gap-2">
-              <PaymentPlaceholder icon={Wallet} label="GCash" via="via PayMongo" />
-              <PaymentPlaceholder icon={Smartphone} label="Maya" via="via PayMongo" />
-              <PaymentPlaceholder icon={CreditCard} label="Credit or debit card" via="via PayMongo" />
-            </ul>
-            <p className="text-xs leading-relaxed text-muted">
-              Online payment is coming in Step 12. Until then, your seat is only held, not booked.
-            </p>
-          </section>
+          {notice}
 
-          {/* The manual transfer backup: only if the admin turned it on in Settings */}
-          {manualPaymentEnabled && (
-            <section aria-labelledby="manual-pay" className="flex flex-col gap-2">
-              <h2 id="manual-pay" className="font-sans text-xs font-semibold text-brown">
-                PayMongo not working?
-              </h2>
-              <ul className="flex flex-col gap-2">
-                <PaymentPlaceholder
-                  icon={Landmark}
-                  label="Pay by GCash or BPI transfer"
-                  via="Upload a screenshot"
-                />
-              </ul>
-            </section>
+          {/* The payment choice. The Pay button in the bar below belongs to
+              this form (form="pay-form"), so it sends the picked method. */}
+          <form id="pay-form" action={formAction} className="flex flex-col gap-3">
+            <input type="hidden" name="booking_id" value={bookingId} />
+            {isFree ? (
+              <p className="rounded-[14px] border border-line bg-white px-3.5 py-3 text-sm text-ink">
+                Your voucher covers the whole class, so there&apos;s nothing to pay. Just confirm your booking.
+              </p>
+            ) : (
+              <RadioGroup legend="Pay with" name="method">
+                {METHODS.map(({ value, label, icon: Icon }) => (
+                  <RadioOption
+                    key={value}
+                    name="method"
+                    value={value}
+                    checked={method === value}
+                    onChange={() => setMethod(value)}
+                    disabled={pending}
+                    label={
+                      <span className="flex items-center gap-2">
+                        <Icon aria-hidden="true" className="size-4.5 shrink-0 text-brown" />
+                        {label}
+                      </span>
+                    }
+                    aside="via PayMongo"
+                  />
+                ))}
+              </RadioGroup>
+            )}
+            {state.error && <FormMessage tone="error">{state.error}</FormMessage>}
+            {!isFree && (
+              <p className="text-xs leading-relaxed text-muted">
+                You&apos;ll pay on PayMongo&apos;s secure page, then come back here. We never see your card or
+                account numbers.
+              </p>
+            )}
+          </form>
+
+          {/* The manual transfer backup: only if the admin turned it on in
+              Settings. <details> opens and closes even before JavaScript loads. */}
+          {manual && !isFree && (
+            <details className="group rounded-[14px] border border-line bg-card">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-[14px] px-3.5 py-3 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown [&::-webkit-details-marker]:hidden">
+                <Landmark aria-hidden="true" className="size-4.5 shrink-0 text-brown" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">PayMongo not working?</span>
+                  <span className="block text-xs text-muted">Pay by GCash or BPI transfer and upload a screenshot</span>
+                </span>
+                <span aria-hidden="true" className="text-xs font-semibold text-brown group-open:hidden">
+                  Show
+                </span>
+                <span aria-hidden="true" className="hidden text-xs font-semibold text-brown group-open:inline">
+                  Hide
+                </span>
+              </summary>
+              <div className="border-t border-line px-3.5 pt-3 pb-4">
+                <ManualTransfer bookingId={bookingId} total={total} {...manual} />
+              </div>
+            </details>
           )}
 
           <p className="pb-2 text-center text-[11px] leading-relaxed text-muted">
@@ -162,40 +231,23 @@ export function PayHold({
         <BookingAside
           total={total}
           action={
-            <Button fullWidth disabled>
-              Pay {total}
+            <Button type="submit" form="pay-form" fullWidth disabled={pending}>
+              {isFree
+                ? pending
+                  ? "Confirming…"
+                  : "Confirm my free booking"
+                : pending
+                  ? "Opening PayMongo…"
+                  : `Pay ${total} with ${BUTTON_NAMES[method]}`}
             </Button>
           }
-          note="The Pay button turns on in Step 12 (PayMongo test mode)."
+          note={
+            isFree
+              ? "Your seat is booked as soon as you confirm."
+              : "Your seat is booked as soon as PayMongo tells us you paid."
+          }
         />
       </BookingColumns>
     </div>
-  );
-}
-
-// One payment choice, shown greyed out until Step 12.
-// Takes: an icon, the method's name and a small line on the right.
-// Gives back: a list item that looks like a payment option but can't be
-// picked (its badge says "Coming in Step 12", which screen readers read too).
-function PaymentPlaceholder({
-  icon: Icon,
-  label,
-  via,
-}: {
-  icon: typeof Wallet;
-  label: string;
-  via: string;
-}) {
-  return (
-    <li
-      className="flex min-h-11 items-center gap-3 rounded-[14px] border border-line bg-white px-3.5 py-3 text-sm text-ink opacity-60"
-    >
-      <Icon aria-hidden="true" className="size-4.5 shrink-0 text-brown" />
-      <span className="min-w-0 flex-1">
-        <span className="block font-semibold">{label}</span>
-        <span className="block text-xs text-muted">{via}</span>
-      </span>
-      <Badge variant="neutral">Coming in Step 12</Badge>
-    </li>
   );
 }

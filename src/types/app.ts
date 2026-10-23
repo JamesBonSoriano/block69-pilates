@@ -236,3 +236,95 @@ export type AdminBookingDetails = Omit<
   moved_to_start_time: string | null;
   payments: AdminBookingPayment[];
 };
+
+// ---------------------------------------------------------------------------
+// Admin setup pages (migration 10, Step 11 part 2)
+// Same idea as above: the columns that CAN be empty are marked here.
+// ---------------------------------------------------------------------------
+
+// One payment on the admin Payments page (admin_list_payments).
+type AdminPaymentRow = PublicSchema["Functions"]["admin_list_payments"]["Returns"][number];
+export type AdminPayment = Omit<
+  AdminPaymentRow,
+  "method" | "paymongo_ref" | "screenshot_path" | "verified_by_name" | "paid_at" | "guest_email" | "guest_contact"
+> & {
+  method: PaymentMethod | null; // empty while a PayMongo checkout is still open
+  paymongo_ref: string | null;
+  screenshot_path: string | null; // a file in the private payment-screenshots bucket
+  verified_by_name: string | null;
+  paid_at: string | null;
+  guest_email: string | null; // walk-ins have no email
+  guest_contact: string | null;
+};
+
+// One day + method of paid money (admin_earnings). Nothing here is empty.
+export type AdminEarningRow = PublicSchema["Functions"]["admin_earnings"]["Returns"][number];
+
+// The money totals on the admin Payments page (admin_billing_summary,
+// migration 11): paid today / this week / this month, mat rental donations,
+// and how many bookings need the admin. Nothing here is ever empty.
+export type AdminBillingSummary = PublicSchema["Functions"]["admin_billing_summary"]["Returns"][number];
+
+// A voucher's state for the admin (admin_list_vouchers): the client's states
+// plus "off" (a promo code the admin turned off).
+export type AdminVoucherState = VoucherState | "off";
+
+// One voucher on the Pricing & Vouchers page (admin_list_vouchers).
+type AdminVoucherRow = PublicSchema["Functions"]["admin_list_vouchers"]["Returns"][number];
+export type AdminVoucher = Omit<
+  AdminVoucherRow,
+  "percent_off" | "amount_off" | "expires_at" | "disabled_at" | "owner_name" | "owner_email" | "state" | "used_for_date"
+> & {
+  percent_off: number | null; // one of these two is filled in
+  amount_off: number | null;
+  expires_at: string | null; // empty = never expires
+  disabled_at: string | null; // empty = on
+  owner_name: string | null; // personal codes only
+  owner_email: string | null;
+  state: AdminVoucherState;
+  used_for_date: string | null;
+};
+
+// One account on the Users page (admin_list_users).
+type AdminUserRow = PublicSchema["Functions"]["admin_list_users"]["Returns"][number];
+export type AdminUser = Omit<AdminUserRow, "full_name" | "email" | "mobile" | "instagram" | "last_class_date"> & {
+  full_name: string | null;
+  email: string | null;
+  mobile: string | null;
+  instagram: string | null;
+  last_class_date: string | null;
+};
+
+// What admin_change_rule() says for one booking: the client's rules
+// (ChangeRule) plus "late_payment" (paid after the hold ended, class full).
+export type AdminChangeRule = ChangeRule | "late_payment";
+
+// What an admin did to one booking (booking_admin_actions):
+// moved it, or cancelled it with or without a 50% code.
+export type AdminActionKind = "transfer" | "cancel_voucher" | "cancel_no_credit";
+
+// One saved admin change, inside admin_booking_change_info's "actions" list.
+export type AdminBookingAction = {
+  id: string;
+  action: AdminActionKind;
+  normal_rule: AdminChangeRule;
+  overridden: boolean; // true = different from the normal rule (has a reason)
+  note: string | null; // the admin's reason
+  admin_name: string | null;
+  created_at: string;
+  booking_id: string; // the booking that was changed
+  new_booking_id: string | null; // for a transfer: the new booking
+  voucher_code: string | null; // for cancel_voucher: the 50% code
+};
+
+// What the admin may do with one booking (admin_booking_change_info).
+export type AdminBookingChangeInfo = {
+  can_change: boolean; // confirmed or late payment
+  rule: AdminChangeRule | null;
+  normal_action: AdminActionKind | null; // allowed without a reason (null = nothing)
+  voucher_allowed: boolean; // false for walk-ins
+  actions: AdminBookingAction[];
+};
+
+// One weekly class slot (schedule_templates table).
+export type ScheduleTemplate = PublicSchema["Tables"]["schedule_templates"]["Row"];

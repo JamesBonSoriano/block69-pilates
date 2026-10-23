@@ -7,11 +7,15 @@
 // drink, mat, money and voucher, every payment (including the original
 // booking's after a transfer), and a short history built from the times the
 // database keeps (there is no full status log).
-// Actions (only through the existing admin_* functions):
+// Actions (only through the admin_* functions):
 //   - Attended / No-show (admin_set_attendance), from the class day
 //   - Cancel this class (admin_cancel_session)
-// Approving / rejecting a GCash or BPI screenshot comes with the Payments
-// page (Step 11 part 2), where the screenshot can be seen.
+//   - Cancel or transfer THIS booking (admin_cancel_booking /
+//     admin_transfer_booking, migration 10), for confirmed bookings and late
+//     payments. The normal rule needs no reason; an override does, and the
+//     reason shows in History (admins only).
+// Approving / rejecting a GCash or BPI screenshot is on the Payments page
+// (Needs review), where the screenshot can be seen.
 //
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
 // database's own admin check (admin_get_booking, migration 9).
@@ -22,6 +26,7 @@ import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { AttendanceButtons } from "@/components/admin/AttendanceButtons";
+import { BookingChangeBox } from "@/components/admin/BookingChangeBox";
 import { AdminCard, AdminLoadError, AdminLoading, AdminOverline, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
 import { CancelClassButton } from "@/components/admin/CancelClassButton";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
@@ -34,10 +39,28 @@ import {
   classStartsAt,
   paymentMethodName,
 } from "@/lib/booking-rules";
-import { getAdminBooking } from "@/lib/data/admin";
-import { formatClassDate, formatManilaDateTime, formatPeso, formatTime, formatTimeRange } from "@/lib/format";
+import { getAdminBooking, getAdminSessions } from "@/lib/data/admin";
+import { getBookingChangeInfo } from "@/lib/data/admin-setup";
+import {
+  addDays,
+  formatClassDate,
+  formatManilaDateTime,
+  formatPeso,
+  formatTime,
+  formatTimeRange,
+  manilaDateString,
+} from "@/lib/format";
 import { nowForThisVisit } from "@/lib/server-clock";
-import type { AdminBookingDetails, AdminBookingPayment } from "@/types/app";
+import type {
+  AdminBookingAction,
+  AdminBookingChangeInfo,
+  AdminBookingDetails,
+  AdminBookingPayment,
+  AdminSession,
+} from "@/types/app";
+
+// How far ahead the Transfer box offers classes (6 weeks).
+const TRANSFER_DAYS = 42;
 
 export const metadata: Metadata = { title: "Booking details · Admin" };
 
@@ -69,9 +92,20 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
   await requireAdmin();
   const { bookingId } = await params;
 
+  // Read the clock once (a real visit: requireAdmin has run)
+  const nowMs = nowForThisVisit();
+  const today = manilaDateString(nowMs);
+
   let booking: AdminBookingDetails | null;
+  let change: AdminBookingChangeInfo | null;
+  let classes: AdminSession[];
   try {
-    booking = await getAdminBooking(bookingId);
+    // The booking, what may be changed, and the classes it could move to
+    [booking, change, classes] = await Promise.all([
+      getAdminBooking(bookingId),
+      getBookingChangeInfo(bookingId),
+      getAdminSessions(today, addDays(today, TRANSFER_DAYS - 1)),
+    ]);
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
@@ -79,8 +113,16 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
   }
   if (!booking) notFound();
 
-  // Read the clock once (a real visit: requireAdmin has run)
-  const nowMs = nowForThisVisit();
+  // Classes the booking can move to: open, not ended, a free seat, not its own
+  // (the database checks all of this again when moving)
+  const ownSession = booking.session_id;
+  const classOptions = classes
+    .filter((item) => item.status === "open" && !item.has_ended && item.seats_left > 0 && item.session_id !== ownSession)
+    .map((item) => ({
+      value: item.session_id,
+      label: `${formatClassDate(item.date).short} · ${formatTimeRange(item.start_time, item.end_time)} · ${item.seats_left} of ${item.capacity} free`,
+    }));
+  const actions = change?.actions ?? [];
   const holdSecondsLeft = booking.hold_expires_at
     ? Math.max(0, (new Date(booking.hold_expires_at).getTime() - nowMs) / 1000)
     : 0;
@@ -106,14 +148,19 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
       {/* Things the admin should know first */}
       {booking.shown_status === "paid_needs_action" && (
         <Notice>
-          This client paid after their seat hold ended, and the class may be full. Contact them to agree what to do
-          (another class, or wait for a free seat). Tools for this come with the Payments page.
+          This client paid, but the seat couldn&apos;t be confirmed (the payment came after the hold ended and the
+          class was full, the class was cancelled, closed or had started, or the amount didn&apos;t match the total;
+          compare the payments below). Contact them to agree what to do, then use <strong>Cancel or transfer</strong>{" "}
+          below (moving them to another class is the normal step; for a refund, refund outside the website first).
         </Notice>
       )}
       {pendingManual && (
         <Notice>
-          A GCash / BPI transfer screenshot is waiting to be checked. Approving or rejecting it comes with the Payments
-          page (Step 11 part 2).
+          A GCash / BPI transfer screenshot is waiting to be checked.{" "}
+          <Link href="/admin/payments?view=review" className="font-semibold underline underline-offset-2">
+            Check it in Payments
+          </Link>
+          .
         </Notice>
       )}
       {booking.session_status === "cancelled" && booking.status === "confirmed" && (
@@ -200,6 +247,28 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
         </div>
 
         <div className="flex flex-col gap-5">
+          {/* ---- Cancel or transfer this booking ---- */}
+          {change?.can_change && change.rule && (
+            <AdminCard className="flex flex-col gap-3">
+              <AdminOverline as="h2">Change this booking</AdminOverline>
+              <p className="text-sm text-muted">
+                Cancel it or move it to another class for the client. You follow the cancellation rules by default; a
+                different choice needs a reason.
+              </p>
+              <div>
+                <BookingChangeBox
+                  bookingId={booking.booking_id}
+                  guestName={booking.guest_name}
+                  classLabel={classLabel}
+                  rule={change.rule}
+                  normalAction={change.normal_action}
+                  voucherAllowed={change.voucher_allowed}
+                  classOptions={classOptions}
+                />
+              </div>
+            </AdminCard>
+          )}
+
           {/* ---- Attendance ---- */}
           {(booking.can_mark_attendance || booking.status === "confirmed") && (
             <AdminCard className="flex flex-col gap-3">
@@ -248,7 +317,7 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
           <AdminCard className="flex flex-col gap-3">
             <AdminOverline as="h2">History</AdminOverline>
             <ol className="flex flex-col gap-2.5 border-l-2 border-admin-active pl-4">
-              {historyOf(booking).map((event, n) => (
+              {historyOf(booking, actions).map((event, n) => (
                 <li key={n} className="text-sm">
                   <span className="block text-xs text-muted">{formatManilaDateTime(event.at)}</span>
                   {event.text}
@@ -333,10 +402,11 @@ function adminPaymentBadge(payment: AdminBookingPayment): { label: string; varia
   }
 }
 
-// Builds a short history of the booking from the times the database keeps.
-// Takes: the booking.
+// Builds a short history of the booking from the times the database keeps,
+// plus every cancel / transfer an admin did (with the admin's reason).
+// Takes: the booking and its admin changes.
 // Gives back: events { at, text }, oldest first.
-function historyOf(booking: AdminBookingDetails): { at: string; text: ReactNode }[] {
+function historyOf(booking: AdminBookingDetails, actions: AdminBookingAction[]): { at: string; text: ReactNode }[] {
   const events: { at: string; text: ReactNode }[] = [];
 
   events.push({
@@ -397,5 +467,36 @@ function historyOf(booking: AdminBookingDetails): { at: string; text: ReactNode 
     });
   }
 
+  // What an admin did, who, and why (booking_admin_actions; admins only)
+  for (const action of actions) {
+    events.push({ at: action.created_at, text: <AdminActionEvent action={action} bookingId={booking.booking_id} /> });
+  }
+
   return events.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+}
+
+// One admin change in the History list: what was done, by whom, whether it
+// was an override, and the reason.
+// Takes: the action and the id of the booking being shown (a transfer is
+// listed on both the old and the new booking).
+// Gives back: the text for the History list.
+function AdminActionEvent({ action, bookingId }: { action: AdminBookingAction; bookingId: string }) {
+  const what =
+    action.action === "transfer"
+      ? action.booking_id === bookingId
+        ? "Moved to another class by an admin"
+        : "Moved here by an admin"
+      : action.action === "cancel_voucher"
+        ? `Cancelled by an admin with a 50% code${action.voucher_code ? ` (${action.voucher_code})` : ""}`
+        : "Cancelled by an admin with no credit";
+  return (
+    <span className="flex flex-col gap-1">
+      <span>
+        {what}
+        {action.admin_name && <> · {action.admin_name}</>}{" "}
+        {action.overridden && <Badge variant="warning">Override</Badge>}
+      </span>
+      {action.note && <span className="whitespace-pre-line text-xs text-muted">Reason: {action.note}</span>}
+    </span>
+  );
 }

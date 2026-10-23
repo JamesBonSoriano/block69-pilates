@@ -36,19 +36,21 @@ export const accountNavLinks: NavLink[] = [
 export const adminNavLink: NavLink = { href: "/admin", label: "Admin" };
 
 // The admin side menu (src/components/admin/AdminNav.tsx), in order.
-// `soon` = a placeholder page until Step 11 part 2 (Payments, Pricing, Settings).
 // `tab`  = also shown in the phone's bottom tab bar (the 4 pages the counter
 //          uses most; the rest are in the phone menu).
-export type AdminNavLink = NavLink & { soon?: boolean; tab?: boolean; tabLabel?: string };
+export type AdminNavLink = NavLink & { tab?: boolean; tabLabel?: string };
 
 export const adminNavLinks: AdminNavLink[] = [
   { href: "/admin", label: "Dashboard", tab: true, tabLabel: "Home" },
   { href: "/admin/bookings", label: "Bookings", tab: true },
   { href: "/admin/walk-in", label: "Walk-in booking", tab: true, tabLabel: "Walk-in" },
   { href: "/admin/attendance", label: "Attendance", tab: true },
-  { href: "/admin/payments", label: "Payments", soon: true },
-  { href: "/admin/pricing", label: "Pricing & Vouchers", soon: true },
-  { href: "/admin/settings", label: "Settings", soon: true },
+  { href: "/admin/payments", label: "Payments" },
+  { href: "/admin/schedule", label: "Schedule" },
+  { href: "/admin/pricing", label: "Pricing & Vouchers" },
+  { href: "/admin/content", label: "Content" },
+  { href: "/admin/users", label: "Users" },
+  { href: "/admin/settings", label: "Settings" },
 ];
 
 // Checks if an admin menu link points at the page being shown.

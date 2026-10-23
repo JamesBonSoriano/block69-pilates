@@ -52,6 +52,30 @@ const SUPABASE_STAND_IN_SQL = `
     email              text,
     raw_user_meta_data jsonb
   );
+  -- A cut-down Supabase Storage (migration 10 makes buckets and file
+  -- policies). Only the columns our migrations use; RLS on, like Supabase.
+  create schema storage;
+  grant usage on schema storage to anon, authenticated, service_role;
+  create table storage.buckets (
+    id text primary key, name text not null, owner uuid, public boolean default false,
+    file_size_limit bigint, allowed_mime_types text[],
+    created_at timestamptz default now(), updated_at timestamptz default now()
+  );
+  create table storage.objects (
+    id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id),
+    name text, owner uuid, metadata jsonb,
+    created_at timestamptz default now(), updated_at timestamptz default now()
+  );
+  alter table storage.objects enable row level security;
+  grant select, insert, update, delete on storage.objects to anon, authenticated;
+  grant all on storage.buckets, storage.objects to service_role;
+  -- Supabase's helper that splits a file path into its folders:
+  -- 'abc/def/photo.jpg' -> {abc, def} (migration 11's policies use it).
+  create function storage.foldername(name text) returns text[] language sql immutable as $$
+    select (string_to_array(name, '/'))[1 : greatest(cardinality(string_to_array(name, '/')) - 1, 0)]
+  $$;
+  grant execute on function storage.foldername(text) to anon, authenticated, service_role;
+
   create function auth.uid() returns uuid language sql stable as $$
     select coalesce(
       nullif(current_setting('request.jwt.claim.sub', true), ''),
