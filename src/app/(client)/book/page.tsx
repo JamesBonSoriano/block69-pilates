@@ -1,12 +1,20 @@
 // Booking step 1, "Pick a class": /book
-// Where it's used: "Book a Class" in the header, every "Book a class" button
-// on Home and About Us, and "Pick a class" / "Change" on step 2
+// Where it's used: "Book a Class" in the header, every "Book Your Session"
+// button on Home and About Us, and "Pick a class" / "Change" on step 2
 // (/book?session=<id>&mat=yes picks that class and the mat tick again).
-// Layout follows docs/designs/PhoneBook1.html, changed by Revisions part 1,
-// item 4: the classes for each day (no date chips any more), and the
-// "Booking details" card (Date, Session, What to bring with the Rent a mat
-// tick, Proceed to payment). On phones that card is the sticky bottom bar,
-// and "What to bring" is listed under the classes.
+// Layout (Change 17, Part F, like the reference design): a MONTH NAVIGATOR
+// (◀ October 2026 ▶, this month and next month only), a row of DATE CHIPS
+// for the dates that have classes, and the picked date's classes under them
+// (ClassDayPicker). Plus the "Booking details" card (Date, Session, What to
+// bring with the Rent a mat tick, Proceed to payment). On phones that card is
+// the sticky bottom bar, and "What to bring" is listed under the classes.
+// The class days come from the dated classes (made from schedule_templates),
+// never typed in here.
+//
+// The address can carry: ?session=<id> (a picked class), ?mat=yes,
+// ?show_month=YYYY-MM or ?month=YYYY-MM (the month to show), ?date=YYYY-MM-DD
+// (the date chip to show). The last three are only for when JavaScript
+// hasn't loaded (see ClassDayPicker.tsx).
 //
 // GUESTS CAN LOOK: anyone can see the classes and seats left. Continue opens
 // step 2 (/book/details?session=<id>), which needs a login: src/proxy.ts
@@ -25,33 +33,35 @@
 
 import Form from "next/form";
 import { unstable_rethrow } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { CheckList } from "@/components/content/ContentText";
 import { BookingDetailsCard } from "@/components/booking/BookingDetailsCard";
 import { BookingColumns } from "@/components/booking/BookingLayout";
 import { BookingSteps } from "@/components/booking/BookingSteps";
+import { ClassDayPicker } from "@/components/booking/ClassDayPicker";
 import { Section } from "@/components/layout/Section";
-import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
-import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
 import { firstParam } from "@/lib/auth/safe-next";
 import { sendAdminsAway } from "@/lib/auth/user";
-import { seatBadge } from "@/lib/booking-rules";
+import { buildClassPicker } from "@/lib/booking/class-picker";
 import { fillSettings, splitLines } from "@/lib/content-text";
 import { getBookingSessions } from "@/lib/data/booking";
 import { getPageContent } from "@/lib/data/content";
 import { getWeeklySchedule } from "@/lib/data/schedule";
 import { getPublicSettings } from "@/lib/data/settings";
-import { formatClassDate, formatTime, formatTimeRange, formatWeekdays } from "@/lib/format";
+import { formatClassDate, formatTime, formatTimeRange, formatWeekdays, manilaDateString } from "@/lib/format";
 import { pageMetadata } from "@/lib/metadata";
+import { bookableMonths, monthRange } from "@/lib/month";
+import { nowForThisVisit } from "@/lib/server-clock";
 import type { OpenSession } from "@/types/app";
 
 // Tab title, Google description and link preview for this page.
 export const metadata = pageMetadata({
   title: "Book a class",
   description:
-    "Pick a Mindful Mat Pilates class at Block 69 Cafe, Taguig. See live seats left for the next 4 weeks and book online.",
+    "Pick a Mindful Mat Pilates class at Block 69 Cafe, Taguig. See live seats left for this month and next month and book online.",
   path: "/book",
 });
 
@@ -97,31 +107,11 @@ export default async function BookPage({ searchParams }: PageProps<"/book">) {
   );
 }
 
-// One day with its classes.
-type ClassDay = { date: string; sessions: OpenSession[]; anyBookable: boolean };
-
-// Puts the classes into days.
-// Takes: the classes, earliest first (as get_open_sessions gives them).
-// Gives back: one entry per date, in the same order.
-function groupByDate(sessions: OpenSession[]): ClassDay[] {
-  const days: ClassDay[] = [];
-  for (const session of sessions) {
-    const last = days[days.length - 1];
-    if (last && last.date === session.date) {
-      last.sessions.push(session);
-      last.anyBookable ||= session.is_bookable;
-    } else {
-      days.push({ date: session.date, sessions: [session], anyBookable: session.is_bookable });
-    }
-  }
-  return days;
-}
-
 // The live class picker (runs on every visit, never cached).
 // Takes: the searchParams promise, the class and mat prices (from settings)
 // and the "What to bring" list and its title.
-// Gives back: the form with the days and their classes, and the Booking
-// details card. Or a message if there are no classes or the database
+// Gives back: the form with the month navigator, the date chips, the picked
+// date's classes and the Booking details card. Or a message if the database
 // couldn't be reached.
 async function SessionPicker({
   searchParams,
@@ -144,9 +134,16 @@ async function SessionPicker({
   // Admin accounts don't book (they use the admin Walk-in page instead)
   await sendAdminsAway();
 
+  // Today in the Philippines, and the two months that can be booked
+  // (connection() = a real visit, so reading the clock here is fine)
+  await connection();
+  const today = manilaDateString(nowForThisVisit());
+  const months = bookableMonths(today);
+
   let sessions: OpenSession[];
   try {
-    sessions = await getBookingSessions();
+    // Both months in one go: today to the end of next month
+    sessions = await getBookingSessions({ from: today, to: monthRange(months[1]).last });
   } catch (error) {
     // Next.js uses special "errors" internally to pause rendering until a
     // visitor arrives. Those must be passed on, not treated as real errors.
@@ -166,25 +163,20 @@ async function SessionPicker({
     );
   }
 
-  if (sessions.length === 0) {
-    return (
-      <Card>
-        <p className="text-sm text-muted">
-          There are no classes in the next 4 weeks yet. Check back soon, or message us with Chat
-          With Us.
-        </p>
-      </Card>
-    );
-  }
-
-  const days = groupByDate(sessions);
-  const anyBookable = days.some((day) => day.anyBookable);
-  // Only pre-pick the class from the address if it can still be booked
-  const preselected = sessions.find((s) => s.session_id === picked && s.is_bookable)?.session_id;
-  // Date and time of every class that can be picked, ready for the card
+  // Which month and date to show, and the chips and classes for it
+  // (src/lib/booking/class-picker.ts)
+  const picker = buildClassPicker({
+    sessions,
+    months,
+    askedMonth: firstParam(params.show_month) ?? firstParam(params.month),
+    askedDate: firstParam(params.date),
+    pickedSessionId: picked,
+  });
+  const anyBookable = picker.days.some((day) => day.anyBookable);
+  // Date and time of every class in this month that can be picked, for the card
   const sessionLabels = Object.fromEntries(
     sessions
-      .filter((session) => session.is_bookable)
+      .filter((session) => session.is_bookable && picker.monthSessionIds.has(session.session_id))
       .map((session) => [
         session.session_id,
         { date: formatClassDate(session.date).full, time: formatTimeRange(session.start_time, session.end_time) },
@@ -197,34 +189,15 @@ async function SessionPicker({
     <Form action="/book/details">
       <BookingColumns>
         <div className="flex min-w-0 flex-col gap-5">
-          {/* The days: 1 per row on phones, 2 per row from tablet width */}
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {days.map((day) => (
-              <li key={day.date}>
-                <Card>
-                  <RadioGroup legend={formatClassDate(day.date).full} name={`day-${day.date}`} legendStyle="heading">
-                    {day.sessions.map((session) => {
-                      const badge = seatBadge(session.seats_left, session.state, session.capacity);
-                      return (
-                        <RadioOption
-                          key={session.session_id}
-                          // All classes share one name, so only ONE can be picked
-                          name="session"
-                          value={session.session_id}
-                          required
-                          disabled={!session.is_bookable}
-                          defaultChecked={session.session_id === preselected}
-                          label={formatTimeRange(session.start_time, session.end_time)}
-                          description="Mindful Mat Pilates · Beginner"
-                          aside={<Badge variant={badge.variant}>{badge.label}</Badge>}
-                        />
-                      );
-                    })}
-                  </RadioGroup>
-                </Card>
-              </li>
-            ))}
-          </ul>
+          <ClassDayPicker
+            months={picker.months}
+            days={picker.days}
+            initialDate={picker.initialDate}
+            initialSessionId={picker.preselectedId}
+            radioName="session"
+            reloadAction="/book"
+            emptyText={`There are no classes in ${picker.months.label} yet. Try the other month, or message us with Chat With Us.`}
+          />
 
           {/* Phones: what to bring, under the classes (on laptops it's in
               the Booking details card, with the Rent a mat tick) */}
@@ -240,7 +213,7 @@ async function SessionPicker({
         {/* Booking details: sticky bar (phone) / card (laptop) */}
         <BookingDetailsCard
           sessions={sessionLabels}
-          initialSessionId={preselected ?? null}
+          initialSessionId={picker.preselectedId}
           initialMat={matTicked}
           items={whatToBring}
           classPrice={classPrice}
@@ -249,7 +222,7 @@ async function SessionPicker({
           note={
             anyBookable
               ? "Includes an upsized matcha or coffee. Next: your details. You'll need to log in or sign up to book."
-              : "Every class in the next 4 weeks is full or closed. Please check back soon."
+              : `Every class in ${picker.months.label} is full or closed. Try the other month, or check back soon.`
           }
         />
       </BookingColumns>
@@ -257,24 +230,28 @@ async function SessionPicker({
   );
 }
 
-// Grey placeholder cards shown while the live class list loads.
+// Grey placeholders shown while the live class list loads.
 // Takes: nothing.
-// Gives back: pulsing empty day cards (screen readers hear "Loading classes").
+// Gives back: a pulsing month bar, chips and a class card (screen readers
+// hear "Loading classes").
 function SessionPickerLoading() {
   return (
-    <div role="status" className="grid gap-4 sm:grid-cols-2 lg:max-w-[calc(100%-24.5rem)]">
+    <div role="status" className="flex flex-col gap-5 lg:max-w-[calc(100%-24.5rem)]">
       <span className="sr-only">Loading classes…</span>
-      {[1, 2, 3, 4].map((n) => (
-        <div
-          key={n}
-          aria-hidden="true"
-          className="flex h-44 animate-pulse flex-col gap-3 rounded-[20px] border border-line bg-card p-4"
-        >
-          <div className="h-4 w-40 rounded bg-tan-soft" />
-          <div className="h-14 rounded-[14px] bg-tan-soft" />
-          <div className="h-14 rounded-[14px] bg-tan-soft" />
-        </div>
-      ))}
+      <div aria-hidden="true" className="h-13 animate-pulse rounded-full border border-line bg-card" />
+      <div aria-hidden="true" className="flex gap-2">
+        {[1, 2, 3, 4].map((n) => (
+          <div key={n} className="h-16 w-16 animate-pulse rounded-2xl bg-tan-soft" />
+        ))}
+      </div>
+      <div
+        aria-hidden="true"
+        className="flex h-44 animate-pulse flex-col gap-3 rounded-[20px] border border-line bg-card p-4"
+      >
+        <div className="h-4 w-40 rounded bg-tan-soft" />
+        <div className="h-14 rounded-[14px] bg-tan-soft" />
+        <div className="h-14 rounded-[14px] bg-tan-soft" />
+      </div>
     </div>
   );
 }

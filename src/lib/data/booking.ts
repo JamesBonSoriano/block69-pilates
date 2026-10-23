@@ -25,18 +25,23 @@ import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/validation";
 import type { BookingStatus, MyBooking, OpenSession } from "@/types/app";
 
-// Loads every class from today to 4 weeks ahead, in every state, for booking
-// step 1 (full, closed and cancelled classes are shown greyed out there).
-// Takes: nothing.
+// Loads the classes in a date range, in every state, for booking step 1 and
+// the transfer page (full, closed and cancelled classes are shown greyed out).
+// Takes: optionally { from, to } ("YYYY-MM-DD", e.g. one month for the month
+// navigator, Change 17). Without it: today to 4 weeks ahead.
 // Gives back: the classes, earliest first. Throws if Supabase can't be reached.
-export async function getBookingSessions(): Promise<OpenSession[]> {
+export async function getBookingSessions(range?: { from: string; to: string }): Promise<OpenSession[]> {
   // Wait for a real visitor: never prerendered or cached.
   await connection();
 
   const supabase = createPublicClient();
   // get_open_sessions() (migration 3) works out seats_left, is_bookable and
-  // state for each class. With no dates it covers today to 4 weeks ahead.
-  const { data, error } = await supabase.rpc("get_open_sessions");
+  // state for each class. It never goes back before today (so the past days
+  // of this month are left out) and never more than 92 days at once.
+  const { data, error } = await supabase.rpc(
+    "get_open_sessions",
+    range ? { p_from_date: range.from, p_to_date: range.to } : {},
+  );
   if (error) {
     throw new Error(`Could not load classes: ${error.message}`);
   }

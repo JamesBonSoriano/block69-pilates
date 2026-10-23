@@ -75,7 +75,9 @@ export async function previewVoucher(code: unknown): Promise<VoucherPreview> {
 // Holds a seat for the logged-in client by calling book_seat().
 // Takes: the previous form state, and the step 2 form:
 //   session_id, health_notes (optional), drink_choice, mat_rental (yes/no,
-//   chosen on step 1), voucher_code (optional), not_pregnant (on), agreed (on).
+//   chosen on step 1), voucher_code (optional), agreed (on).
+// (Change 17: there's no "I am not pregnant" tick any more; the database rule
+// was changed with it, migration 15.)
 // Name, mobile and Instagram are NOT in the form any more (Revisions part 1):
 // they come from the person's profile, which must have a name and mobile.
 // "First Pilates class?" isn't asked any more; book_seat() saves false.
@@ -92,7 +94,6 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
   const matRental = readText(formData, "mat_rental");
   const voucherCode = readText(formData, "voucher_code");
   // A ticked checkbox sends "on"; an unticked one sends nothing
-  const notPregnant = formData.get("not_pregnant") === "on";
   const agreed = formData.get("agreed") === "on";
 
   // Everything typed, so the form can fill it back in after an error
@@ -101,7 +102,6 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
     drink_choice: drinkChoice,
     mat_rental: matRental,
     voucher_code: voucherCode,
-    not_pregnant: notPregnant ? "on" : "",
     agreed: agreed ? "on" : "",
   };
 
@@ -122,9 +122,6 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
   if (matRental !== "yes" && matRental !== "no") {
     // A hidden field from step 1; only a changed page could send anything else
     return { error: "Please pick your class and mat again.", values, pickAnother: true };
-  }
-  if (!notPregnant) {
-    fieldErrors.not_pregnant = "Please confirm this. The class is not suitable during pregnancy.";
   }
   if (!agreed) {
     fieldErrors.agreed = "Please tick this to agree to the Registration Agreement.";
@@ -169,7 +166,6 @@ export async function holdSeat(_previous: HoldSeatState, formData: FormData): Pr
   //        (class fee only), and a 15-minute hold. We never send a price.
   const { data, error } = await supabase.rpc("book_seat", {
     p_session_id: sessionId,
-    p_not_pregnant: notPregnant,
     p_agreed: agreed,
     p_mat_rental: matRental === "yes",
     p_drink_choice: drinkChoice || undefined,

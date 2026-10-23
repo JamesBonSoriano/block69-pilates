@@ -16,13 +16,13 @@
 // Home if there's none (Revisions part 1, item 8).
 
 import { MessageCircle } from "lucide-react";
-import { ContentText, NumberedList } from "@/components/content/ContentText";
+import { ContentText, NumberedList, Paragraphs } from "@/components/content/ContentText";
 import { Section } from "@/components/layout/Section";
 import { BackButton } from "@/components/ui/BackButton";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
-import { fillSettings } from "@/lib/content-text";
+import { fillSettings, socialLinks } from "@/lib/content-text";
 import { getPageContent } from "@/lib/data/content";
 import { getPublicSettings } from "@/lib/data/settings";
 import { pageMetadata } from "@/lib/metadata";
@@ -37,8 +37,9 @@ export const metadata = pageMetadata({
 
 // The Policies page.
 // Takes: nothing.
-// Gives back: the intro, then the cancellation policy and the agreement as
-// numbered lists in two cards. All cached data, so Next.js pre-builds it.
+// Gives back: the intro, then the cancellation policy (a numbered list) and
+// the agreement (paragraphs) in two cards. All cached data, so Next.js
+// pre-builds it.
 export default async function PoliciesPage() {
   // Load all the cached data at the same time
   const [settings, content, bookingContent] = await Promise.all([
@@ -97,7 +98,15 @@ export default async function PoliciesPage() {
             <h2 id="agreement-heading" className="text-2xl font-normal">
               {fill(agreement.title)}
             </h2>
-            <NumberedList text={fill(agreement.body)} />
+            {/* Change 17: paragraphs, not a numbered list. {facebook_link} and
+                {instagram_link} become links to the pages in Settings. */}
+            <div className="flex flex-col gap-3">
+              <Paragraphs
+                text={fillSettings(agreement.body, settings, { keepLinks: true })}
+                links={socialLinks(settings)}
+                className="text-sm leading-relaxed lg:text-[15px]"
+              />
+            </div>
           </Card>
         )}
 

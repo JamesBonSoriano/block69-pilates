@@ -1,6 +1,7 @@
 "use client";
 // The booking step 2 form: your details (shown from your profile), health
-// notes, drink, voucher code, the two required ticks, and a live price summary.
+// notes, drink, voucher code, the Registration Agreement tick (Change 17: the
+// not-pregnant tick was removed), and a live price summary.
 // After "Change details" on the pay page it starts with the earlier choices.
 // Where it's used: src/app/(client)/book/details/page.tsx.
 //
@@ -85,8 +86,8 @@ type BookingDetailsFormProps = {
 
 // The choices from a hold the person just gave up with "Change details" (or
 // whose timer ran out), so the form starts with them filled in.
-// The two required ticks are NOT kept on purpose: the not-pregnant check and
-// the agreement are confirmed again for every new hold.
+// The Registration Agreement tick is NOT kept on purpose: it's confirmed
+// again for every new hold.
 export type KeptChoices = {
   drinkChoice: string; // "" if none
   matRental: boolean;
@@ -316,7 +317,7 @@ export function BookingDetailsForm({
           {kept && !state.error && !state.fieldErrors && (
             <FormMessage tone="info">
               Your earlier seat was let go, so you can change your details. Your choices are filled
-              in below. Tick the two boxes again, then confirm to hold a new seat.
+              in below. Tick the Registration Agreement again, then confirm to hold a new seat.
             </FormMessage>
           )}
 
@@ -492,14 +493,9 @@ export function BookingDetailsForm({
             />
           </Card>
 
-          {/* ===== The two required ticks ===== */}
+          {/* ===== The required tick: the Registration Agreement =====
+              (Change 17: the "I am not pregnant" tick was removed) */}
           <Card className="flex flex-col gap-1">
-            <Checkbox
-              name="not_pregnant"
-              label="I am not pregnant. (This class is not suitable during pregnancy.)"
-              defaultChecked={values.not_pregnant === "on"}
-              error={fieldError("not_pregnant")}
-            />
             <Checkbox
               name="agreed"
               label={

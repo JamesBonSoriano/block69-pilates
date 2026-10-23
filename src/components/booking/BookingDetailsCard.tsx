@@ -67,6 +67,8 @@ export function BookingDetailsCard({
   // The class picked in the form (its id), and the mat tick
   const [selected, setSelected] = useState<string | null>(initialSessionId);
   const [mat, setMat] = useState(initialMat);
+  // "Pick a class first" (shown when Proceed is pressed with nothing picked)
+  const [needsPick, setNeedsPick] = useState(false);
 
   // Listen to the class radio buttons in the form around this card.
   // (They're drawn by the page on the server, so we listen on the form.)
@@ -75,7 +77,10 @@ export function BookingDetailsCard({
     if (!form) return;
     const onChange = (event: Event) => {
       const target = event.target;
-      if (target instanceof HTMLInputElement && target.name === "session") setSelected(target.value);
+      if (target instanceof HTMLInputElement && target.name === "session") {
+        setSelected(target.value);
+        setNeedsPick(false);
+      }
     };
     form.addEventListener("change", onChange);
     return () => form.removeEventListener("change", onChange);
@@ -160,12 +165,30 @@ export function BookingDetailsCard({
           <p className="font-heading text-xl font-semibold text-brown lg:text-2xl">{formatPeso(total)}</p>
         </div>
         <div className="flex-1 lg:flex-none">
-          <Button type="submit" fullWidth disabled={!canBook}>
+          <Button
+            type="submit"
+            fullWidth
+            disabled={!canBook}
+            onClick={(event) => {
+              // Nothing picked: the browser's own "required" bubble may point
+              // at a class on a hidden date (Change 17's date chips), so say
+              // it here instead
+              if (!picked) {
+                event.preventDefault();
+                setNeedsPick(true);
+              }
+            }}
+          >
             Proceed to payment
             <ChevronRight aria-hidden="true" className="size-4" />
           </Button>
         </div>
       </div>
+      {needsPick && (
+        <p role="alert" className="text-xs font-semibold text-error lg:text-sm">
+          Please pick a class first: choose a date, then a time.
+        </p>
+      )}
       {note && <p className="hidden text-xs leading-relaxed text-muted lg:block">{note}</p>}
     </aside>
   );

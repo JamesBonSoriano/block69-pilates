@@ -127,14 +127,15 @@ async function ScheduleBody() {
           <p className="text-sm leading-relaxed">
             Makes the dated classes from the weekly pattern (only the slots that are on), from today up to the weeks
             you pick. Classes that already exist are skipped and <strong>not changed</strong>, so it&apos;s safe to
-            press again.
+            press again. Clients can book this month and next month, so keep classes 9 weeks ahead.
           </p>
           <AdminActionForm action={createClasses} submitLabel="Create classes" pendingLabel="Creating…">
             <Select
               label="How far ahead"
               name="weeks"
               required
-              defaultValue="4"
+              // 9 weeks (Change 17): enough to cover all of next month
+              defaultValue="9"
               options={Array.from({ length: 12 }, (_, n) => ({
                 value: String(n + 1),
                 label: `${n + 1} week${n === 0 ? "" : "s"}`,

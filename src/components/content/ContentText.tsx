@@ -7,50 +7,92 @@
 // Settings page before the site goes live).
 //
 // Fill-in words like {mat_price} must already be swapped (fillSettings() in
-// src/lib/content-text.ts) before the text gets here.
+// src/lib/content-text.ts) before the text gets here. The LINK fill-in words
+// {facebook_link} / {instagram_link} may be left in (keepLinks): pass
+// links={socialLinks(settings)} and they become real links (Change 17).
 
 import { Check } from "lucide-react";
-import { splitLines } from "@/lib/content-text";
+import { Fragment } from "react";
+import { splitLines, type SocialLink } from "@/lib/content-text";
 import { cn } from "@/lib/cn";
 
 // Finds placeholders: "[" then up to 120 characters that aren't "]", then "]".
 // The brackets ( ) around it make split() keep the placeholders in the list.
 const PLACEHOLDER = /(\[[^\]\n]{1,120}\])/;
 
-// One piece of text, with any placeholders outlined.
-// Takes: the text.
+// Finds link fill-in words like {facebook_link} (kept by split(), as above).
+const LINK_WORD = /(\{[a-z]+_link\})/;
+
+// One piece of text, with any placeholders outlined (and, if links are
+// given, {facebook_link}-style words turned into links).
+// Takes: the text, and optionally the links (from socialLinks()).
 // Gives back: the text, where each [PLACEHOLDER] is in a dashed box.
-export function ContentText({ text }: { text: string }) {
-  // "Call [CAFE PHONE] now" -> ["Call ", "[CAFE PHONE]", " now"]
-  const parts = text.split(PLACEHOLDER);
+export function ContentText({ text, links }: { text: string; links?: Record<string, SocialLink> }) {
+  // "Find us on {facebook_link}" -> ["Find us on ", "{facebook_link}", ""]
+  const pieces = links ? text.split(LINK_WORD) : [text];
   return (
     <>
-      {parts.map((part, i) =>
-        // split() puts the placeholders at the odd positions (1, 3, 5...)
-        i % 2 === 1 ? (
-          <span
-            key={i}
-            className="rounded-md border border-dashed border-caramel bg-tan-soft/60 px-1 text-brown"
-          >
-            {part}
-          </span>
-        ) : (
-          part
-        ),
-      )}
+      {pieces.map((piece, p) => {
+        // The link words sit at the odd positions (1, 3, 5...)
+        if (p % 2 === 1) {
+          const link = links?.[piece.slice(1, -1)];
+          if (!link) return <Fragment key={p}>{piece}</Fragment>;
+          // Not set in Settings: just the word
+          if (!link.href) return <Fragment key={p}>{link.label}</Fragment>;
+          return (
+            <a
+              key={p}
+              href={link.href}
+              target="_blank"
+              // Another website: it can't control our page
+              rel="noopener noreferrer"
+              className="font-semibold text-brown underline underline-offset-4"
+            >
+              {link.label}
+            </a>
+          );
+        }
+        // "Call [CAFE PHONE] now" -> ["Call ", "[CAFE PHONE]", " now"]
+        return (
+          <Fragment key={p}>
+            {piece.split(PLACEHOLDER).map((part, i) =>
+              // split() puts the placeholders at the odd positions (1, 3, 5...)
+              i % 2 === 1 ? (
+                <span
+                  key={i}
+                  className="rounded-md border border-dashed border-caramel bg-tan-soft/60 px-1 text-brown"
+                >
+                  {part}
+                </span>
+              ) : (
+                part
+              ),
+            )}
+          </Fragment>
+        );
+      })}
     </>
   );
 }
 
 // Text with one paragraph per line.
-// Takes: the text and extra classes for each paragraph.
+// Takes: the text, extra classes for each paragraph, and optionally the
+// social links (see ContentText).
 // Gives back: a <p> for every non-empty line (nothing if the text is empty).
-export function Paragraphs({ text, className }: { text: string; className?: string }) {
+export function Paragraphs({
+  text,
+  className,
+  links,
+}: {
+  text: string;
+  className?: string;
+  links?: Record<string, SocialLink>;
+}) {
   return (
     <>
       {splitLines(text).map((line, i) => (
         <p key={i} className={className}>
-          <ContentText text={line} />
+          <ContentText text={line} links={links} />
         </p>
       ))}
     </>

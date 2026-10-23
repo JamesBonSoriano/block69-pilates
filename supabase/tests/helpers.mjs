@@ -287,12 +287,13 @@ export async function createTestContext(port, name, results) {
       return id;
     },
 
-    // A client calls book_seat (booking step 3, "Pay"), with both ticks done.
+    // A client calls book_seat (booking step 2, "Confirm"), with the
+    // Registration Agreement ticked (Change 17: there's no not-pregnant tick).
     // Takes: who, the class id, optional { mat, drink, code }, optional connection.
     // Gives back: the run() result; row has booking_id, class_fee, mat_fee,
     // discount, total, hold_expires_at.
     book: (actor, sessionId, { mat = false, drink = 'Iced Matcha', code = null } = {}, client = db) =>
-      run(actor, `select * from public.book_seat(p_session_id => $1, p_not_pregnant => true, p_agreed => true,
+      run(actor, `select * from public.book_seat(p_session_id => $1, p_agreed => true,
                   p_mat_rental => $2, p_drink_choice => $3, p_voucher_code => $4)`,
         [sessionId, mat, drink, code], true, client),
 

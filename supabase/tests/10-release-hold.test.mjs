@@ -24,7 +24,7 @@ export default async function run(t) {
 
   // A books the only seat with a mat, a drink, health notes, first time, and the code.
   await q('update public.class_sessions set capacity = 1 where id = $1', [S[0]]);
-  let r = await as('A', `select * from public.book_seat(p_session_id => $1, p_not_pregnant => true, p_agreed => true,
+  let r = await as('A', `select * from public.book_seat(p_session_id => $1, p_agreed => true,
                            p_mat_rental => true, p_drink_choice => 'Iced Matcha', p_first_time => true,
                            p_health_notes => 'Old knee injury', p_voucher_code => 'ONCE20')`, [S[0]]);
   const hold = r.row?.booking_id;

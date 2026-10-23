@@ -59,7 +59,7 @@ function seatsLeft(capacity: number, bookings: Booking[]): number {
 | Supabase in Next.js | `@supabase/ssr` + `@supabase/supabase-js` | Browser client, server client, middleware |
 | Payments | **PayMongo, test mode only** | GCash, Maya and card through Checkout Sessions, plus a webhook |
 | Emails | Resend or Supabase email | **Build last** |
-| Timed jobs | Supabase `pg_cron` | Creates sessions 4 weeks ahead, and sends reminders (**last**) |
+| Timed jobs | Supabase `pg_cron` | Creates sessions 9 weeks ahead (so next month is always bookable), and sends reminders (**last**) |
 | Hosting | Vercel | Done at the very end |
 
 **Security rules**
@@ -79,7 +79,7 @@ function seatsLeft(capacity: number, bookings: Booking[]): number {
   - Session 2: 10:15 to 11:05 AM
 - **Capacity** is 4 per session by default. The admin can change it, for example to 3, for all sessions or for one date.
 - **Price**: ₱500, which includes an upsized matcha or coffee. **Mat rental** is +₱50, and all of it is donated to feed stray animals.
-- **Not suitable for pregnant participants.**
+- **Not suitable for pregnant participants.** This is stated in the Health and Safety Information on Home. Since Change 17 there is no "I am not pregnant" tick in online booking (walk-ins still confirm it in person).
 - What to bring: mat (or rent one), small towel, water bottle, grip socks.
 - Private sessions are by appointment through the "Chat With Us" button (a Messenger or Instagram link). They are not part of online booking.
 
@@ -97,7 +97,7 @@ function seatsLeft(capacity: number, bookings: Booking[]): number {
 ### Client flow
 ```
 Home ──> Book Now ──> (not logged in? ──> Log in / Sign up ──> back to booking)
-     ──> Step 1: pick date + session (shows seats left, full = greyed out)
+     ──> Step 1: month (this month / next month) ──> date chip ──> session (seats left, full = greyed out), mat rental tick
      ──> Step 2: your details (prefilled from profile + health questions)
      ──> Step 3: review & pay (mat add-on, voucher, total, policy, agreement)
      ──> PayMongo checkout (GCash / Maya / card)
@@ -110,7 +110,7 @@ Home ──> Book Now ──> (not logged in? ──> Log in / Sign up ──> b
 - **Home** (guests can see it): hero with a Book Now button, about the class, location and free drink, feature cards, "Next open sessions" with seats left, and a footer with the address and the stray animals note.
 - **About Us** (guests can see it): the cafe and the instructor, the address with a map link, contact details, and health and safety notes.
 - **Log in, Sign up, Forgot password.** Admins who log in go to the admin Dashboard.
-- **Booking:** a 3-step flow (above). Step 2 collects full name, contact number, email, Instagram (optional), first time (yes or no), injuries or medical notes, drink choice (options come from settings), and a not-pregnant checkbox. Step 3 shows what to bring, the mat rental add-on, a voucher code box, the total, the cancellation policy and the Registration Agreement checkbox.
+- **Booking:** a 3-step flow (above). Step 1 (Change 17): a month navigator limited to this month and next month, date chips for only the dates that have classes (days come from `schedule_templates`), that date's sessions with seat badges, and the Booking details card (what to bring, Rent a mat, total). Step 2 shows the name, mobile, email and Instagram from the profile, and collects injuries or medical notes, drink choice (options come from settings), a voucher code, and the Registration Agreement checkbox (there is **no** not-pregnant checkbox since Change 17). Step 3 is payment.
 - **You're booked**, **Payment expired**, and **Manual transfer** (shows GCash and BPI details, plus a screenshot upload).
 - **My Account** (with a side menu on desktop and a list on phone):
   - My Profile: name, email, mobile, Instagram, birthday, change password, deactivate account
@@ -149,6 +149,8 @@ These rules are enforced by the code and the database, not just shown as text.
 - **15-minute seat hold:** when the client clicks Pay, create the booking as `pending_payment` with `hold_expires_at = now + 15 min`. No timer is needed, because expired holds simply stop counting.
 - **No overbooking:** the seat check and the booking insert happen in **one Postgres function**, which locks the session row (`SELECT ... FOR UPDATE`). Two people can never get the last seat.
 - **Cutoff:** online booking closes at **8:00 AM on class day** (a setting), or when the session is full.
+- **How far ahead:** clients can book this month and next month. Dated classes must exist **9 weeks ahead** (setting `sessions_weeks_ahead`; "Create classes" on the admin Schedule page until the nightly job exists).
+- **Required to book online:** only the Registration Agreement tick (`book_seat` and the `bookings_agreement_required` check). The not-pregnant tick was removed in Change 17.
 - If the class is less than 12 hours away, warn the client that cancelling will give no credit.
 
 **Prices**
@@ -188,7 +190,7 @@ These rules are enforced by the code and the database, not just shown as text.
 | `profiles` | One user (linked to `auth.users`) | full_name, email, mobile, instagram, birthday, role (`client`/`admin`), is_active, email_reminders |
 | `schedule_templates` | One weekly slot pattern | weekday, start_time, end_time, default_capacity, is_active |
 | `class_sessions` | One dated class | date, start_time, end_time, capacity, status (`open`/`closed`/`cancelled`) |
-| `bookings` | One seat for one person | user_id (or walkin_name + walkin_contact), session_id, status, mat_rental, drink_choice, voucher_id, class_fee, mat_fee, discount, total, first_time, health_notes, not_pregnant_confirmed, agreed_at, hold_expires_at, transferred_from |
+| `bookings` | One seat for one person | user_id (or walkin_name + walkin_contact), session_id, status, mat_rental, drink_choice, voucher_id, class_fee, mat_fee, discount, total, first_time, health_notes, not_pregnant_confirmed (optional: null = not asked, online bookings since Change 17), agreed_at (required), hold_expires_at, transferred_from |
 | `payments` | One payment attempt | booking_id, provider (`paymongo`/`manual`/`cash`), method (`gcash`/`maya`/`card`/`bpi`/`cash`), amount, status, paymongo_ref, screenshot_path, verified_by, paid_at |
 | `vouchers` | One discount code | code, percent_off or amount_off, owner_id (if personal), source (`cancellation`/`promo`), uses_left, expires_at |
 | `settings` | One setting | key, value (class_price, mat_price, cutoff_time, hold_minutes, drink_options, manual_payment_enabled, contact details) |

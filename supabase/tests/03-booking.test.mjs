@@ -19,10 +19,11 @@ export default async function run(t) {
   check('Client calls generate_sessions', 'refused', !r.ok, r.err);
   r = await as('guest', 'select public.generate_sessions(4) as n');
   check('Guest calls generate_sessions', 'refused', !r.ok, r.err);
-  r = await as('admin', 'select public.generate_sessions(4) as n');
-  check('Admin runs it again (migration 4 already made 4 weeks)', '0 created', r.ok && r.row.n === 0, r.ok ? `${r.row.n} created` : r.err);
-  r = await as('admin', 'select public.generate_sessions(5) as n');
-  check('Admin asks for 5 weeks', '8 created (1 more week x Thu-Sun x 2)', r.ok && r.row.n === 8, r.ok ? `${r.row.n} created` : r.err);
+  // (Migration 15, Change 17, already made 9 weeks of classes)
+  r = await as('admin', 'select public.generate_sessions(9) as n');
+  check('Admin runs it again (migration 15 already made 9 weeks)', '0 created', r.ok && r.row.n === 0, r.ok ? `${r.row.n} created` : r.err);
+  r = await as('admin', 'select public.generate_sessions(10) as n');
+  check('Admin asks for 10 weeks', '8 created (1 more week x Thu-Sun x 2)', r.ok && r.row.n === 8, r.ok ? `${r.row.n} created` : r.err);
   r = await as('server', 'select public.generate_sessions(4) as n');
   check('Server key / nightly job can run it', 'allowed', r.ok, r.ok ? `allowed, ${r.row.n} created` : r.err);
   r = await as('admin', 'select public.generate_sessions(13) as n');
@@ -45,7 +46,7 @@ export default async function run(t) {
   const t0 = Date.now();
   const race = await Promise.all(conns.map(async (c) => {
     try {
-      const res = await c.query('select * from public.book_seat(p_session_id => $1, p_not_pregnant => true, p_agreed => true)', [S[0]]);
+      const res = await c.query('select * from public.book_seat(p_session_id => $1, p_agreed => true)', [S[0]]);
       const waited = Date.now() - t0;
       await c.query('select pg_sleep(0.3)');
       await c.query('commit');
@@ -128,13 +129,13 @@ export default async function run(t) {
   r = await book('E', S[3]);
   check('Admin changes the price to 650, then E books', 'class fee 650.00', r.ok && r.row.class_fee === '650.00', r.ok ? money(r.row) : r.err);
   await q(`update public.settings set value = '500' where key = 'class_price'`);
-  r = await t.attempt('A', `select * from public.book_seat(p_session_id => $1, p_not_pregnant => false, p_agreed => true)`, [S[3]]);
-  check('Book without the not-pregnant tick', 'refused', !r.ok && r.err.includes('pregnan'), r.err);
-  r = await t.attempt('A', `select * from public.book_seat(p_session_id => $1, p_not_pregnant => true, p_agreed => false)`, [S[3]]);
+  // (Change 17: the not-pregnant tick is gone, so its old "refused" check is
+  // now in 17-r2-booking.test.mjs as "books without it")
+  r = await t.attempt('A', `select * from public.book_seat(p_session_id => $1, p_agreed => false)`, [S[3]]);
   check('Book without ticking the Registration Agreement', 'refused', !r.ok && r.err.includes('Agreement'), r.err);
   r = await book('A', S[3], { drink: 'Milk Tea' });
   check('Drink that is not in the settings list', 'refused', !r.ok && r.err.includes('drink'), r.err);
-  r = await t.attempt('guest', `select * from public.book_seat(p_session_id => $1, p_not_pregnant => true, p_agreed => true)`, [S[3]]);
+  r = await t.attempt('guest', `select * from public.book_seat(p_session_id => $1, p_agreed => true)`, [S[3]]);
   check('Guest (not logged in) tries to book', 'refused', !r.ok, r.err);
 
   // ===========================================================================

@@ -238,7 +238,15 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
                   "None"
                 )}
               </Row>
-              <Row label="Not pregnant">{booking.not_pregnant_confirmed ? "Confirmed" : "Not confirmed"}</Row>
+              {/* Empty = not asked: online bookings since Change 17 have no
+                  not-pregnant tick (walk-ins still confirm it in person) */}
+              <Row label="Not pregnant">
+                {booking.not_pregnant_confirmed === true
+                  ? "Confirmed"
+                  : booking.not_pregnant_confirmed === false
+                    ? "Not confirmed"
+                    : "Not asked (online booking)"}
+              </Row>
               <Row label="Agreement">
                 {booking.agreed_at ? `Agreed ${formatManilaDateTime(booking.agreed_at)}` : "Not agreed"}
               </Row>

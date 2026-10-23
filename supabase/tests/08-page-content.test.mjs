@@ -19,7 +19,8 @@ const NEW_BLOCKS = [
 
 // The fill-in words the website swaps for settings values.
 // Keep this the same as FILL_INS in src/lib/content-text.ts.
-const KNOWN_FILL_INS = ['class_price', 'mat_price', 'cutoff_time', 'hold_minutes', 'cafe_name'];
+// (facebook_link and instagram_link: Change 17, the Registration Agreement)
+const KNOWN_FILL_INS = ['class_price', 'mat_price', 'cutoff_time', 'hold_minutes', 'cafe_name', 'facebook_link', 'instagram_link'];
 
 // The migration file itself, so we can run it a second time.
 const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'migrations');

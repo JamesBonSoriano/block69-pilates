@@ -99,22 +99,27 @@ export default async function run(t) {
     sameItems(templates, expectedSlots), `${templates.length} templates: ${templates.join('; ')}`);
 
   // ===========================================================================
-  t.section('Classes (generate_sessions(4))');
+  // (Migration 4 made 4 weeks; migration 15, Change 17, adds up to 9 weeks
+  // so booking step 1 can show next month.)
+  t.section('Classes (generate_sessions: 4 weeks, then 9 weeks)');
   // ===========================================================================
   const sess = await one(`
     select count(*)::int as n,
            count(*) filter (where extract(dow from date) not in (4, 5, 6, 0))::int as wrong_day,
            count(*) filter (where capacity <> 4 or status <> 'open' or template_id is null)::int as odd,
+           count(*) filter (where date <= public.manila_today() + 28)::int as in_four_weeks,
            (min(date) - public.manila_today())::int as first_day,
            (max(date) - public.manila_today())::int as last_day
     from public.class_sessions`);
-  check('4 weeks of classes created', '32 (16 days x 2 sessions)', sess.n === 32, sess.n);
+  check('9 weeks of classes created', '72 (36 days x 2 sessions)', sess.n === 72, sess.n);
   check('All on Thursday to Sunday', '0 on other days', sess.wrong_day === 0, `${sess.wrong_day} on other days`);
   check('All open, 4 seats, linked to a template', '0 odd ones', sess.odd === 0, `${sess.odd} odd ones`);
-  check('From today up to 4 weeks ahead', 'days 0..27 from today', sess.first_day >= 0 && sess.last_day <= 27,
+  check('From today up to 9 weeks ahead', 'days 0..62 from today', sess.first_day >= 0 && sess.last_day <= 62,
     `days ${sess.first_day}..${sess.last_day} from today`);
+  // get_open_sessions() with no dates still lists today to 28 days ahead
   const listed = await t.attempt('guest', 'select count(*)::int as n from public.get_open_sessions()');
-  check('Guest sees them with get_open_sessions()', '32 classes', listed.ok && listed.row.n === 32, listed.ok ? `${listed.row.n} classes` : listed.err);
+  check('Guest sees the next 4 weeks with get_open_sessions()', `${sess.in_four_weeks} classes`,
+    listed.ok && listed.row.n === sess.in_four_weeks, listed.ok ? `${listed.row.n} classes` : listed.err);
 
   // ===========================================================================
   t.section('Page content');
@@ -137,9 +142,11 @@ export default async function run(t) {
     ['24 hours', '12 to 24 hours', 'Less than 12 hours', '50%', '60 days'].every((w) => policy.includes(w)),
     `${policy.split('\n').length} lines`);
 
+  // (Migration 15, Change 17, replaced the draft with the proposal's wording)
   const agreement = blocks['booking/agreement']?.body ?? '';
-  check('Agreement covers pregnancy, injuries and the policy', 'all three mentioned',
-    /pregnant/i.test(agreement) && /injur/i.test(agreement) && /cancellation policy/i.test(agreement), `${agreement.split('\n').length} lines`);
+  check('Agreement covers the policies, health and safety and liability', 'all three mentioned',
+    /cancellation terms/i.test(agreement) && /health and safety/i.test(agreement) && /liability/i.test(agreement),
+    `${agreement.split('\n').length} paragraphs`);
 
   // Prices must come from settings, so page text never has a peso amount in it.
   // (Only peso signs/words are checked: "50-minute" and "50%" are fine.)

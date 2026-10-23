@@ -120,7 +120,7 @@ export type Database = {
           id: string
           mat_fee: number
           mat_rental: boolean
-          not_pregnant_confirmed: boolean
+          not_pregnant_confirmed: boolean | null
           session_id: string
           status: Database["public"]["Enums"]["booking_status"]
           total: number
@@ -143,7 +143,7 @@ export type Database = {
           id?: string
           mat_fee?: number
           mat_rental?: boolean
-          not_pregnant_confirmed?: boolean
+          not_pregnant_confirmed?: boolean | null
           session_id: string
           status?: Database["public"]["Enums"]["booking_status"]
           total: number
@@ -166,7 +166,7 @@ export type Database = {
           id?: string
           mat_fee?: number
           mat_rental?: boolean
-          not_pregnant_confirmed?: boolean
+          not_pregnant_confirmed?: boolean | null
           session_id?: string
           status?: Database["public"]["Enums"]["booking_status"]
           total?: number
@@ -937,7 +937,6 @@ export type Database = {
           p_first_time?: boolean
           p_health_notes?: string
           p_mat_rental?: boolean
-          p_not_pregnant: boolean
           p_session_id: string
           p_voucher_code?: string
         }
