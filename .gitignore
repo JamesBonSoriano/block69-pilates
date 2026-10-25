@@ -37,3 +37,6 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 Thumbs.db
+
+# Revision PDFs and screenshots (contain real emails, never commit)
+docs/[Rr]evisions/
