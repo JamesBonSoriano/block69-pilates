@@ -4,7 +4,7 @@
 // Where it's used: src/app/(auth)/signup/page.tsx.
 //
 // The rules (Change 17) are checkSignupFields() in src/lib/validation.ts:
-//   phone    exactly 11 digits starting with 09 (spaces / dashes are fine)
+//   phone    exactly 11 digits starting with 09 (the box takes digits only, 11 at most)
 //   birthday MM/DD/YYYY, a real calendar date with a 4-digit year, in the past
 //   email    @gmail.com or @yahoo.com only (this version)
 //   password at least 8 characters (with a show / hide button)
@@ -13,6 +13,8 @@
 // (src/lib/auth/actions.ts), which is the check that counts. The database's
 // sign-up trigger then copies the name, phone number and birthday into the
 // new profile.
+// Version 1.4: no hints under phone, birthday or email; the error messages
+// explain the rules.
 
 import Link from "next/link";
 import { useActionState, useState, type FormEvent } from "react";
@@ -22,6 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { signInWithGoogle, signUp } from "@/lib/auth/actions";
 import { emptyFormState } from "@/lib/auth/form-state";
 import { MIN_PASSWORD, checkSignupFields } from "@/lib/validation";
@@ -94,18 +97,15 @@ export function SignupForm({ next }: { next: string | null }) {
           defaultValue={values.full_name}
           error={errors.full_name}
         />
-        <Input
+        {/* At most 11 digits, number keypad (Version 1.4: no hint; the
+            error message explains the 09 rule) */}
+        <PhoneInput
           label="Phone number"
           name="mobile"
-          type="tel"
-          inputMode="tel"
           autoComplete="tel"
-          placeholder="0917 123 4567"
-          maxLength={13}
           required
           defaultValue={values.mobile}
           error={errors.mobile}
-          hint="11 digits starting with 09."
         />
         {/* Typed MM/DD/YYYY (the date picker allowed impossible years).
             key: after a server error, start from what they typed */}
@@ -125,7 +125,6 @@ export function SignupForm({ next }: { next: string | null }) {
           required
           defaultValue={values.email}
           error={errors.email}
-          hint="Gmail or Yahoo addresses only for now."
         />
         <PasswordInput
           label="Password"

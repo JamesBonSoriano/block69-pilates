@@ -13,17 +13,21 @@ import { createClient } from "@/lib/supabase/server";
 
 // Runs when the browser is sent to /auth/deactivated.
 // Takes: nothing (it reads the login cookies).
-// Gives back: nothing; it redirects to /login?error=deactivated (or to the
-// Home page if the account is actually fine).
+// Gives back: nothing; it redirects to /login?error=deactivated, or
+// ?error=deactivated-self for a client who turned their own account off
+// (Version 1.4: "log in again to reactivate"), or to the Home page if the
+// account is actually fine.
 export async function GET() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
+  // Which message the login page shows
+  let message = "deactivated";
 
   if (userId) {
     const { data: profile, error } = await supabase
       .from("profiles")
-      .select("is_active")
+      .select("is_active, self_deactivated_at")
       .eq("id", userId)
       .maybeSingle();
 
@@ -31,6 +35,7 @@ export async function GET() {
     if (error || profile?.is_active) {
       redirect("/");
     }
+    if (profile?.self_deactivated_at) message = "deactivated-self";
 
     // Deactivated: log out everywhere (all their devices)
     const { error: signOutError } = await supabase.auth.signOut({ scope: "global" });
@@ -46,5 +51,5 @@ export async function GET() {
     }
   }
 
-  redirect("/login?error=deactivated");
+  redirect(`/login?error=${message}`);
 }

@@ -20,16 +20,18 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - R1 Separate `/admin/login`, floating Chat button, notifications table, birthday on sign-up (migration 12)
 - Change 16: "Next open sessions" removed from Home
 - Change 17 (Proposal 3): green / beige client theme, bell, Google login + Save login, new Home / About text, month navigator + date chips, no not-pregnant tick, 9 weeks of classes, My Profile 3 cards (email, password, deactivate, delete), payments filter (migrations 13–16, all pushed 2026-10-23)
-- Last checks: `test:db` 570/570, `test:unit` 40/40, `tsc` / `lint` / `build` clean
 - 2026-10-25: docs trimmed (this file, CLAUDE.md); old PROGRESS kept as `progress-archive.md`
+- 2026-10-26 Version 1.4 (client): no Save login (always remembered), Log out only on My Profile, one-code email change (password first), Deactivate blocked like Delete + "Welcome back!" self-reactivation (`/reactivate`), payments filter tidy, Notification Settings, 11-digit phone box, Home mat card -> `/book?mat=yes` (migration 17, pushed 2026-10-26, types regenerated)
+- Last checks: `test:db` 590/590, `test:unit` 34/34 (Save login tests removed), `tsc` / `lint` / `build` clean
 
 ## Next
+- **You:** click-through Version 1.4 at 390px and 1440px
 - **Transfer bug:** some open dates seemed missing on the transfer page (Thu Oct 29 10:15). Find the real cause and add a test that every open class with seats shows
 - **Home page** to match Figma node 103-26 (a bigger export would help), then Revisions part 2 (admin) and part 3 (emails)
 - **Step 13** deploy (`docs/prompts/13-deploy.md`), **Step 14** emails + pg_cron + Communications (`14-emails-reminders.md`), **Step 15** final check (`15-final-check.md`)
 - **You, `.env.local`:** add `SUPABASE_SECRET_KEY` (webhook, PayMongo return, Delete account) and `PAYMONGO_SECRET_KEY`, then restart `npm run dev`
 - **You, Supabase dashboard:** turn ON "Require current password when updating"; enable the Google provider (Google Cloud OAuth client, redirect `https://mbfshqndgiywphuannuw.supabase.co/auth/v1/callback`); delete the throwaway `step10-check-…@example.com` users
-- **You, after SMTP (Step 14):** Change Email template shows `{{ .Token }}` (keep Secure email change ON); Reset password → `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`; Confirm signup → same with `type=email`; then turn Confirm email ON and retest
+- **You, after SMTP (Step 14):** turn OFF "Secure email change" (one code, new email only); Change Email template shows `{{ .Token }}`; turn ON the "Email address changed" security notification (alert to the old email; else TODO in `confirmEmailChange`); Reset password → `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`; Confirm signup → same with `type=email`; then turn Confirm email ON and retest
 - **You, after deploy:** add the Vercel URL to Supabase Site URL + Redirect URLs (`https://<site>/**`, keep localhost); add the PayMongo webhook `https://<site>/api/paymongo/webhook` (event `checkout_session.payment.paid`) and put its secret in Vercel as `PAYMONGO_WEBHOOK_SECRET`
 - **You:** click-throughs at 390px and 1440px for Step 11 (both parts), Step 12, R1 and Change 17 (SQL in `supabase/manual-tests/`, setup + cleanup, pasted by hand); fill in the [PLACEHOLDERS] on admin Settings and Content
 

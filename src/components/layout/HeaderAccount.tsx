@@ -1,9 +1,10 @@
 // The parts of the client Header that depend on WHO is logged in:
 //   - laptop:     "Log in" (or "Book Now" on the login pages), or for a
-//                 client the bell + the person icon + "Log out"
+//                 client the bell + the person icon
 //   - phone bar:  the bell + the person icon next to the menu button
 //   - phone menu: name + email + My Account links at the top, and
-//                 Log in / Log out at the bottom
+//                 Log in at the bottom (guests only)
+// Log out is on My Profile (Version 1.4), not in the header.
 // The person icon (Revisions part 1, item 6) is the "My Account" link: it
 // opens My Profile. The bell (Change 17, NotificationBell.tsx) holds the
 // booking updates and the unread count (it used to be a dot on the person icon).
@@ -21,7 +22,6 @@ import { UserRound } from "lucide-react";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 import { cn } from "@/lib/cn";
 import { getCurrentUser } from "@/lib/auth/user";
 import { getMyUnreadCount } from "@/lib/data/notifications";
@@ -112,8 +112,8 @@ function AccountIcon({ user, size }: { user: HeaderUser; size: "lg" | "sm" }) {
 
 // The right-hand end of the laptop header.
 // Takes: nothing. Gives back: "Log in" (or "Book Now" on the login pages) for
-// guests; for clients the bell, the person icon (My Account) and "Log out"
-// (Log out at the far right); for admins their initials (to /admin) and Log out.
+// guests; for clients the bell and the person icon (My Account); for admins
+// their initials (to /admin, where their Log out button is).
 export async function DesktopAccount() {
   const user = await loadHeaderUser();
 
@@ -124,7 +124,6 @@ export async function DesktopAccount() {
       {/* key: a new unread count from the server starts the bell afresh */}
       {!user.isAdmin && <NotificationBell key={user.unread} initialUnread={user.unread} size="lg" />}
       <AccountIcon user={user} size="lg" />
-      <LogoutButton variant="lightOutline" formClassName="ml-1" />
     </div>
   );
 }
@@ -207,12 +206,12 @@ export async function PhoneMenuUser() {
   );
 }
 
-// The buttons at the bottom of the phone menu.
+// The button at the bottom of the phone menu.
 // Takes: nothing. Gives back: "Log in" for guests ("Book Now" on the login
-// pages), "Log out" for logged-in people (Log out stays reachable on phones).
-// (The menu closes itself when one of these is tapped; see HeaderNav.tsx.)
+// pages), nothing for logged-in people (Log out is on My Profile).
+// (The menu closes itself when it is tapped; see HeaderNav.tsx.)
 export async function PhoneMenuActions() {
   const user = await loadHeaderUser();
   if (!user) return <GuestHeaderButton fullWidth />;
-  return <LogoutButton variant="lightOutline" fullWidth />;
+  return null;
 }

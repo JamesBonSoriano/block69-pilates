@@ -8,7 +8,7 @@
 // and close when tapped.
 //
 // It is STATIC: it doesn't know who is logged in. Header.tsx hands it the
-// account parts (Log in / person icon / Log out) ready-made, each in its own
+// account parts (Log in / bell / person icon) ready-made, each in its own
 // <Suspense>, and this file only decides WHERE they go.
 // The My Account sub-links (Profile, My Bookings, Payments, ...) are in
 // phoneMenuUser (HeaderAccount.tsx), so only logged-in people see them.
@@ -25,10 +25,10 @@ import { cn } from "@/lib/cn";
 import { accountHomeHref, infoNavLinks, isActiveLink, mainNavLinks } from "./nav-links";
 
 type HeaderNavProps = {
-  desktopAccount: ReactNode; // laptop: Log in (Book Now on the login pages), or bell + person icon + Log out
+  desktopAccount: ReactNode; // laptop: Log in (Book Now on the login pages), or bell + person icon
   phoneAvatar: ReactNode; // phone bar: the bell + person icon next to the menu button
   phoneMenuUser: ReactNode; // top of the phone menu: name + email
-  phoneMenuActions: ReactNode; // bottom of the phone menu: Log in or Log out
+  phoneMenuActions: ReactNode; // bottom of the phone menu: Log in (guests only)
 };
 
 // The header nav.
@@ -99,7 +99,7 @@ export function HeaderNav({
       </div>
 
       {/* The full-screen phone menu, under the 64px header (top-16).
-          It closes when a link is tapped, or when Log out is sent. */}
+          It closes when a link is tapped, or when Log in is tapped. */}
       {menuOpen && (
         <nav
           id="phone-menu"

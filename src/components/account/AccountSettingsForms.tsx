@@ -1,20 +1,25 @@
 "use client";
-// The account forms on My Profile (Change 17, Part G):
-//   EmailChange      "Change email": new email -> two 6-digit codes -> done
+// The account forms on My Profile (Change 17, Part G; Version 1.4):
+//   EmailChange      "Change email": current password + new email -> ONE
+//                    6-digit code sent to the new email -> done
 //   ChangePassword   current + new password (or "Set a password" for
 //                    Google-only accounts, through Forgot password)
-//   DeactivateAccount  warning + "I understand" tick + confirm
-//   DeleteAccount      what still blocks it, or warning + type DELETE (+ password)
+//   DeactivateAccount  warning + "I understand" tick + confirm (logging in
+//                      again offers to turn it back on)
+//   DeleteAccount      warning + type DELETE (+ password)
+//   Deactivate and Delete are both blocked by the same things (an upcoming
+//   class, a seat on hold, a payment being checked): then the row shows its
+//   button greyed out, with what to do first.
 // Where it's used: src/app/(client)/account/profile/page.tsx.
 //
 // "use client" = each one opens and closes in place and shows "Saving…" and
 // errors without a page reload. The work happens in Server Actions
 // (src/lib/account/actions.ts), which check everything again; the database
-// has the final say (migration 16).
+// has the final say (migrations 16 and 17).
 
 import { CircleAlert, KeyRound, Mail, Trash2, UserX } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useId, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormMessage } from "@/components/ui/FormMessage";
@@ -36,12 +41,49 @@ import { MIN_PASSWORD } from "@/lib/validation";
 // Shared: a row with a title, a line of text and a button that opens a panel
 // ---------------------------------------------------------------------------
 
+// The top line of a setting row: the icon, the title and its short text.
+// Takes: the icon, title, text, whether it's a danger row, and what goes on
+// the right (the button).
+// Gives back: the line.
+function RowTop({
+  icon: Icon,
+  title,
+  text,
+  danger,
+  children,
+}: {
+  icon: typeof Mail;
+  title: string;
+  text: ReactNode;
+  danger: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <span
+        className={
+          danger
+            ? "flex size-10 shrink-0 items-center justify-center rounded-xl bg-error-bg text-error"
+            : "flex size-10 shrink-0 items-center justify-center rounded-xl bg-tan-soft text-brown"
+        }
+      >
+        <Icon aria-hidden="true" className="size-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">{title}</p>
+        <div className="break-words text-sm text-muted">{text}</div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // One account setting: shown as a row, the button opens its form under it.
 // Takes: the icon, title, a short line, the button label, the button look,
 // and a function that draws the open panel (given a "close" function).
 // Gives back: the row, and the panel while it's open.
 function SettingRow({
-  icon: Icon,
+  icon,
   title,
   text,
   buttonLabel,
@@ -58,40 +100,111 @@ function SettingRow({
   const [open, setOpen] = useState(false);
   return (
     <div className="flex flex-col gap-3 border-b border-line py-4 last:border-b-0">
-      <div className="flex flex-wrap items-center gap-3">
-        <span
-          className={
-            danger
-              ? "flex size-10 shrink-0 items-center justify-center rounded-xl bg-error-bg text-error"
-              : "flex size-10 shrink-0 items-center justify-center rounded-xl bg-tan-soft text-brown"
-          }
-        >
-          <Icon aria-hidden="true" className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold">{title}</p>
-          <div className="break-words text-sm text-muted">{text}</div>
-        </div>
+      <RowTop icon={icon} title={title} text={text} danger={danger}>
         {!open && (
           <Button variant={danger ? "danger" : "secondary"} onClick={() => setOpen(true)} className="max-sm:w-full">
             {buttonLabel}
           </Button>
         )}
-      </div>
+      </RowTop>
       {open && children(() => setOpen(false))}
     </div>
   );
 }
 
+// A danger row that can't be used yet (Version 1.4): the same row, with its
+// button greyed out and the reason(s) under it.
+// Takes: the icon, title, short line, button label and the explanation.
+// Gives back: the row. The button is disabled and points screen readers to
+// the explanation.
+function BlockedRow({
+  icon,
+  title,
+  text,
+  buttonLabel,
+  children,
+}: {
+  icon: typeof Mail;
+  title: string;
+  text: ReactNode;
+  buttonLabel: string;
+  children: ReactNode;
+}) {
+  const reasonId = useId();
+  return (
+    <div className="flex flex-col gap-3 border-b border-line py-4 last:border-b-0">
+      <RowTop icon={icon} title={title} text={text} danger>
+        <Button variant="danger" disabled aria-describedby={reasonId} className="max-sm:w-full">
+          {buttonLabel}
+        </Button>
+      </RowTop>
+      <div id={reasonId} className="rounded-2xl bg-white p-4 text-sm text-muted">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// What still stops Deactivate or Delete, as a list (or "couldn't check").
+// Takes: the action's name ("deactivate" or "delete") and the blockers
+// (null = couldn't check). Gives back: the explanation for BlockedRow.
+function BlockerList({ action, blockers }: { action: string; blockers: DeletionBlocker[] | null }) {
+  if (blockers === null) {
+    return <p>We couldn&apos;t check your account right now. Please refresh the page in a moment.</p>;
+  }
+  return (
+    <>
+      <p className="font-semibold text-ink">You can&apos;t {action} your account yet:</p>
+      <ul className="mt-1 flex list-disc flex-col gap-1 pl-5">
+        {blockers.map((blocker) => (
+          <li key={blocker.kind}>{blockerText(blocker)}</li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+// What to do first for one blocker, in plain words.
+// Takes: the blocker. Gives back: one sentence.
+function blockerText(blocker: DeletionBlocker): ReactNode {
+  const when = blocker.firstDate ? ` (the first one is on ${formatClassDate(blocker.firstDate).short})` : "";
+  switch (blocker.kind) {
+    case "upcoming_class":
+      return (
+        <>
+          You have {blocker.howMany} upcoming class{blocker.howMany === 1 ? "" : "es"}
+          {when}.{" "}
+          <Link href="/account/bookings" className="font-semibold text-brown underline underline-offset-4">
+            Cancel {blocker.howMany === 1 ? "it" : "them"} in My Bookings
+          </Link>
+          , or wait until after {blocker.howMany === 1 ? "it" : "them"}.
+        </>
+      );
+    case "seat_on_hold":
+      return "You have a seat on hold. Finish paying for it, or let the hold run out.";
+    default:
+      return "The cafe is still checking one of your payments. Please wait until it's approved or rejected.";
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Change email (two codes)
+// Change email (one code, sent to the new email)
 // ---------------------------------------------------------------------------
 
 // The "Change email" row.
-// Takes: the current login email, and an email change already waiting for
-// its codes (pendingEmail, or null).
-// Gives back: the row; open, it walks through: new email -> codes -> done.
-export function EmailChange({ currentEmail, pendingEmail }: { currentEmail: string; pendingEmail: string | null }) {
+// Takes: the current login email, an email change already waiting for its
+// code (pendingEmail, or null), and hasPassword (then the current password
+// is asked first; Google-only accounts have none).
+// Gives back: the row; open, it walks through: password + new email -> code -> done.
+export function EmailChange({
+  currentEmail,
+  pendingEmail,
+  hasPassword,
+}: {
+  currentEmail: string;
+  pendingEmail: string | null;
+  hasPassword: boolean;
+}) {
   return (
     <SettingRow
       icon={Mail}
@@ -99,32 +212,32 @@ export function EmailChange({ currentEmail, pendingEmail }: { currentEmail: stri
       text={
         <>
           <span className="font-semibold text-ink">{currentEmail}</span>
-          {pendingEmail && <span className="block">Waiting for the codes to change it to {pendingEmail}.</span>}
+          {pendingEmail && <span className="block">Waiting for the code to change it to {pendingEmail}.</span>}
         </>
       }
       buttonLabel="Change email"
     >
-      {(close) => <EmailChangeSteps currentEmail={currentEmail} pendingEmail={pendingEmail} onClose={close} />}
+      {(close) => <EmailChangeSteps pendingEmail={pendingEmail} hasPassword={hasPassword} onClose={close} />}
     </SettingRow>
   );
 }
 
 // The steps inside the open "Change email" panel.
-// Takes: the current email, a waiting change (or null), and what Cancel does.
-// Gives back: step 1 (new email), step 2 (the two codes) or done.
+// Takes: a waiting change (or null), hasPassword and what Cancel does.
+// Gives back: step 1 (password + new email), step 2 (the code) or done.
 function EmailChangeSteps({
-  currentEmail,
   pendingEmail,
+  hasPassword,
   onClose,
 }: {
-  currentEmail: string;
   pendingEmail: string | null;
+  hasPassword: boolean;
   onClose: () => void;
 }) {
-  // A change already waiting starts on the codes step
-  const firstState: EmailChangeState = pendingEmail ? { step: "codes", newEmail: pendingEmail } : { step: "start" };
-  const [sent, sendCodes, sending] = useActionState(startEmailChange, firstState);
-  const [checked, checkCodes, checking] = useActionState(confirmEmailChange, { step: "codes" } as EmailChangeState);
+  // A change already waiting starts on the code step
+  const firstState: EmailChangeState = pendingEmail ? { step: "code", newEmail: pendingEmail } : { step: "start" };
+  const [sent, sendCode, sending] = useActionState(startEmailChange, firstState);
+  const [checked, checkCode, checking] = useActionState(confirmEmailChange, { step: "code" } as EmailChangeState);
   // "Use a different email" goes back to step 1
   const [restart, setRestart] = useState(false);
 
@@ -140,39 +253,28 @@ function EmailChangeSteps({
     );
   }
 
-  // Step 2: the two codes
-  if (sent.step === "codes" && !restart) {
+  // Step 2: the code sent to the new email
+  if (sent.step === "code" && !restart) {
     const newEmail = sent.newEmail ?? "";
     return (
-      <form action={checkCodes} className="flex flex-col gap-4 rounded-2xl bg-white p-4">
+      <form action={checkCode} className="flex flex-col gap-4 rounded-2xl bg-white p-4">
         <input type="hidden" name="new_email" value={newEmail} />
         <p className="text-sm leading-relaxed">
-          We sent a 6-digit code to <strong className="break-all">{currentEmail}</strong> and another to{" "}
-          <strong className="break-all">{newEmail}</strong>. Enter both to confirm. (Check your spam folder too.)
+          We sent a 6-digit code to <strong className="break-all">{newEmail}</strong>. Enter it to confirm your new
+          email. (Check your spam folder too.)
         </p>
         {checked.error && <FormMessage tone="error">{checked.error}</FormMessage>}
-        {checked.info && <FormMessage tone="info">{checked.info}</FormMessage>}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label={`Code sent to ${currentEmail}`}
-            name="code_current"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={7}
-            placeholder="123456"
-            error={checked.fieldErrors?.code_current}
-          />
-          <Input
-            label={`Code sent to ${newEmail}`}
-            name="code_new"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={7}
-            placeholder="123456"
-            required
-            error={checked.fieldErrors?.code_new}
-          />
-        </div>
+        <Input
+          label="6-digit code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={7}
+          placeholder="123456"
+          required
+          error={checked.fieldErrors?.code}
+          className="sm:max-w-60"
+        />
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Button type="submit" disabled={checking}>
             {checking ? "Checking…" : "Confirm new email"}
@@ -188,16 +290,25 @@ function EmailChangeSteps({
     );
   }
 
-  // Step 1: the new email
+  // Step 1: the current password and the new email
   return (
     <form
       action={(formData) => {
         setRestart(false);
-        sendCodes(formData);
+        sendCode(formData);
       }}
       className="flex flex-col gap-4 rounded-2xl bg-white p-4"
     >
       {sent.error && <FormMessage tone="error">{sent.error}</FormMessage>}
+      {hasPassword && (
+        <PasswordInput
+          label="Current password"
+          name="current_password"
+          autoComplete="current-password"
+          required
+          error={sent.fieldErrors?.current_password}
+        />
+      )}
       <Input
         label="New email"
         name="new_email"
@@ -207,11 +318,11 @@ function EmailChangeSteps({
         required
         defaultValue={sent.newEmail}
         error={sent.fieldErrors?.new_email}
-        hint="Gmail or Yahoo only. We'll send a code to your current email and to the new one."
+        hint="We'll send a 6-digit code to this email."
       />
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button type="submit" disabled={sending}>
-          {sending ? "Sending codes…" : "Send codes"}
+          {sending ? "Sending code…" : "Send code"}
         </Button>
         <Button variant="secondary" onClick={onClose} disabled={sending}>
           Cancel
@@ -227,7 +338,7 @@ function EmailChangeSteps({
 
 // The "Password" row.
 // Takes: hasPassword (false = a Google-only account).
-// Gives back: Change password (current + new + again), or for Google-only
+// Gives back: Change password (current + new + confirm), or for Google-only
 // accounts a note with "Set a password" (Forgot password sends a link).
 export function ChangePassword({ hasPassword }: { hasPassword: boolean }) {
   if (!hasPassword) {
@@ -297,7 +408,7 @@ function ChangePasswordForm({ onClose }: { onClose: () => void }) {
         error={errors.new_password}
       />
       <PasswordInput
-        label="New password again"
+        label="Confirm new password"
         name="confirm_password"
         autoComplete="new-password"
         required
@@ -320,43 +431,39 @@ function ChangePasswordForm({ onClose }: { onClose: () => void }) {
 // ---------------------------------------------------------------------------
 
 // The "Deactivate account" row.
-// Takes: upcoming = how many upcoming classes they have (for the warning).
-// Gives back: the row; open, a warning, the "I understand" tick and the button.
-export function DeactivateAccount({ upcoming }: { upcoming: number }) {
+// Takes: what still blocks it ([] = nothing; null = couldn't check). The
+// same list as Delete (my_account_deletion_blockers()).
+// Gives back: the row; open, a warning, the "I understand" tick and the
+// button. If something blocks it, the button is greyed out with the reason.
+export function DeactivateAccount({ blockers }: { blockers: DeletionBlocker[] | null }) {
+  const title = "Deactivate account";
+  const text = "Temporarily disable your account. You can reactivate anytime simply by logging back in.";
+  if (blockers === null || blockers.length > 0) {
+    return (
+      <BlockedRow icon={UserX} title={title} text={text} buttonLabel="Deactivate">
+        <BlockerList action="deactivate" blockers={blockers} />
+      </BlockedRow>
+    );
+  }
   return (
-    <SettingRow
-      icon={UserX}
-      title="Deactivate account"
-      text="Turn your account off. You can't log in or book until the cafe turns it back on."
-      buttonLabel="Deactivate"
-      danger
-    >
-      {(close) => <DeactivateForm upcoming={upcoming} onClose={close} />}
+    <SettingRow icon={UserX} title={title} text={text} buttonLabel="Deactivate" danger>
+      {(close) => <DeactivateForm onClose={close} />}
     </SettingRow>
   );
 }
 
 // The open "Deactivate" panel.
-// Takes: the number of upcoming classes and what Cancel does.
+// Takes: what Cancel does.
 // Gives back: the warning and the confirm form.
-function DeactivateForm({ upcoming, onClose }: { upcoming: number; onClose: () => void }) {
+function DeactivateForm({ onClose }: { onClose: () => void }) {
   const [state, formAction, pending] = useActionState(deactivateAccount, emptyAccountFormState);
   return (
     <form action={formAction} className="flex flex-col gap-3 rounded-2xl border border-error/30 bg-error-bg/40 p-4">
       <p className="flex items-start gap-2 text-sm leading-relaxed text-ink">
         <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-error" />
         <span>
-          You&apos;ll be logged out on every device, and you won&apos;t be able to log in or book.
-          {upcoming > 0 && (
-            <>
-              {" "}
-              <strong>
-                You still have {upcoming} upcoming class{upcoming === 1 ? "" : "es"}.
-              </strong>{" "}
-              Deactivating doesn&apos;t cancel {upcoming === 1 ? "it" : "them"} or give money back.
-            </>
-          )}{" "}
-          To use your account again, message the cafe.
+          You&apos;ll be logged out on every device, and you can&apos;t book while your account is off. To use it
+          again, just log in and confirm.
         </span>
       </p>
       {state.error && <FormMessage tone="error">{state.error}</FormMessage>}
@@ -380,80 +487,24 @@ function DeactivateForm({ upcoming, onClose }: { upcoming: number; onClose: () =
 // The "Delete account" row.
 // Takes: what still blocks it ([] = nothing; null = couldn't check), and
 // hasPassword (then the password is asked again).
-// Gives back: the row. If something blocks it, the row says what to do first
-// and has no button. Otherwise the button opens the warning and the form.
+// Gives back: the row. If something blocks it, the button is greyed out and
+// the row says what to do first. Otherwise the button opens the warning and
+// the form.
 export function DeleteAccount({ blockers, hasPassword }: { blockers: DeletionBlocker[] | null; hasPassword: boolean }) {
   const title = "Delete account";
-
-  if (blockers === null) {
+  const text = "Remove your account and your personal details for good.";
+  if (blockers === null || blockers.length > 0) {
     return (
-      <BlockedRow title={title}>
-        <p>We couldn&apos;t check your account right now. Please refresh the page in a moment.</p>
-      </BlockedRow>
-    );
-  }
-  if (blockers.length > 0) {
-    return (
-      <BlockedRow title={title}>
-        <p className="font-semibold text-ink">You can&apos;t delete your account yet:</p>
-        <ul className="mt-1 flex list-disc flex-col gap-1 pl-5">
-          {blockers.map((blocker) => (
-            <li key={blocker.kind}>{blockerText(blocker)}</li>
-          ))}
-        </ul>
+      <BlockedRow icon={Trash2} title={title} text={text} buttonLabel="Delete">
+        <BlockerList action="delete" blockers={blockers} />
       </BlockedRow>
     );
   }
   return (
-    <SettingRow
-      icon={Trash2}
-      title={title}
-      text="Remove your account and your personal details for good."
-      buttonLabel="Delete"
-      danger
-    >
+    <SettingRow icon={Trash2} title={title} text={text} buttonLabel="Delete" danger>
       {(close) => <DeleteForm hasPassword={hasPassword} onClose={close} />}
     </SettingRow>
   );
-}
-
-// A Delete row that can't be used yet: the reason(s), no button.
-// Takes: the title and the explanation. Gives back: the row.
-function BlockedRow({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 border-b border-line py-4 last:border-b-0">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-error-bg text-error">
-        <Trash2 aria-hidden="true" className="size-5" />
-      </span>
-      <div className="min-w-0 flex-1 text-sm text-muted">
-        <p className="text-base font-semibold text-ink sm:text-sm">{title}</p>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// What to do first for one blocker, in plain words.
-// Takes: the blocker. Gives back: one sentence.
-function blockerText(blocker: DeletionBlocker): ReactNode {
-  const when = blocker.firstDate ? ` (the first one is on ${formatClassDate(blocker.firstDate).short})` : "";
-  switch (blocker.kind) {
-    case "upcoming_class":
-      return (
-        <>
-          You have {blocker.howMany} upcoming class{blocker.howMany === 1 ? "" : "es"}
-          {when}.{" "}
-          <Link href="/account/bookings" className="font-semibold text-brown underline underline-offset-4">
-            Cancel {blocker.howMany === 1 ? "it" : "them"} in My Bookings
-          </Link>
-          , or wait until after {blocker.howMany === 1 ? "it" : "them"}.
-        </>
-      );
-    case "seat_on_hold":
-      return "You have a seat on hold. Finish paying for it, or let the hold run out.";
-    default:
-      return "The cafe is still checking one of your payments. Please wait until it's approved or rejected.";
-  }
 }
 
 // The open "Delete" panel.

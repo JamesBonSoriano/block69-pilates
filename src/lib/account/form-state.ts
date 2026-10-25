@@ -44,13 +44,13 @@ export type AccountFormState = {
 // The starting state of each My Profile form.
 export const emptyAccountFormState: AccountFormState = {};
 
-// Where "Change email" is up to (My Profile, Change 17):
-//   "start" = typing the new email; "codes" = the codes were sent, typing
-//   them; "done" = the login email has changed.
+// Where "Change email" is up to (My Profile, Version 1.4):
+//   "start" = typing the current password and the new email; "code" = the
+//   code was sent to the new email, typing it; "done" = the login email has
+//   changed.
 export type EmailChangeState = {
-  step: "start" | "codes" | "done";
+  step: "start" | "code" | "done";
   newEmail?: string; // the new email asked for
-  info?: string; // e.g. "One code accepted, now enter the other one."
   error?: string;
   fieldErrors?: Partial<Record<string, string>>;
 };

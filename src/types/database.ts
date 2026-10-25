@@ -409,6 +409,7 @@ export type Database = {
           is_active: boolean
           mobile: string | null
           role: Database["public"]["Enums"]["user_role"]
+          self_deactivated_at: string | null
           updated_at: string
         }
         Insert: {
@@ -423,6 +424,7 @@ export type Database = {
           is_active?: boolean
           mobile?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          self_deactivated_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -437,6 +439,7 @@ export type Database = {
           is_active?: boolean
           mobile?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          self_deactivated_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1182,6 +1185,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["booking_status"]
       }
       my_unread_notification_count: { Args: never; Returns: number }
+      reactivate_my_account: { Args: never; Returns: boolean }
       release_my_hold: { Args: { p_booking_id: string }; Returns: string }
       require_active_user: { Args: never; Returns: string }
       require_admin: { Args: never; Returns: string }

@@ -14,12 +14,12 @@
 // transfer_my_booking()); this page only explains them.
 // A Back button at the top goes back to the page the visitor came from, or
 // Home if there's none (Revisions part 1, item 8).
+// Questions go through the floating Chat With Us button (Version 1.4 removed
+// the extra one at the bottom of this page).
 
-import { MessageCircle } from "lucide-react";
 import { ContentText, NumberedList, Paragraphs } from "@/components/content/ContentText";
 import { Section } from "@/components/layout/Section";
 import { BackButton } from "@/components/ui/BackButton";
-import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Overline } from "@/components/ui/Overline";
 import { fillSettings, socialLinks } from "@/lib/content-text";
@@ -108,17 +108,6 @@ export default async function PoliciesPage() {
               />
             </div>
           </Card>
-        )}
-
-        {/* Questions about the rules go to the cafe directly */}
-        {settings.chatUrl && (
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted">Something not clear? Ask us before you book.</p>
-            <ButtonLink href={settings.chatUrl} external variant="secondary">
-              <MessageCircle aria-hidden="true" className="size-4" />
-              Chat With Us
-            </ButtonLink>
-          </div>
         )}
       </div>
     </Section>

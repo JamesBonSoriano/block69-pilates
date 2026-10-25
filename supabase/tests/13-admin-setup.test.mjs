@@ -304,7 +304,10 @@ export default async function run(t) {
   await as('admin', `select public.admin_set_user_role($1, 'client')`, [users.C]);
   r = await attempt('admin', `select public.admin_set_user_active(gen_random_uuid(), false)`);
   check('An account that does not exist', 'refused', !r.ok && r.err.includes("couldn't find"), r.err ?? 'ALLOWED');
-  r = await attempt('B', 'select public.deactivate_my_account()');
+  // (A new client with no bookings: since Version 1.4, migration 17, an
+  // upcoming class or a seat on hold blocks Deactivate, and B has both.)
+  await t.addUser('D');
+  r = await attempt('D', 'select public.deactivate_my_account()');
   check('A client still deactivates their own account (My Profile)', 'allowed (the guard only stops browser updates)', r.ok, r.err ?? 'ok');
 
   // ===========================================================================

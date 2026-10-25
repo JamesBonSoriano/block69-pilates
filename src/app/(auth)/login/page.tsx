@@ -5,6 +5,8 @@
 // The address can carry:
 //   ?next=/account          where to go after logging in (only paths on our site)
 //   ?error=deactivated      the account was deactivated and has been logged out
+//   ?error=deactivated-self (not an error) the client deactivated their own
+//                           account; logging in again offers to reactivate it
 //   ?error=link-expired     an email link was old or already used
 //   ?error=other-browser    an email link was opened in a different browser
 //   ?error=google-failed    Google sign-in was cancelled or didn't work
@@ -25,6 +27,11 @@ export const metadata: Metadata = { title: "Log in" };
 // The messages that ?error=... can ask for.
 const NOTICES = {
   deactivated: { tone: "error", text: DEACTIVATED_MESSAGE },
+  // After Deactivate on My Profile (Version 1.4)
+  "deactivated-self": {
+    tone: "info",
+    text: "Your account is deactivated and you've been logged out. To use it again, just log in.",
+  },
   "link-expired": {
     tone: "error",
     text: "That email link has expired or was already used. Log in below, or ask for a new link.",

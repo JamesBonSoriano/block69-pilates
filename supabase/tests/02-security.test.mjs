@@ -159,7 +159,8 @@ export default async function run(t) {
     'get_my_booking', 'get_my_bookings', 'get_my_notifications', 'get_my_payments', 'get_my_session_booking', 'get_my_vouchers',
     'get_open_sessions', 'is_admin', 'mark_my_notifications_read', 'my_account_deletion_blockers', 'my_unread_notification_count',
     // migration 7 (pay page "Change details"): checks the owner inside
-    'release_my_hold', 'save_online_checkout',
+    // migration 17 (Version 1.4) adds reactivate_my_account (the caller's own account only)
+    'reactivate_my_account', 'release_my_hold', 'save_online_checkout',
     'seats_left', 'start_online_payment', 'submit_manual_payment', 'transfer_my_booking',
   ];
   check('Functions a logged-in user can call (admin_* check is_admin inside)', `${expectedClientFns.length} public functions, no private helpers`,

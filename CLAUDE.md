@@ -58,7 +58,7 @@ function seatsLeft(capacity: number, bookings: Booking[]): number {
 | Website and server code | **Next.js 16** (App Router, TypeScript, `src/` folder) | API routes and Server Actions are our backend. Middleware is `src/proxy.ts` (Next.js 16's name for it). No PHP or XAMPP. |
 | Styling | **Tailwind CSS 4** | Mobile-first, with brand colors as theme tokens |
 | Database | **Supabase** Postgres | Changes are kept as SQL files in `supabase/migrations/` |
-| Login | **Supabase Auth** | Email and password, forgot password, Google login, "Save login" (Never / Always) |
+| Login | **Supabase Auth** | Email and password, forgot password, Google login; logins are always remembered (no "Save login" choice) |
 | File storage | **Supabase Storage** | Buckets `site-images` (public) and `payment-screenshots` (private) |
 | Supabase in Next.js | `@supabase/ssr` + `@supabase/supabase-js` | Browser, server, guest and service clients in `src/lib/supabase/` |
 | Payments | **PayMongo, test mode only** | GCash, Maya and card through Checkout Sessions, plus a webhook |
@@ -114,7 +114,7 @@ Home ──> Book Your Session ──> Step 1: month (this month / next month) �
 - **Home** (guests can see it): hero "Mat Pilates For Beginners" with a "Book Your Session" button (no price), Class Details & Location (description, full address, Open in Google Maps, the mat rental line), What's included + What to bring, How it works, a call-to-action box, and **Health and Safety Information** last before the footer. No "Next open sessions" list.
 - **About Us** (guests can see it): the cafe, the class (quick facts), the instructor, a short cancellation policy, FAQ, visit us, and contact (email, Instagram, Facebook, Chat With Us; no phone number).
 - **Policies**: the full cancellation policy and the Registration Agreement.
-- **Log in** (`/login`), **Sign up**, **Forgot password**: password show / hide, "Save login next time" (Never / Always), Continue / Sign up with Google. Sign-up rules: mobile is 11 digits starting with 09, birthday MM/DD/YYYY (a real past date), email @gmail.com or @yahoo.com only, password 8+.
+- **Log in** (`/login`), **Sign up**, **Forgot password**: password show / hide, Continue / Sign up with Google (no "Save login" choice). Sign-up rules: mobile is 11 digits starting with 09, birthday MM/DD/YYYY (a real past date), email @gmail.com or @yahoo.com only, password 8+.
 - **Booking:** the 3-step flow above. Step 1 has a month navigator (this month and next month only), date chips for only the dates that have classes, that date's sessions with seat badges, and the Booking details card (what to bring, Rent a mat, total).
 - **You're booked**, **seat released / Payment expired**, and **Manual transfer**.
 - **My Account** (side menu on desktop, list on phone):
@@ -127,7 +127,7 @@ Home ──> Book Your Session ──> Step 1: month (this month / next month) �
   - My Vouchers: codes with their status and expiry date
   - Notifications: email settings only (the booking updates are in the header's bell)
 
-The client nav has Home, About Us, Book a Class, a notifications bell, the person icon (My Account), and Log in or Log out (far right). On the login and sign-up pages the guest button says "Book Now". On phones the nav collapses into a menu button. A floating **Chat With Us** button (lower right, never covering the footer) links to Messenger or Instagram.
+The client nav has Home, About Us, Book a Class, a notifications bell, the person icon (My Account), and Log in for guests (far right). Log out is only a button at the bottom of My Profile, not in the header or phone menu. On the login and sign-up pages the guest button says "Book Now". On phones the nav collapses into a menu button. A floating **Chat With Us** button (lower right, never covering the footer) links to Messenger or Instagram.
 
 ### Admin flow
 Admins log in at **`/admin/login`** (separate from the client `/login`; each page refuses the other kind of account) and land on `/admin`. On desktop the admin side has a brown sidebar. On phones it has a top bar with a menu and a bottom tab bar.

@@ -51,7 +51,7 @@ const BLOCK_NAMES: Record<string, string> = {
   "home/hero": "Top of the page (hero)",
   "home/hero_kicker": "Small line above the hero title",
   "home/class_details": "Class Details & Location (the address and Maps link come from Settings)",
-  "home/mat_note": "Mat rental line (in Class Details & Location)",
+  "home/mat_note": "Mat rental card (in Class Details & Location; links to booking with Rent a mat ticked)",
   "home/included": "What's included",
   "home/how_it_works": "How it works (heading)",
   "home/cta": "Book now box (bottom)",

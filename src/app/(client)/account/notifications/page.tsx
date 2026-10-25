@@ -1,4 +1,4 @@
-// Notifications: /account/notifications
+// Notification Settings: /account/notifications (renamed from "Notifications" in Version 1.4)
 // Where it's used: the account menu, and "Email notification settings" at the
 // bottom of the header's bell.
 // SETTINGS ONLY (Change 17): the list of booking updates moved into the
@@ -22,12 +22,12 @@ import { Card } from "@/components/ui/Card";
 import { requireClient } from "@/lib/auth/user";
 import { getMyProfileExtras } from "@/lib/data/account";
 
-export const metadata = { title: "Notifications" };
+export const metadata = { title: "Notification Settings" };
 
 // The words under the page title.
 const INTRO = "Choose which emails we send you. Your booking updates are under the bell at the top of the page.";
 
-// The Notifications page.
+// The Notification Settings page (called "Notifications" before Version 1.4).
 // Takes: nothing.
 // Gives back: the heading and the email choices, inside <Suspense> (they need
 // the login).
@@ -36,7 +36,7 @@ export default function NotificationsPage() {
     <Suspense
       fallback={
         <>
-          <AccountHeading title="Notifications" intro={INTRO} />
+          <AccountHeading title="Notification Settings" intro={INTRO} />
           <AccountLoading label="your settings" cards={1} />
         </>
       }
@@ -60,7 +60,7 @@ async function NotificationsContent() {
     console.error(error);
     return (
       <>
-        <AccountHeading title="Notifications" />
+        <AccountHeading title="Notification Settings" />
         <AccountLoadError what="your settings" />
       </>
     );
@@ -68,7 +68,7 @@ async function NotificationsContent() {
 
   return (
     <>
-      <AccountHeading title="Notifications" intro={INTRO} />
+      <AccountHeading title="Notification Settings" intro={INTRO} />
 
       {/* ===== Emails ===== */}
       <section aria-labelledby="emails-heading" className="flex flex-col gap-3">

@@ -20,18 +20,16 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
 import { getSupabaseEnv } from "./env";
-import { REMEMBER_COOKIE, applyRememberChoice, readRememberChoice, type RememberChoice } from "./remember";
 
 // Makes a Supabase client for the current visitor.
-// Takes: optionally { remember }, the "Save login next time" choice to use
-// (the login actions pass the choice just made on the form). Without it, the
-// choice saved in the b69_remember cookie is used (see ./remember.ts).
+// Takes: nothing.
 // Gives back: a typed Supabase client acting as the logged-in user (or as a
 // guest if nobody is logged in). Make a NEW one for every request, never share it.
-export async function createClient(options: { remember?: RememberChoice } = {}) {
+// Logins are always remembered (Version 1.4 removed "Save login next time"):
+// Supabase's login cookies are kept as they are (400 days).
+export async function createClient() {
   const { url, publishableKey } = getSupabaseEnv();
   const cookieStore = await cookies();
-  const remember = options.remember ?? readRememberChoice(cookieStore.get(REMEMBER_COOKIE)?.value);
 
   return createServerClient<Database>(url, publishableKey, {
     cookies: {
@@ -39,13 +37,10 @@ export async function createClient(options: { remember?: RememberChoice } = {}) 
       getAll() {
         return cookieStore.getAll();
       },
-      // Lets Supabase save new or refreshed login cookies. "Never" makes
-      // them session cookies (deleted when the browser closes).
+      // Lets Supabase save new or refreshed login cookies.
       setAll(cookiesToSet) {
         try {
-          cookiesToSet.forEach(({ name, value, options: cookieOptions }) =>
-            cookieStore.set(name, value, applyRememberChoice(cookieOptions, remember)),
-          );
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
         } catch {
           // Server Components are not allowed to change cookies, so this fails
           // there. That's fine: src/proxy.ts already refreshes the login

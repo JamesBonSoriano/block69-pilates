@@ -23,7 +23,8 @@
 //
 // GOOGLE (?flow=google&code=...): the same code swap as kind 1. Then, like
 // the password login (logInThrough in src/lib/auth/actions.ts):
-//   - a deactivated account is logged straight back out (?error=deactivated)
+//   - a deactivated account is logged straight back out (?error=deactivated),
+//     except a client who turned it off themselves: they go to /reactivate
 //   - an ADMIN account is logged straight back out: staff use /admin/login
 //     (?error=admin-google)
 //   - a client with no mobile number or birthday yet (always true for a new
@@ -35,7 +36,7 @@ import { isAuthPKCECodeVerifierMissingError, type EmailOtpType } from "@supabase
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { safeNextPath } from "@/lib/auth/safe-next";
-import { FINISH_PROFILE_PATH } from "@/lib/auth/user";
+import { FINISH_PROFILE_PATH, reactivatePath } from "@/lib/auth/user";
 import { createClient } from "@/lib/supabase/server";
 
 // Why a link didn't work (decides which message the person sees).
@@ -119,7 +120,7 @@ async function afterGoogleLogin(
   // Google account's row was just made by the sign-up trigger.
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("is_active, mobile, birthday")
+    .select("is_active, self_deactivated_at, mobile, birthday")
     .eq("id", userId)
     .maybeSingle();
   // Is it an ACTIVE admin? (the database's rule, migration 2)
@@ -130,6 +131,9 @@ async function afterGoogleLogin(
     return "/login?error=google-failed";
   }
   if (!profile?.is_active) {
+    // They turned it off themselves (Version 1.4): stay logged in and ask
+    // "Welcome back! Reactivate your account?"
+    if (profile?.self_deactivated_at) return reactivatePath(next);
     await supabase.auth.signOut({ scope: "local" });
     return "/login?error=deactivated";
   }

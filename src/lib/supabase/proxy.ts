@@ -11,7 +11,6 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 import { getSupabaseEnv } from "./env";
-import { REMEMBER_COOKIE, applyRememberChoice, readRememberChoice } from "./remember";
 
 // What updateSession() gives back to src/proxy.ts.
 export type ProxySession = {
@@ -31,9 +30,6 @@ export async function updateSession(request: NextRequest): Promise<ProxySession>
 
   // By default: "carry on to the page, with no changes".
   let supabaseResponse = NextResponse.next({ request });
-  // "Save login next time" (./remember.ts): "never" = refreshed login
-  // cookies are saved as session cookies, so closing the browser logs out
-  const remember = readRememberChoice(request.cookies.get(REMEMBER_COOKIE)?.value);
 
   const supabase = createServerClient<Database>(url, publishableKey, {
     cookies: {
@@ -51,10 +47,9 @@ export async function updateSession(request: NextRequest): Promise<ProxySession>
         );
         // 2. Make a fresh response from that updated request...
         supabaseResponse = NextResponse.next({ request });
-        // 3. ...and put the new cookies on it, so the browser saves them
-        //    (as session cookies if they chose "Never").
+        // 3. ...and put the new cookies on it, so the browser saves them.
         cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, applyRememberChoice(options, remember)),
+          supabaseResponse.cookies.set(name, value, options),
         );
         // 4. Add the "don't cache" headers.
         Object.entries(headers).forEach(([key, value]) =>

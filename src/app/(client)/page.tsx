@@ -19,10 +19,14 @@
 // Order (Change 17, Part D): hero, Class Details & Location, what's included +
 // what to bring, how it works, call to action, then Health and Safety
 // Information just before the footer.
+// Version 1.4: the mat rental line is a card linking to /book?mat=yes (Rent a
+// mat already ticked), and the call to action has no Chat With Us button (the
+// floating one is the only one).
 // (The old "About the class" + 3 cards, the old location block and the small
 // health note are no longer shown; their rows stay in the database.)
 
-import { ArrowRight, MapPin, MessageCircle, ShieldAlert, Sparkles } from "lucide-react";
+import { ArrowRight, MapPin, PawPrint, ShieldAlert } from "lucide-react";
+import Link from "next/link";
 import { CheckList, ContentText, Paragraphs } from "@/components/content/ContentText";
 import { SiteImage } from "@/components/content/SiteImage";
 import { Section } from "@/components/layout/Section";
@@ -157,12 +161,24 @@ export default async function HomePage() {
                 </ButtonLink>
               )}
 
-              {/* "Don't have a mat? Add mat rental to your booking." */}
+              {/* The mat rental card: "Mat rental is {mat_price}, and 100% goes
+                  to feeding stray animals in Taguig. Add it to your booking"
+                  (the price from settings). The whole card is one link to
+                  booking step 1 with Rent a mat already ticked. */}
               {matNote?.body && (
-                <p className="flex items-start gap-2.5 rounded-2xl bg-sage-light px-4 py-3 text-sm text-ink">
-                  <Sparkles aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <ContentText text={fill(matNote.body)} />
-                </p>
+                <Link
+                  href="/book?mat=yes"
+                  className="group flex min-h-11 items-start gap-2.5 rounded-2xl border border-transparent bg-sage-light px-4 py-3 text-sm text-ink hover:border-tan focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <PawPrint aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <span>
+                    <ContentText text={fill(matNote.body)} />{" "}
+                    <span className="inline-flex items-center gap-1 font-semibold text-primary group-hover:underline">
+                      Add it to your booking
+                      <ArrowRight aria-hidden="true" className="size-4" />
+                    </span>
+                  </span>
+                </Link>
               )}
             </div>
           </Card>
@@ -251,12 +267,6 @@ export default async function HomePage() {
               <ButtonLink href="/book" variant="light" className="sm:min-w-56">
                 {BOOK_LABEL}
               </ButtonLink>
-              {settings.chatUrl && (
-                <ButtonLink href={settings.chatUrl} external variant="lightOutline">
-                  <MessageCircle aria-hidden="true" className="size-4" />
-                  Chat With Us
-                </ButtonLink>
-              )}
             </div>
           </div>
         </Section>

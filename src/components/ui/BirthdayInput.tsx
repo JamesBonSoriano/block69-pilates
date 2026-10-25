@@ -59,7 +59,9 @@ export function BirthdayInput({ label = "Birthday", name, defaultValue = "", hin
         // Only check a box that has something in it (empty = "required" handles it)
         if (value && !parseBirthdayInput(value)) setLocalError(BIRTHDAY_ERROR);
       }}
-      hint={hint ?? "MM/DD/YYYY, for example 03/12/1998."}
+      // No example under the box (Version 1.4): the placeholder shows the
+      // format, and the error message explains it
+      hint={hint}
       error={localError ?? error}
       {...props}
     />

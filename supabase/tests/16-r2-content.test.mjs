@@ -50,8 +50,9 @@ export default async function run(t) {
     details?.title === 'Class Details & Location' && details.body.includes('STOTT'), details && `${details.title}`);
 
   const matNote = await block('home', 'mat_note');
-  check('Mat rental line', "Don't have a mat? Add mat rental to your booking.",
-    matNote?.body === "Don't have a mat? Add mat rental to your booking.", matNote?.body);
+  // (Version 1.4, migration 17, replaced this default with the mat card text)
+  check('Mat rental line (as changed by Version 1.4)', 'Mat rental is {mat_price}, ...',
+    matNote?.body === 'Mat rental is {mat_price}, and 100% goes to feeding stray animals in Taguig.', matNote?.body);
 
   const health = await block('home', 'health_safety');
   check('Health and Safety Information (copied from About Us)', '3 lines, mentions pregnant',

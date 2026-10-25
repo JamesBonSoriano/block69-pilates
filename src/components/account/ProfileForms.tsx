@@ -20,6 +20,7 @@ import { BirthdayInput } from "@/components/ui/BirthdayInput";
 import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { finishProfile, updateProfileField } from "@/lib/account/actions";
 import { type AccountFormState, emptyAccountFormState } from "@/lib/account/form-state";
 import { formatBirthdayLong } from "@/lib/format";
@@ -152,14 +153,24 @@ export function ProfileField({
           error={state.fieldErrors?.value}
           autoFocus
         />
+      ) : type === "tel" ? (
+        // The mobile number: at most 11 digits, number keypad
+        <PhoneInput
+          label={label}
+          name="value"
+          id={`profile-${field}`}
+          autoComplete={autoComplete}
+          required={!optional}
+          defaultValue={state.error || state.fieldErrors ? (state.values?.value ?? "") : shown}
+          error={state.fieldErrors?.value}
+          autoFocus
+        />
       ) : (
         <Input
           label={label}
           name="value"
           // Each detail has its own id (they all send "value")
           id={`profile-${field}`}
-          type={type}
-          inputMode={type === "tel" ? "tel" : undefined}
           autoComplete={autoComplete}
           autoCapitalize={field === "instagram" ? "none" : undefined}
           placeholder={placeholder}
@@ -220,17 +231,14 @@ export function FinishProfileForm({
         />
       )}
       {missing.mobile && (
-        <Input
+        <PhoneInput
           label="Mobile number"
           name="mobile"
-          type="tel"
-          inputMode="tel"
           autoComplete="tel"
-          placeholder="0917 123 4567"
           required
           defaultValue={values.mobile}
           error={errors.mobile}
-          hint="11 digits starting with 09. The cafe uses it to reach you about your class."
+          hint="The cafe uses it to reach you about your class."
         />
       )}
       {missing.birthday && (

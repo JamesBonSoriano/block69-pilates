@@ -1,5 +1,5 @@
 "use client";
-// The My Account menu: Profile, My Bookings, Payments, My Vouchers, Notifications.
+// The My Account menu: Profile, My Bookings, Payments, My Vouchers, Notification Settings.
 //   - laptop: a list in the left side card (".navi" items in docs/designs/Profile.html)
 //   - phone:  a row of tabs you can swipe sideways, above the page
 // Where it's used: src/app/(client)/account/layout.tsx.

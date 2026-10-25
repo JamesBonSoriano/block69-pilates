@@ -12,7 +12,6 @@
 // useActionState) and the form's data, and gives back a new AuthFormState,
 // or sends the person to another page with redirect().
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   DEACTIVATED_MESSAGE,
@@ -30,13 +29,8 @@ import {
   wrongPortalMessage,
 } from "@/lib/auth/login-portal";
 import { safeNextPath } from "@/lib/auth/safe-next";
+import { reactivatePath } from "@/lib/auth/user";
 import { getSiteUrl } from "@/lib/site-url";
-import {
-  REMEMBER_COOKIE,
-  rememberChoiceFromForm,
-  rememberCookieOptions,
-  type RememberChoice,
-} from "@/lib/supabase/remember";
 import { createClient } from "@/lib/supabase/server";
 import { checkSignupFields, isValidEmail, normalizePhMobile, parseBirthdayInput } from "@/lib/validation";
 
@@ -45,12 +39,13 @@ import { checkSignupFields, isValidEmail, normalizePhMobile, parseBirthdayInput 
 // ---------------------------------------------------------------------------
 
 // Logs a CLIENT in with their email and password (the /login page).
-// Takes: the previous form state, and the form (email, password, remember =
-// "never" or "always" for "Save login next time", and an optional hidden
-// "next" path to go back to).
+// Takes: the previous form state, and the form (email, password, and an
+// optional hidden "next" path to go back to).
 // Gives back: an error to show, or (on success) sends them on to "next" if
-// it's a safe path on our site, otherwise to the Home page.
+// it's a safe path on our site, otherwise to the Home page. A client who
+// deactivated their own account goes to the "Welcome back!" page first.
 // An ADMIN account is refused here and pointed to /admin/login.
+// Logins are always remembered (Version 1.4 removed "Save login next time").
 export async function logIn(_previous: AuthFormState, formData: FormData): Promise<AuthFormState> {
   return logInThrough("client", formData);
 }
@@ -79,8 +74,6 @@ export async function adminLogIn(_previous: AuthFormState, formData: FormData): 
 // same function the form runs in the browser: mobile = 11 digits starting
 // with 09, birthday = a real past date typed MM/DD/YYYY, email = @gmail.com
 // or @yahoo.com only, password = 8+ characters.
-// The sign-up page has no "Save login" choice, so a new login starts as
-// "Never" (the same as the login page's preselected choice).
 //
 // The profile row is made by the database itself: the handle_new_user()
 // trigger (migrations 1 and 12) copies full_name, mobile and birthday from the
@@ -104,9 +97,7 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
   const cleanMobile = normalizePhMobile(mobile);
   const birthday = parseBirthdayInput(birthdayText);
 
-  const remember: RememberChoice = "never";
-  await saveRememberChoice(remember);
-  const supabase = await createClient({ remember });
+  const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -150,13 +141,12 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
 
 // Starts a REAL Google sign-in through Supabase ("Continue with Google" on
 // /login, "Sign up with Google" on /signup).
-// Takes: the form: remember ("never" / "always", from the login form; the
-// sign-up page sends none, which counts as "never") and an optional "next".
+// Takes: the form: an optional "next".
 // Gives back: nothing; it sends the browser to Google. After the person
 // agrees, Google sends them to Supabase, and Supabase sends them to our
 // /auth/confirm?flow=google&next=... with a one-time code, which logs them
 // in (src/app/auth/confirm/route.ts also refuses deactivated and admin
-// accounts there). A first-time Google user gets a new client account; the
+// accounts there, and sends self-deactivated clients to "Welcome back!"). A first-time Google user gets a new client account; the
 // sign-up trigger saves their Google name, and "Finish your profile" asks for
 // the mobile number and birthday Google doesn't give us.
 // Any Google account is accepted (you approved this: Google has already
@@ -164,12 +154,8 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
 // email changes.
 export async function signInWithGoogle(formData: FormData): Promise<void> {
   const next = safeNextPath(formData.get("next"));
-  const remember = rememberChoiceFromForm(formData.get("remember"));
-  // Save the choice first, so the login cookies made when they come back
-  // follow it too (/auth/confirm reads it from this cookie)
-  await saveRememberChoice(remember);
 
-  const supabase = await createClient({ remember });
+  const supabase = await createClient();
   const back = new URLSearchParams({ flow: "google" });
   if (next) back.set("next", next);
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -280,8 +266,6 @@ export async function logOut(): Promise<void> {
   const supabase = await createClient();
   // "local" = only this browser. Their other devices stay logged in.
   await supabase.auth.signOut({ scope: "local" });
-  // Forget the "Save login next time" choice too; the next login asks again
-  (await cookies()).delete(REMEMBER_COOKIE);
   redirect("/");
 }
 
@@ -293,12 +277,10 @@ export async function logOut(): Promise<void> {
 // Takes: which login page was used ("client" or "admin") and the form.
 // Gives back: an error to show, or sends them to their start page.
 // Steps:
-//   0. "Save login next time": the client login sends "never" or "always"
-//      (the admin login has no choice and keeps the normal long login).
-//      The choice is saved in the b69_remember cookie, and the login cookies
-//      below follow it (src/lib/supabase/remember.ts).
 //   1. Supabase checks the email and password.
-//   2. Deactivated accounts are logged straight back out.
+//   2. Deactivated accounts are logged straight back out, EXCEPT a client
+//      who deactivated their own account (Version 1.4): they stay logged in
+//      and go to the "Welcome back! Reactivate your account?" page.
 //   3. The database's is_admin() says if it's an active admin. An account on
 //      the wrong login page is logged straight back out, with a link to the
 //      right page (Revisions part 1, item 1). We only say this AFTER the
@@ -314,11 +296,7 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
     return { error: "Please enter your email and password.", values };
   }
 
-  // --- 0. Save login next time?
-  const remember: RememberChoice = portal === "admin" ? "always" : rememberChoiceFromForm(formData.get("remember"));
-  await saveRememberChoice(remember);
-
-  const supabase = await createClient({ remember });
+  const supabase = await createClient();
   // --- 1. Checks the password. If it's right, Supabase saves the login in cookies.
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
@@ -328,7 +306,7 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
   // --- 2. Deactivated accounts may not log in: log them straight back out.
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("is_active")
+    .select("is_active, self_deactivated_at")
     .eq("id", data.user.id)
     .maybeSingle();
   if (profileError) {
@@ -336,6 +314,11 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
     return { error: "Something went wrong on our side. Please try again in a moment.", values };
   }
   if (!profile?.is_active) {
+    // They turned it off themselves: ask if they want it back on (only the
+    // client login; reactivate_my_account() checks the flag again)
+    if (portal === "client" && profile?.self_deactivated_at) {
+      redirect(reactivatePath(next));
+    }
     await supabase.auth.signOut({ scope: "local" });
     return { error: DEACTIVATED_MESSAGE, values };
   }
@@ -363,14 +346,6 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
   // --- 4. Where to go now. redirect() works by stopping this function, so
   //        it must be the last step (and never inside a try/catch).
   redirect(landingPath(isAdmin, next));
-}
-
-// Saves the "Save login next time" choice in the b69_remember cookie.
-// Takes: "never" or "always".
-// Gives back: nothing. "never" = a cookie that disappears when the browser
-// closes; "always" = kept 400 days. It holds no secret, only the word.
-async function saveRememberChoice(choice: RememberChoice): Promise<void> {
-  (await cookies()).set(REMEMBER_COOKIE, choice, rememberCookieOptions(choice, getSiteUrl().startsWith("https://")));
 }
 
 // Reads a text field from a form and trims spaces from both ends.

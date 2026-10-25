@@ -27,6 +27,7 @@ export type CurrentUser = {
   birthday: string | null; // "YYYY-MM-DD"; null = not given yet (asked once)
   role: Database["public"]["Enums"]["user_role"]; // "client" or "admin"
   isActive: boolean; // false = deactivated
+  selfDeactivated: boolean; // true = they turned it off themselves (may reactivate by logging in)
 };
 
 // Gets the logged-in person (or null for a guest).
@@ -58,7 +59,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   // Read their profile. Row Level Security only lets them read their own row.
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("email, full_name, mobile, instagram, birthday, role, is_active")
+    .select("email, full_name, mobile, instagram, birthday, role, is_active, self_deactivated_at")
     .eq("id", claims.sub)
     .maybeSingle();
 
@@ -76,6 +77,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     role: profile?.role ?? "client",
     // No profile row at all is treated like a deactivated account (safe default)
     isActive: profile?.is_active ?? false,
+    selfDeactivated: Boolean(profile?.self_deactivated_at),
   };
 });
 
@@ -94,6 +96,17 @@ export async function requireUser(nextPath: string): Promise<CurrentUser> {
     redirect("/auth/deactivated");
   }
   return user;
+}
+
+// The "Welcome back! Reactivate your account?" page (Version 1.4), for a
+// client who deactivated their own account and has just logged in again.
+export const REACTIVATE_PATH = "/reactivate";
+
+// The address of the "Welcome back!" page.
+// Takes: the safe page they were going to (or null).
+// Gives back: "/reactivate", with ?next=... when there is one.
+export function reactivatePath(next: string | null): string {
+  return next ? `${REACTIVATE_PATH}?next=${encodeURIComponent(next)}` : REACTIVATE_PATH;
 }
 
 // The "Finish your profile" page (Change 17; it replaced Revisions part 1's

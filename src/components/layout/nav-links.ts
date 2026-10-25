@@ -1,5 +1,5 @@
 // The list of links in the client navigation (CLAUDE.md section 4:
-// Home, About Us, Book a Class, My Account, plus Log in / Log out).
+// Home, About Us, Book a Class, My Account, plus Log in; Log out is on My Profile).
 // Where it's used: the Header (desktop links and phone menu), the Footer
 // (quick links), the My Account side menu and the admin menus
 // (src/components/admin/AdminNav.tsx), so they always show the same pages.
@@ -32,7 +32,7 @@ export const accountNavLinks: NavLink[] = [
   { href: "/account/bookings", label: "My Bookings" },
   { href: "/account/payments", label: "Payments" },
   { href: "/account/vouchers", label: "My Vouchers" },
-  { href: "/account/notifications", label: "Notifications" },
+  { href: "/account/notifications", label: "Notification Settings" },
 ];
 
 // The admin Dashboard. The client header has no "Admin" link (Revisions

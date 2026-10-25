@@ -3,12 +3,16 @@
 // the account menu, and "Edit in My Profile" on booking step 2.
 // Layout follows docs/designs/Profile.html. Change 17, Part G: three cards
 // under the round initials:
-//   1. Account Information: the login email (Change email, confirmed with two
-//      6-digit codes), Change password, Forgot password
+//   1. Account Information: the login email (Change email: current password,
+//      then one 6-digit code sent to the new email), Change password, Forgot
+//      password
 //   2. Personal Information: full name, mobile number (09 + 11 digits),
 //      Instagram (optional), birthday (editable again, a real past date),
 //      each with a pen icon (Save / Cancel)
-//   3. Account Management: Deactivate account, Delete account
+//   3. Account Management: Deactivate account, Delete account (both greyed
+//      out while an upcoming class, a seat hold or a payment check blocks them)
+// and a Log out button at the bottom (Version 1.4: it's no longer in the
+// header or the phone menu).
 //
 // ?back=/book/details?session=...  (from booking step 2's "Edit in My
 // Profile") shows a "Back to your booking" link at the top.
@@ -30,6 +34,7 @@ import {
   EmailChange,
 } from "@/components/account/AccountSettingsForms";
 import { ProfileField } from "@/components/account/ProfileForms";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Card } from "@/components/ui/Card";
 import { firstParam, safeNextPath } from "@/lib/auth/safe-next";
 import { requireClient } from "@/lib/auth/user";
@@ -83,8 +88,6 @@ async function ProfileContent({ searchParams }: Pick<PageProps<"/account/profile
     month: "long",
     year: "numeric",
   });
-  // For the Deactivate warning: how many upcoming classes they have
-  const upcoming = account.deletionBlockers?.find((blocker) => blocker.kind === "upcoming_class")?.howMany ?? 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -118,7 +121,7 @@ async function ProfileContent({ searchParams }: Pick<PageProps<"/account/profile
         <h2 className="font-heading text-lg font-semibold">Account Information</h2>
         <p className="text-sm text-muted">How you log in.</p>
         <div className="mt-2 flex flex-col">
-          <EmailChange currentEmail={user.email} pendingEmail={account.pendingEmail} />
+          <EmailChange currentEmail={user.email} pendingEmail={account.pendingEmail} hasPassword={account.hasPassword} />
           <ChangePassword hasPassword={account.hasPassword} />
         </div>
       </Card>
@@ -135,8 +138,6 @@ async function ProfileContent({ searchParams }: Pick<PageProps<"/account/profile
             initialValue={user.mobile ?? ""}
             type="tel"
             autoComplete="tel"
-            placeholder="0917 123 4567"
-            maxLength={13}
           />
           <ProfileField
             field="instagram"
@@ -154,10 +155,13 @@ async function ProfileContent({ searchParams }: Pick<PageProps<"/account/profile
       <Card className="flex flex-col">
         <h2 className="font-heading text-lg font-semibold">Account Management</h2>
         <div className="mt-2 flex flex-col">
-          <DeactivateAccount upcoming={upcoming} />
+          <DeactivateAccount blockers={account.deletionBlockers} />
           <DeleteAccount blockers={account.deletionBlockers} hasPassword={account.hasPassword} />
         </div>
       </Card>
+
+      {/* Log out (only this device), at the bottom of the page */}
+      <LogoutButton fullWidth className="sm:w-auto" formClassName="flex sm:justify-end" />
     </div>
   );
 }

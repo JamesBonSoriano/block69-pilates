@@ -214,7 +214,11 @@ async function PaymentsList({ searchParams }: Pick<PageProps<"/account/payments"
 // Takes: the filters now in use and how many are on.
 // Gives back: a <details> (opens and closes without JavaScript) whose summary
 // looks like a button ("Filter (2)"), with a GET form: status, payment
-// method, when (and the two dates for "Pick dates"), Apply and Clear.
+// method, date range, Apply and Clear.
+// Version 1.4: the From / To dates only show when "Pick dates" is chosen.
+// That's done with CSS alone (:has() on the form looks at the chosen
+// option), so it works before the page's JavaScript loads. Hidden dates are
+// still sent, but only count for "Pick dates" (src/lib/payment-filters.ts).
 function FilterPanel({ filters, count }: { filters: PaymentFilters; count: number }) {
   return (
     <details className="group rounded-[20px] border border-line bg-card" open={count > 0 ? true : undefined}>
@@ -235,24 +239,23 @@ function FilterPanel({ filters, count }: { filters: PaymentFilters; count: numbe
         )}
       </summary>
       {/* A normal GET form: the filters go into the address */}
-      <form method="get" action="/account/payments" className="flex flex-col gap-4 border-t border-line p-4">
+      <form method="get" action="/account/payments" className="group/filters flex flex-col gap-4 border-t border-line p-4">
         <div className="grid gap-4 sm:grid-cols-3">
           <Select label="Status" name="status" options={[...STATUS_FILTERS]} defaultValue={filters.status} required />
           <Select label="Payment method" name="method" options={[...METHOD_FILTERS]} defaultValue={filters.method} required />
-          <Select label="When" name="when" options={[...WHEN_FILTERS]} defaultValue={filters.when} required />
+          <Select label="Date range" name="when" options={[...WHEN_FILTERS]} defaultValue={filters.when} required />
         </div>
-        <fieldset className="grid gap-4 sm:grid-cols-2">
-          <legend className="mb-1.5 text-xs text-muted">For &quot;Pick dates&quot; (payment date, from and to)</legend>
+        {/* Payment date from / to: hidden unless "Pick dates" (value "custom") is chosen */}
+        <div className="hidden gap-4 sm:grid-cols-2 group-has-[select[name=when]_option[value=custom]:checked]/filters:grid">
           <Input label="From" name="from" type="date" defaultValue={filters.from ?? ""} />
           <Input label="To" name="to" type="date" defaultValue={filters.to ?? ""} />
-        </fieldset>
+        </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button type="submit">Apply filters</Button>
-          {count > 0 && (
-            <ButtonLink href="/account/payments" variant="secondary">
-              Clear filters
-            </ButtonLink>
-          )}
+          {/* Back to no filters (the plain page address) */}
+          <ButtonLink href="/account/payments" variant="secondary">
+            Clear filters
+          </ButtonLink>
         </div>
       </form>
     </details>

@@ -1,6 +1,6 @@
 // The sage-dark header at the top of every CLIENT page (CLAUDE.md section 7):
 // "Block 69 Cafe" with "MAT PILATES + CAFÉ" under it, the nav links, and
-// Log in (guests) or the person icon + Log out (logged in). Chat With Us is
+// Log in (guests) or the bell + person icon (logged in; Log out is on My Profile). Chat With Us is
 // the floating round button instead (src/components/layout/ChatButton.tsx).
 // 64px tall on phones (with a menu button), 96px on laptops.
 // Where it's used: src/components/layout/SiteShell.tsx (client and login
