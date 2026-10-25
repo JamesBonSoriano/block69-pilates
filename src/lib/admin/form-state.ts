@@ -15,26 +15,6 @@ export type AttendanceState = {
 // The starting state of the attendance buttons: nothing to show yet.
 export const emptyAttendanceState: AttendanceState = {};
 
-// What addWalkIn() answers (the Walk-in form).
-export type WalkInState = {
-  error?: string; // a message for the whole form
-  fieldErrors?: Partial<Record<string, string>>; // messages for single fields
-  values?: Partial<Record<string, string>>; // what was typed, to fill the form again
-  // It worked: what to show in the "Booked" box
-  done?: {
-    bookingId: string;
-    guestName: string;
-    sessionId: string;
-    classLabel: string; // e.g. "Sat, Oct 24 · 9:00 – 9:50 AM"
-    total: number; // pesos, worked out by the database
-    paidWith: string; // e.g. "Cash" or "GCash transfer"
-    seatsLeft: number; // free seats left in that class now
-  };
-};
-
-// The starting state of the Walk-in form.
-export const emptyWalkInState: WalkInState = {};
-
 // What cancelClass() answers (the Cancel class box).
 export type CancelClassState = {
   error?: string;
@@ -57,17 +37,16 @@ export type AdminSaveState = {
 // The starting state of every setup form: nothing to show yet.
 export const emptySaveState: AdminSaveState = {};
 
-// What cancelOneBooking() / transferOneBooking() answer (the "Cancel or
-// transfer" box on the admin booking details page).
+// What changeOneBooking() answers (the "Cancel booking" box on the admin
+// booking details page).
 export type BookingChangeState = {
   error?: string;
   done?: {
-    message: string; // e.g. "Moved to Sat, Oct 25 · 9:00 AM."
-    newBookingId?: string; // after a transfer: the new booking
+    message: string; // e.g. "Cancelled with no credit (forfeited)."
     voucherCode?: string; // after a cancel with a 50% code: the code
     overridden: boolean; // true = it was an override (the reason was saved)
   };
 };
 
-// The starting state of the Cancel / Transfer box.
+// The starting state of the Cancel booking box.
 export const emptyBookingChangeState: BookingChangeState = {};

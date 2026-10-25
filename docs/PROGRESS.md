@@ -22,10 +22,12 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - Change 17 (Proposal 3): green / beige client theme, bell, Google login + Save login, new Home / About text, month navigator + date chips, no not-pregnant tick, 9 weeks of classes, My Profile 3 cards (email, password, deactivate, delete), payments filter (migrations 13–16, all pushed 2026-10-23)
 - 2026-10-25: docs trimmed (this file, CLAUDE.md); old PROGRESS kept as `progress-archive.md`
 - 2026-10-26 Version 1.4 (client): no Save login (always remembered), Log out only on My Profile, one-code email change (password first), Deactivate blocked like Delete + "Welcome back!" self-reactivation (`/reactivate`), payments filter tidy, Notification Settings, 11-digit phone box, Home mat card -> `/book?mat=yes` (migration 17, pushed 2026-10-26, types regenerated)
-- Last checks: `test:db` 590/590, `test:unit` 34/34 (Save login tests removed), `tsc` / `lint` / `build` clean
+- 2026-10-26 Version 1.4 (admin part 1): split `/admin/login`, no cross-login links, admin Log out -> `/admin/login`, no View website, Walk-in + Attendance pages removed, Dashboard 2 cards + View all + Overview grid, Bookings chips (Forfeited incl. no-show), booking details: "Class cancelled", cancel-only box (no admin transfer), Attendance only when paid, printable `/admin/receipt/[id]` (migration 18 `v14_admin`, pushed 2026-10-26, types regenerated)
+- 2026-10-26 Late payments: clients move their own `paid_needs_action` booking free, any time ("Move to another class" on My Bookings), only if paid covers the total (migration 19 `late_transfer`, pushed, types regenerated)
+- Last checks: `test:db` 628/628, `test:unit` 37/37, `tsc` / `lint` / `build` clean
 
 ## Next
-- **You:** click-through Version 1.4 at 390px and 1440px
+- **You:** click-through Version 1.4 (client + admin part 1) at 390px and 1440px
 - **Transfer bug:** some open dates seemed missing on the transfer page (Thu Oct 29 10:15). Find the real cause and add a test that every open class with seats shows
 - **Home page** to match Figma node 103-26 (a bigger export would help), then Revisions part 2 (admin) and part 3 (emails)
 - **Step 13** deploy (`docs/prompts/13-deploy.md`), **Step 14** emails + pg_cron + Communications (`14-emails-reminders.md`), **Step 15** final check (`15-final-check.md`)

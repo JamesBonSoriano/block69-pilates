@@ -1,12 +1,11 @@
 // Small helpers for SHOWING things on the admin pages: what the barista has
-// to prepare for a class, the status filter chips on Bookings, and which
-// class the Attendance page should open first.
-// Where it's used: the admin Dashboard, Bookings, Attendance and Walk-in pages
-// and their components (src/components/admin/).
+// to prepare for a class, and the status filter chips on Bookings.
+// Where it's used: the admin Dashboard and Bookings pages and their
+// components (src/components/admin/).
 // Nothing here decides a rule: the database does that (migration 9 and the
 // admin_* functions from migration 3).
 
-import type { AdminRosterItem, AdminSession, BookingStatus } from "@/types/app";
+import type { AdminRosterItem, BookingStatus } from "@/types/app";
 
 // Bookings that count as "coming to class" on the attendance list.
 const COMING: BookingStatus[] = ["confirmed", "attended", "no_show"];
@@ -28,7 +27,7 @@ export type PrepSummary = {
   mats: number; // mats to set out
 };
 
-// Counts the drinks and mats for one class (Dashboard cards, Attendance).
+// Counts the drinks and mats for one class (Dashboard class cards).
 // Takes: the class's roster rows.
 // Gives back: a PrepSummary, counting only the guests who are coming.
 export function prepSummary(roster: AdminRosterItem[]): PrepSummary {
@@ -70,6 +69,9 @@ export function prepLine(summary: PrepSummary): string {
 // label    the chip's text
 // statuses what admin_search_bookings filters on (empty = every status
 //          except expired, the default "All")
+// Version 1.4: no "Attended" / "No-show" chips. "Forfeited" also lists
+// no-shows ("No-shows automatically forfeit their booking"); each row still
+// shows its real status badge.
 export const STATUS_CHIPS: { key: string; label: string; statuses: BookingStatus[] }[] = [
   { key: "all", label: "All", statuses: [] },
   { key: "needs_action", label: "Needs action", statuses: ["awaiting_verification", "paid_needs_action"] },
@@ -77,31 +79,8 @@ export const STATUS_CHIPS: { key: string; label: string; statuses: BookingStatus
   { key: "pending_payment", label: "Pending payment", statuses: ["pending_payment"] },
   { key: "awaiting_verification", label: "Awaiting verification", statuses: ["awaiting_verification"] },
   { key: "paid_needs_action", label: "Paid, needs action", statuses: ["paid_needs_action"] },
-  { key: "attended", label: "Attended", statuses: ["attended"] },
-  { key: "no_show", label: "No-show", statuses: ["no_show"] },
   { key: "transferred", label: "Transferred", statuses: ["transferred"] },
   { key: "cancelled_with_voucher", label: "Cancelled with voucher", statuses: ["cancelled_with_voucher"] },
-  { key: "forfeited", label: "Forfeited", statuses: ["forfeited"] },
+  { key: "forfeited", label: "Forfeited", statuses: ["forfeited", "no_show"] },
   { key: "expired", label: "Expired", statuses: ["expired"] },
 ];
-
-// Picks the class the Attendance page opens when none was chosen.
-// Takes: the classes on the chosen day (or around today), and the day.
-// Gives back, in this order of preference:
-//   1. on that day: the first class that hasn't ended yet ("today's next class")
-//   2. on that day: the last class (all of them have ended)
-//   3. the first class after that day
-//   4. the last class before that day
-//   or undefined if there are no classes at all. Cancelled classes are only
-//   picked when there's nothing else.
-export function pickDefaultSession(sessions: AdminSession[], day: string): AdminSession | undefined {
-  const live = sessions.filter((session) => session.status !== "cancelled");
-  const pool = live.length > 0 ? live : sessions;
-  const onDay = pool.filter((session) => session.date === day);
-  return (
-    onDay.find((session) => !session.has_ended) ??
-    onDay.at(-1) ??
-    pool.find((session) => session.date > day) ??
-    pool.filter((session) => session.date < day).at(-1)
-  );
-}

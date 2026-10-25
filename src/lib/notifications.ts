@@ -77,7 +77,7 @@ export function notificationText(n: MyNotification): NotificationText {
     case "payment_needs_action":
       return {
         title: "Payment received",
-        body: `We received your payment for ${when}, but the class was full or closed by then. The cafe will contact you to sort it out.`,
+        body: `We received your payment for ${when}, but it came in after your seat hold expired. Open My Bookings to move to another class for free.`,
         tone: "warning",
         ...bookings,
       };

@@ -377,6 +377,17 @@ export async function createTestContext(port, name, results) {
         returning id`, [sessionId, users[userKey]])).id;
     },
 
+    // Adds a PAID payment (cash, recorded at the counter) to a booking, e.g.
+    // one made with confirmedBooking(). Attendance needs one (migration 18).
+    // Takes: the booking id and the amount (default 550 pesos).
+    // Gives back: the payment id.
+    async pay(bookingId, amount = 550) {
+      return (await one(`
+        insert into public.payments (booking_id, provider, method, amount, status, paid_at)
+        values ($1, 'cash', 'cash', $2, 'paid', now())
+        returning id`, [bookingId, amount])).id;
+    },
+
     // Generated classes at least N days ahead that have no bookings yet,
     // earliest first. Gives back: a list of class ids.
     async emptySessions(minDaysAhead = 3) {

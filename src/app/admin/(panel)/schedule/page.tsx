@@ -18,9 +18,7 @@
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
 // database's own admin checks.
 
-import { ListChecks } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
@@ -250,16 +248,7 @@ function DatedClass({ session }: { session: AdminSession }) {
     <li className="flex flex-col gap-2.5 py-3 first:pt-0 last:pb-0">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold">{label}</span>
-        <span className="flex items-center gap-2">
-          <Badge variant={badge.variant}>{badge.label}</Badge>
-          <Link
-            href={`/admin/attendance?session=${session.session_id}`}
-            aria-label={`Attendance list for ${label}`}
-            className="flex size-11 items-center justify-center rounded-full text-brown hover:bg-admin-bg"
-          >
-            <ListChecks aria-hidden="true" className="size-4" />
-          </Link>
-        </span>
+        <Badge variant={badge.variant}>{badge.label}</Badge>
       </div>
 
       {canChange ? (

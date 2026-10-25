@@ -1,6 +1,6 @@
 "use client";
 // The menu button in the admin's phone top bar, and the full-screen brown
-// menu it opens (all admin pages, View website, Log out).
+// menu it opens (all admin pages and Log out).
 // Where it's used: src/app/admin/layout.tsx (phones and tablets only).
 //
 // "use client" = the menu opens and closes when tapped. It works like the
@@ -12,7 +12,7 @@ import { AdminNav } from "./AdminNav";
 
 // The menu button + menu.
 // Takes: `footer`, the parts made on the server that go at the bottom of the
-// menu (View website and Log out).
+// menu (the Log out button).
 // Gives back: the button, and the menu while it's open.
 export function AdminPhoneMenu({ footer }: { footer: ReactNode }) {
   const [open, setOpen] = useState(false);

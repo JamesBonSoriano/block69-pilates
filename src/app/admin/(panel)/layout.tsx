@@ -8,9 +8,9 @@
 //   - laptop (1024px+): a 280px brown side menu on the left, the page on the
 //     admin background (admin-bg) on the right
 //   - phone: a 64px brown top bar with a menu button, the page, and a white
-//     tab bar stuck to the bottom (Home, Bookings, Walk-in, Attendance)
+//     tab bar stuck to the bottom (Home, Bookings, Payments, Schedule)
 // The menus and bars are left out when a page is printed (print:hidden), so
-// the Attendance list prints on its own.
+// a booking receipt prints on its own.
 //
 // Protection: src/proxy.ts sends guests to /admin/login and clients to Home before
 // any admin page loads, and EVERY admin page calls requireAdmin() again on the
@@ -23,7 +23,6 @@ import { Suspense, type ReactNode } from "react";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { AdminPhoneMenu } from "@/components/admin/AdminPhoneMenu";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { ButtonLink } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/auth/user";
 import { getPublicSettings } from "@/lib/data/settings";
 import { initialsOf } from "@/lib/format";
@@ -65,12 +64,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <Suspense fallback={<div className="h-10" />}>
             <AdminIdentity />
           </Suspense>
-          <div className="flex gap-2">
-            <ButtonLink href="/" variant="lightOutline" className="flex-1 px-3">
-              View website
-            </ButtonLink>
-            <LogoutButton variant="light" formClassName="flex-1" fullWidth />
-          </div>
+          {/* Version 1.4: no "View website" (we test the client side in an
+              Incognito window); Log out goes back to /admin/login */}
+          <LogoutButton variant="light" fullWidth admin />
         </div>
       </aside>
 
@@ -85,14 +81,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <AdminAvatar />
           </Suspense>
           <AdminPhoneMenu
-            footer={
-              <>
-                <ButtonLink href="/" variant="lightOutline" fullWidth>
-                  View website
-                </ButtonLink>
-                <LogoutButton variant="light" fullWidth />
-              </>
-            }
+            footer={<LogoutButton variant="light" fullWidth admin />}
           />
         </header>
 

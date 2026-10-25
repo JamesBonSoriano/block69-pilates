@@ -1,13 +1,11 @@
 // One class on the admin Dashboard: time, seats taken / capacity, what to
-// prepare (drinks and mats), who is booked, and buttons for Attendance,
-// Walk-in and Cancel class.
+// prepare (drinks and mats), who is booked, and a Cancel class button.
+// (Version 1.4 removed the Attendance and Walk-in buttons with their pages.)
 // Where it's used: src/app/admin/page.tsx ("Today's classes" and "Next classes").
 // Layout follows the class cards in docs/designs/PhoneAdminDashboard.html.
 
-import { ListChecks, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
-import { ButtonLink } from "@/components/ui/Button";
 import { isComing, prepLine, prepSummary } from "@/lib/admin/display";
 import { adminBookingStatusBadge, adminSeatsBadge } from "@/lib/booking-rules";
 import { formatClassDate, formatTimeRange } from "@/lib/format";
@@ -30,8 +28,6 @@ export function ClassCard({ session, roster, showDate = false }: ClassCardProps)
   const time = formatTimeRange(session.start_time, session.end_time);
   const coming = roster.filter(isComing);
   const unsettled = roster.filter((guest) => !isComing(guest));
-  // Walk-ins can join an open class with a free seat until it ends
-  const canWalkIn = session.status === "open" && !session.has_ended && session.seats_left > 0;
   const canCancel = session.status !== "cancelled" && !session.has_ended;
 
   return (
@@ -93,29 +89,17 @@ export function ClassCard({ session, roster, showDate = false }: ClassCardProps)
           </ul>
         )}
 
-        {/* Actions. Phone: Attendance + Walk-in side by side, Cancel under them. */}
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-          <ButtonLink href={`/admin/attendance?session=${session.session_id}`} variant="secondary" className="px-3">
-            <ListChecks aria-hidden="true" className="size-4" />
-            Attendance
-          </ButtonLink>
-          {canWalkIn ? (
-            <ButtonLink href={`/admin/walk-in?session=${session.session_id}`} variant="secondary" className="px-3">
-              <UserPlus aria-hidden="true" className="size-4" />
-              Walk-in
-            </ButtonLink>
-          ) : (
-            <span aria-hidden="true" className="sm:hidden" />
-          )}
-          {canCancel && (
+        {/* The only action here: cancel the class (hidden once it ended) */}
+        {canCancel && (
+          <div className="flex sm:justify-end">
             <CancelClassButton
               sessionId={session.session_id}
               classLabel={`${date.short} · ${time}`}
               bookedCount={session.seats_taken}
-              className="col-span-2 px-3 sm:col-span-1 sm:ml-auto"
+              className="w-full px-3 sm:w-auto"
             />
-          )}
-        </div>
+          </div>
+        )}
       </AdminCard>
     </li>
   );

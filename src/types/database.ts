@@ -960,7 +960,12 @@ export type Database = {
         Returns: string
       }
       booking_family: { Args: { p_booking_id: string }; Returns: string[] }
+      booking_has_paid_payment: {
+        Args: { p_booking_id: string }
+        Returns: boolean
+      }
       booking_moved_to: { Args: { p_booking_id: string }; Returns: string }
+      booking_paid_enough: { Args: { p_booking_id: string }; Returns: boolean }
       cancel_my_booking: {
         Args: { p_booking_id: string }
         Returns: {

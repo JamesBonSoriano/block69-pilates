@@ -2,7 +2,7 @@
 // A "Print" button that opens the browser's print window (where people can
 // also choose "Save as PDF").
 // Where it's used: the payment receipt page (/account/payments/[paymentId])
-// and the admin Attendance list (/admin/attendance).
+// and the admin booking receipt (/admin/bookings/[bookingId]/receipt).
 // "use client" = printing is something only the browser can do.
 
 import { Printer } from "lucide-react";

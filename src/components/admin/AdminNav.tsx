@@ -15,11 +15,9 @@ import {
   ClipboardList,
   FileText,
   LayoutDashboard,
-  ListChecks,
   Receipt,
   Settings,
   Tag,
-  UserPlus,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -33,8 +31,6 @@ import { cn } from "@/lib/cn";
 const icons: Record<string, LucideIcon> = {
   "/admin": LayoutDashboard,
   "/admin/bookings": ClipboardList,
-  "/admin/walk-in": UserPlus,
-  "/admin/attendance": ListChecks,
   "/admin/payments": Receipt,
   "/admin/schedule": CalendarDays,
   "/admin/pricing": Tag,

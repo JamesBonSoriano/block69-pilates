@@ -102,7 +102,8 @@ export async function cancelBooking(
   if (!booking) {
     return { error: "Sorry, we couldn't find that booking." };
   }
-  if (booking.status !== "confirmed" || !booking.change_rule) {
+  // (Late payments have the rule "late_payment": they move, never cancel here)
+  if (booking.status !== "confirmed" || !booking.change_rule || booking.change_rule === "late_payment") {
     return { error: "This booking can't be cancelled any more. Please refresh the page to see its status." };
   }
 
@@ -138,14 +139,15 @@ export async function cancelBooking(
 // TRANSFER A BOOKING
 // ---------------------------------------------------------------------------
 
-// Moves one of the person's own confirmed bookings to another class.
+// Moves one of the person's own confirmed (or late-paid) bookings to another class.
 // Takes: the previous state, and the form: booking_id and session_id (the
 // new class they picked).
 // Gives back: an error to show, or (when it works) sends them to My Bookings
 // with ?moved=<new booking id>, which shows a "Done" message.
-// transfer_my_booking() (migrations 3 and 8) checks everything with a lock:
-// their own booking, the 24-hour and once-only rules (skipped if the cafe
-// cancelled the class), and that the new class is open with a free seat.
+// transfer_my_booking() (migrations 3, 8 and 19) checks everything with a
+// lock: their own booking, the 24-hour and once-only rules (skipped if the
+// cafe cancelled the class, or for a late payment that covers the total),
+// and that the new class is open with a free seat.
 export async function transferBooking(
   _previous: TransferBookingState,
   formData: FormData,

@@ -49,6 +49,7 @@ export default async function run(t) {
   t.section('Attendance');
   // ===========================================================================
   const yesterday = await confirmedBooking(await sessionIn(-24), 'C');
+  await t.pay(yesterday); // attendance needs a paid payment (migration 18)
   r = await as('admin', "select public.admin_set_attendance($1, 'no_show') as s", [yesterday]);
   check("Mark yesterday's booking as no-show", 'no_show', r.ok && (await status(yesterday)) === 'no_show', r.ok ? await status(yesterday) : r.err);
   r = await as('admin', "select public.admin_set_attendance($1, 'attended') as s", [yesterday]);
@@ -59,6 +60,7 @@ export default async function run(t) {
   // "attended" still takes a seat: a 1-seat class that started 30 minutes ago.
   const now_class = await sessionIn(-0.5, 1);
   const here = await confirmedBooking(now_class, 'D');
+  await t.pay(here);
   await as('admin', "select public.admin_set_attendance($1, 'attended')", [here]);
   r = await as('admin', `select * from public.admin_walkin_booking($1, 'Late Walk-in', '0917', 'cash', true, true)`, [now_class]);
   check('Walk-in after the only guest was marked attended', 'refused (attended still holds the seat)', !r.ok && r.err.includes('full'), r.err);

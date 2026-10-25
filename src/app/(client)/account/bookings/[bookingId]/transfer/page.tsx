@@ -1,6 +1,7 @@
 // Transfer a booking: /account/bookings/<booking id>/transfer
 // Where it's used: the "Transfer" button on My Bookings, "Transfer instead"
-// in the Cancel box, and "Pick a new class" when the cafe cancelled a class.
+// in the Cancel box, "Pick a new class" when the cafe cancelled a class, and
+// "Move to another class" for a late payment.
 // Layout (Change 17, Part G): the same as booking step 1. A month navigator
 // (◀ October 2026 ▶, this month and next month), date chips for the dates
 // that have classes, that date's classes below, and the summary card on the
@@ -17,7 +18,8 @@
 //
 // Only shown when a transfer is allowed right now (get_my_bookings' can_transfer):
 //   - more than 24 hours before class, and never transferred before, or
-//   - the cafe cancelled the class (free transfer, any time).
+//   - the cafe cancelled the class (free transfer, any time), or
+//   - a late payment ('paid_needs_action'): free, any time (migration 19).
 // Otherwise the page explains why not. transfer_my_booking() checks all of
 // this again, with a lock, when the person clicks "Move my booking".
 //
@@ -102,6 +104,7 @@ async function TransferContent({
 
   const date = formatClassDate(booking.class_date);
   const freeTransfer = booking.change_rule === "free_transfer";
+  const lateTransfer = booking.change_rule === "late_payment";
 
   // The booking being moved
   const summary = (
@@ -159,7 +162,16 @@ async function TransferContent({
       {summary}
 
       {/* The rules for THIS transfer, in plain words */}
-      {freeTransfer ? (
+      {lateTransfer ? (
+        <p className="flex items-start gap-2.5 rounded-2xl bg-warning-bg px-4 py-3.5 text-sm leading-relaxed text-warning">
+          <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          <span>
+            <strong>Your payment came in after your seat hold expired, so this move is free.</strong> Pick any open
+            class with a free seat, even one less than 24 hours away. Your drink and mat stay the same, and
+            there&apos;s nothing more to pay. After this, the new booking can&apos;t be transferred again.
+          </span>
+        </p>
+      ) : freeTransfer ? (
         <p className="flex items-start gap-2.5 rounded-2xl bg-warning-bg px-4 py-3.5 text-sm leading-relaxed text-warning">
           <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span>
@@ -206,6 +218,9 @@ async function TransferContent({
 // Takes: the booking (from get_my_bookings).
 // Gives back: one or two plain-English sentences.
 function notAllowedReason(booking: MyBookingListItem): string {
+  if (booking.status === "paid_needs_action") {
+    return "Your payment doesn't match the booking total, so this booking can't be moved here. The cafe will contact you to sort it out.";
+  }
   if (booking.status !== "confirmed") {
     return `This booking can't be transferred because it's "${bookingStatusBadge(booking.status).label}". Only confirmed bookings can be moved.`;
   }

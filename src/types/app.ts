@@ -91,7 +91,9 @@ export type MyBookingListItem = Omit<
   moved_to_start_time: string | null;
   paid_amount: number | null;
   paid_method: PaymentMethod | null;
-  change_rule: ChangeRule | null; // only for confirmed bookings
+  // Confirmed bookings: their ChangeRule. Late payments ('paid_needs_action'):
+  // "late_payment" = a free move to another class, any time (migration 19).
+  change_rule: ChangeRule | "late_payment" | null;
 };
 
 // How far a payment got: pending, paid, failed, expired, rejected, refunded.

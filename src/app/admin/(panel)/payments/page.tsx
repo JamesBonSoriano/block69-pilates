@@ -261,10 +261,9 @@ function LatePaymentHelp() {
       </p>
       <ol className="list-decimal space-y-1 pl-5 text-ink">
         <li>
-          <span className="font-semibold">Move them for free:</span> open the booking (Move or cancel), then{" "}
-          <span className="font-semibold">Cancel or transfer → Transfer</span> to a class with a free seat. For a
-          late payment this is the normal rule, so no reason is needed. Any other change is an override and needs
-          a short reason.
+          <span className="font-semibold">Usually nothing:</span> the client can move to any open class for free
+          from My Bookings (&quot;Move to another class&quot;), as long as the payment covers the total. Remind them
+          if they haven&apos;t.
         </li>
         <li>
           <span className="font-semibold">Or refund them:</span> refund the money outside the website (PayMongo

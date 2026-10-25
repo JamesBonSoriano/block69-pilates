@@ -118,7 +118,7 @@ async function Booked({ params }: Pick<PageProps<"/book/done/[bookingId]">, "par
       </h1>
       <p className="text-sm leading-relaxed text-muted">
         {needsAction ? (
-          "We received your payment, but we couldn't confirm your seat automatically (for example, your payment arrived after the seat hold ended and the class filled up). Don't worry, your money is safe: the cafe will contact you to move you to another class or sort it out."
+          "We received your payment, but it came in after your seat hold expired, so we couldn't confirm this seat. Don't worry, your money is safe: open My Bookings and press \"Move to another class\" to pick a new class for free."
         ) : (
           <>
             See you at the cafe! Your booking is saved under{" "}

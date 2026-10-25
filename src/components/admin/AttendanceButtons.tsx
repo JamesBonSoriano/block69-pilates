@@ -1,7 +1,7 @@
 "use client";
 // The big Attended / No-show buttons for one guest.
-// Where it's used: the Attendance list (src/app/admin/attendance/page.tsx)
-// and the admin booking details page.
+// Where it's used: the admin booking details page (Version 1.4 removed the
+// Attendance list page).
 //
 // Built for a phone at the counter: each button is at least 48px tall.
 //   confirmed  -> two buttons: Attended (green) and No-show
@@ -9,7 +9,8 @@
 //   no-show    -> red "No-show" badge + a small "Change to attended"
 // Each button sends the form to setAttendance() (src/lib/admin/actions.ts),
 // which calls admin_set_attendance(). The database decides if it's allowed
-// (confirmed / attended / no-show bookings, on or after the class day).
+// (PAID confirmed / attended / no-show bookings, on or after the class day,
+// not in a class the cafe cancelled).
 //
 // "use client" = shows "Saving…" and any error right next to the guest.
 

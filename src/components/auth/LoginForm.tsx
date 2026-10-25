@@ -35,8 +35,7 @@ type LoginFormProps = {
 // The login form.
 // Takes: portal, next and an optional notice (worked out by the page).
 // Gives back: the form. On success the server sends the person on; on a
-// problem it shows the error (with a link to the other login page if they
-// used the wrong one) and keeps the email they typed.
+// problem it shows the error and keeps the email they typed.
 export function LoginForm({ portal, next, notice }: LoginFormProps) {
   // state = what the action last answered; formAction = send the form to it;
   // pending = true while the server is working
@@ -49,20 +48,7 @@ export function LoginForm({ portal, next, notice }: LoginFormProps) {
     <form action={formAction} className="flex flex-col gap-4">
       {/* A message from the page address (shown until they try to log in) */}
       {notice && !state.error && <FormMessage tone={notice.tone}>{notice.text}</FormMessage>}
-      {state.error && (
-        <FormMessage tone="error">
-          {state.error}
-          {/* Wrong login page for this account: link to the right one */}
-          {state.otherLogin && (
-            <>
-              {" "}
-              <Link href={state.otherLogin.href} className="font-semibold underline underline-offset-4">
-                {state.otherLogin.label}
-              </Link>
-            </>
-          )}
-        </FormMessage>
-      )}
+      {state.error && <FormMessage tone="error">{state.error}</FormMessage>}
 
       {/* Hidden: tells the server where to go next (it re-checks it's safe) */}
       {next && <input type="hidden" name="next" value={next} />}
@@ -96,19 +82,13 @@ export function LoginForm({ portal, next, notice }: LoginFormProps) {
         </>
       )}
 
-      {/* Clients can make an account; staff accounts are made by an admin */}
-      {portal === "client" ? (
+      {/* Clients can make an account; staff accounts are made by an admin.
+          The two login pages never link to each other (Version 1.4). */}
+      {portal === "client" && (
         <p className="mt-2 text-center text-sm">
           New here?{" "}
           <Link href={signupHref} className="font-semibold text-brown underline-offset-4 hover:underline">
             Create an account
-          </Link>
-        </p>
-      ) : (
-        <p className="mt-2 text-center text-sm">
-          Not cafe staff?{" "}
-          <Link href="/login" className="font-semibold text-brown underline-offset-4 hover:underline">
-            Go to the client login
           </Link>
         </p>
       )}

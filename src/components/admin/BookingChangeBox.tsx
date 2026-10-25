@@ -1,5 +1,5 @@
 "use client";
-// The "Cancel or transfer" button on the admin booking details page, and the
+// The "Cancel booking" button on the admin booking details page, and the
 // box it opens.
 // Where it's used: src/app/admin/bookings/[bookingId]/page.tsx (only for
 // confirmed bookings and late payments).
@@ -7,51 +7,54 @@
 // The box first says what the cancellation rules give for this booking right
 // now (the database's admin_change_rule, migration 10), then lets the admin
 // pick:
-//   - Transfer to another class (open, not ended, with a free seat)
 //   - Cancel with a personal 50% code (not for walk-ins: no account)
 //   - Cancel with no credit
+// Version 1.4: the admin can no longer move a client to a chosen class.
+// Clients transfer themselves from My Bookings (also when the cafe cancelled
+// the class). So when the rules say "transfer", both cancel choices are
+// overrides.
 // The choice the rules give is marked "Normal rule". Any other choice is an
 // OVERRIDE and needs a reason. The reason is saved with the booking where
 // only admins can read it (booking_admin_actions).
 // Sending runs changeOneBooking() (src/lib/admin/actions.ts), and the
-// database checks everything again (rule, reason, seats, with locks).
+// database checks everything again (rule, reason, with a lock).
 //
 // "use client" = it opens a box (<dialog>), and the reason box becomes
 // required as soon as an override is picked.
 
 import { CircleCheck } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useActionState, useId, useRef, useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
-import { Select, type SelectOption } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { changeOneBooking } from "@/lib/admin/actions";
 import { emptyBookingChangeState } from "@/lib/admin/form-state";
 import type { AdminActionKind, AdminChangeRule } from "@/types/app";
 
-// The three choices, as the form sends them, and the action each one is.
-const CHOICES: { value: "transfer" | "voucher" | "no_credit"; action: AdminActionKind; label: string }[] = [
-  { value: "transfer", action: "transfer", label: "Transfer to another class" },
+// The two choices, as the form sends them, and the action each one is.
+const CHOICES: { value: "voucher" | "no_credit"; action: AdminActionKind; label: string }[] = [
   { value: "voucher", action: "cancel_voucher", label: "Cancel with a personal 50% code" },
   { value: "no_credit", action: "cancel_no_credit", label: "Cancel with no credit" },
 ];
 
 // What each rule means, in plain words, for the top of the box.
+// (Transfers are done by the client in My Bookings, not here.)
 const RULE_TEXT: Record<AdminChangeRule, string> = {
-  transfer: "The class is more than 24 hours away. The normal rule is one free transfer (no cancelling yet).",
+  transfer:
+    "The class is more than 24 hours away. The normal rule is one free transfer, which the client does in My Bookings. Cancelling now is an override.",
   already_transferred:
     "This booking was already moved once and the class is more than 24 hours away. The rules allow no change right now, so anything you do is an override.",
   voucher: "The class is 12 to 24 hours away. The normal rule is: cancel with a personal 50% code (class fee, 60 days, one use).",
   no_credit: "The class is less than 12 hours away. The normal rule is: cancel with no credit.",
-  free_transfer: "The cafe cancelled this class. The normal rule is a free transfer to any open class.",
+  free_transfer:
+    "The cafe cancelled this class. The client keeps their payment and can move to any open class for free in My Bookings. Cancel only if the client asks; it is an override.",
   started:
     "This class has already started. The rules allow no change, so anything you do is an override. (To mark attendance, use Attended / No-show.)",
   late_payment:
-    "They paid after their seat hold ended while the class was full. The normal step is to move them to another class. There are no cash refunds on the website; if the cafe refunds them, do that outside and then cancel here.",
+    "They paid after their seat hold ended while the class was full. They can move to any open class for free in My Bookings (no 24-hour rule). Cancel only if they ask (a 50% code, or no credit after a refund outside the website); it is an override.",
 };
 
 type BookingChangeBoxProps = {
@@ -61,7 +64,6 @@ type BookingChangeBoxProps = {
   rule: AdminChangeRule;
   normalAction: AdminActionKind | null; // allowed without a reason (null = nothing)
   voucherAllowed: boolean; // false for walk-ins
-  classOptions: SelectOption[]; // open classes with a free seat to move to
 };
 
 // The button + box.
@@ -74,7 +76,6 @@ export function BookingChangeBox({
   rule,
   normalAction,
   voucherAllowed,
-  classOptions,
 }: BookingChangeBoxProps) {
   const [state, formAction, pending] = useActionState(changeOneBooking, emptyBookingChangeState);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -103,8 +104,8 @@ export function BookingChangeBox({
 
   return (
     <>
-      <Button variant="secondary" aria-haspopup="dialog" onClick={() => dialogRef.current?.showModal()}>
-        Cancel or transfer
+      <Button variant="danger" aria-haspopup="dialog" onClick={() => dialogRef.current?.showModal()}>
+        Cancel booking
       </Button>
 
       <dialog
@@ -132,14 +133,6 @@ export function BookingChangeBox({
             <FormMessage tone="info">
               Emails aren&apos;t sent yet (they come in a later step), so please message {guestName} yourself.
             </FormMessage>
-            {state.done.newBookingId && (
-              <Link
-                href={`/admin/bookings/${state.done.newBookingId}`}
-                className="inline-flex min-h-11 items-center text-sm font-semibold text-brown underline underline-offset-2"
-              >
-                Open the new booking
-              </Link>
-            )}
             <Button fullWidth onClick={() => dialogRef.current?.close()}>
               Close
             </Button>
@@ -150,7 +143,7 @@ export function BookingChangeBox({
             <input type="hidden" name="booking_id" value={bookingId} />
             <div>
               <h2 id={titleId} className="text-xl font-semibold">
-                Cancel or transfer
+                Cancel booking
               </h2>
               <p className="text-sm text-muted">
                 {guestName} · {classLabel}
@@ -158,7 +151,7 @@ export function BookingChangeBox({
             </div>
             <p className="rounded-xl bg-admin-bg px-4 py-3 text-sm leading-relaxed">{RULE_TEXT[rule]}</p>
 
-            <RadioGroup legend="What do you want to do?" name="choice">
+            <RadioGroup legend="How should it be cancelled?" name="choice">
               {CHOICES.map((item) => {
                 const blocked = item.value === "voucher" && !voucherAllowed;
                 return (
@@ -184,23 +177,6 @@ export function BookingChangeBox({
               })}
             </RadioGroup>
 
-            {choice === "transfer" &&
-              (classOptions.length === 0 ? (
-                <FormMessage tone="error">
-                  There are no open classes with a free seat in the next 6 weeks. Add a seat or more classes in
-                  Schedule first.
-                </FormMessage>
-              ) : (
-                <Select
-                  label="Move to"
-                  name="new_session_id"
-                  required
-                  placeholder="Pick a class"
-                  options={classOptions}
-                  hint="Open classes with a free seat. The online cutoff doesn't apply to admins."
-                />
-              ))}
-
             <Textarea
               label={isOverride ? "Reason (required for an override)" : "Note"}
               name="note"
@@ -214,14 +190,8 @@ export function BookingChangeBox({
             {state.error && <FormMessage tone="error">{state.error}</FormMessage>}
 
             <div className="flex flex-col gap-3 sm:flex-row-reverse">
-              <Button
-                type="submit"
-                variant={choice === "transfer" ? "primary" : "danger"}
-                disabled={pending || !picked || (choice === "transfer" && classOptions.length === 0)}
-                fullWidth
-                className="sm:flex-1"
-              >
-                {pending ? "Saving…" : choice === "transfer" ? "Move booking" : "Cancel booking"}
+              <Button type="submit" variant="danger" disabled={pending || !picked} fullWidth className="sm:flex-1">
+                {pending ? "Saving…" : "Cancel booking"}
               </Button>
               <Button variant="secondary" fullWidth className="sm:flex-1" onClick={() => dialogRef.current?.close()}>
                 Go back

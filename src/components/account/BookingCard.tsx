@@ -11,6 +11,8 @@
 //   confirmed, 12 to 24h / under 12h    -> Cancel (the box explains the voucher
 //                                          or "no credit" first)
 //   confirmed, class started            -> a short note, no buttons
+//   paid late (paid_needs_action)       -> a short line + "Move to another
+//                                          class" (free, any time; migration 19)
 
 import { ArrowRightLeft, CircleAlert, Clock } from "lucide-react";
 import Link from "next/link";
@@ -42,7 +44,9 @@ export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; no
     .filter(Boolean)
     .join(" · ");
 
-  const rule = booking.status === "confirmed" ? booking.change_rule : null;
+  // The Cancel / Transfer rule for a confirmed booking (late payments have
+  // their own box below, so "late_payment" is left out here)
+  const rule = booking.status === "confirmed" && booking.change_rule !== "late_payment" ? booking.change_rule : null;
 
   return (
     <li>
@@ -156,11 +160,22 @@ function StatusPart({
     case "awaiting_verification":
       return <p className="text-sm text-info">We&apos;re checking your payment. Your seat is held meanwhile.</p>;
     case "paid_needs_action":
+      // Paid after the seat hold ended: they move themselves, for free
       return (
-        <p className="text-sm text-error">
-          We received your payment, but couldn&apos;t confirm your seat automatically (for example, it arrived
-          after the class filled up). The cafe will contact you to move you or sort it out.
-        </p>
+        <div className="flex flex-col gap-3 rounded-2xl bg-warning-bg p-4 text-warning">
+          <p className="flex items-start gap-2 text-sm font-semibold">
+            <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+            {transferHref
+              ? "Your payment came in after your seat hold expired, so this seat couldn't be confirmed. Move to another class for free."
+              : "Your payment came in after your seat hold expired, so this seat couldn't be confirmed. The cafe will contact you to sort it out."}
+          </p>
+          {transferHref && (
+            <ButtonLink href={transferHref} className="sm:self-start">
+              <ArrowRightLeft aria-hidden="true" className="size-4" />
+              Move to another class
+            </ButtonLink>
+          )}
+        </div>
       );
     case "cancelled_with_voucher":
       return (

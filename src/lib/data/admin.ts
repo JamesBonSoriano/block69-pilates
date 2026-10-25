@@ -1,7 +1,7 @@
 // Reads what the admin pages show: the Dashboard numbers, classes with seats
 // taken, who is in each class, the Bookings list and one booking's details.
-// Where it's used: the pages in src/app/admin/ (Dashboard, Bookings,
-// booking details, Walk-in, Attendance).
+// Where it's used: the pages in src/app/admin/ (Dashboard, Bookings and
+// booking details).
 //
 // NO CACHING, on purpose: seats, holds, statuses and money must always be the
 // real values right now. Nothing here says "use cache".
@@ -122,21 +122,4 @@ export async function getAdminBooking(bookingId: string): Promise<AdminBookingDe
   }
   // "payments" arrives as a JSON list; AdminBookingDetails describes its shape
   return (data[0] as unknown as AdminBookingDetails | undefined) ?? null;
-}
-
-// Finds the date of one class (so the Attendance page can show the classes
-// around it).
-// Takes: the class id from the address.
-// Gives back: its date "YYYY-MM-DD", or null if the id is wrong or the class
-// doesn't exist. Throws if Supabase can't be reached.
-export async function getSessionDate(sessionId: string): Promise<string | null> {
-  if (!isUuid(sessionId)) return null;
-  await io();
-  const supabase = await createClient();
-  // Everyone may read classes (RLS, migration 2); only the date is needed
-  const { data, error } = await supabase.from("class_sessions").select("date").eq("id", sessionId).maybeSingle();
-  if (error) {
-    throw new Error(`Could not load the class: ${error.message}`);
-  }
-  return data?.date ?? null;
 }

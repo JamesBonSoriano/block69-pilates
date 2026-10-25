@@ -1,6 +1,6 @@
 // One booking's details for the admin: /admin/bookings/<booking id>
-// Where it's used: every row on the admin Bookings list, the Dashboard
-// (guest names, Needs action) and the Attendance list.
+// Where it's used: every row on the admin Bookings list and the Dashboard
+// (guest names, Needs action).
 // No mockup for this page: it follows the admin card style.
 //
 // What it shows: the class, the guest (account or walk-in), health answers,
@@ -8,19 +8,25 @@
 // booking's after a transfer), and a short history built from the times the
 // database keeps (there is no full status log).
 // Actions (only through the admin_* functions):
-//   - Attended / No-show (admin_set_attendance), from the class day
+//   - Attended / No-show (admin_set_attendance): only for PAID bookings, from
+//     the class day, never in a cancelled class (Version 1.4, migration 18)
 //   - Cancel this class (admin_cancel_session)
-//   - Cancel or transfer THIS booking (admin_cancel_booking /
-//     admin_transfer_booking, migration 10), for confirmed bookings and late
-//     payments. The normal rule needs no reason; an override does, and the
-//     reason shows in History (admins only).
+//   - Cancel THIS booking (admin_cancel_booking, migration 10), for confirmed
+//     bookings and late payments. The normal rule needs no reason; an
+//     override does, and the reason shows in History (admins only).
+//     Version 1.4: the admin no longer transfers clients; they move
+//     themselves from My Bookings.
+//   - Print receipt: opens /admin/receipt/<booking id>, a page made only for
+//     printing (not a print of this screen)
+// If the CAFE cancelled the class, the header says "Class cancelled", the
+// banner explains the free transfer, and there's no Attendance card.
 // Approving / rejecting a GCash or BPI screenshot is on the Payments page
 // (Needs review), where the screenshot can be seen.
 //
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
 // database's own admin check (admin_get_booking, migration 9).
 
-import { ArrowLeft, ListChecks, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Printer, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
@@ -39,28 +45,16 @@ import {
   classStartsAt,
   paymentMethodName,
 } from "@/lib/booking-rules";
-import { getAdminBooking, getAdminSessions } from "@/lib/data/admin";
+import { getAdminBooking } from "@/lib/data/admin";
 import { getBookingChangeInfo } from "@/lib/data/admin-setup";
-import {
-  addDays,
-  formatClassDate,
-  formatManilaDateTime,
-  formatPeso,
-  formatTime,
-  formatTimeRange,
-  manilaDateString,
-} from "@/lib/format";
+import { formatClassDate, formatManilaDateTime, formatPeso, formatTime, formatTimeRange } from "@/lib/format";
 import { nowForThisVisit } from "@/lib/server-clock";
 import type {
   AdminBookingAction,
   AdminBookingChangeInfo,
   AdminBookingDetails,
   AdminBookingPayment,
-  AdminSession,
 } from "@/types/app";
-
-// How far ahead the Transfer box offers classes (6 weeks).
-const TRANSFER_DAYS = 42;
 
 export const metadata: Metadata = { title: "Booking details · Admin" };
 
@@ -94,18 +88,12 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
 
   // Read the clock once (a real visit: requireAdmin has run)
   const nowMs = nowForThisVisit();
-  const today = manilaDateString(nowMs);
 
   let booking: AdminBookingDetails | null;
   let change: AdminBookingChangeInfo | null;
-  let classes: AdminSession[];
   try {
-    // The booking, what may be changed, and the classes it could move to
-    [booking, change, classes] = await Promise.all([
-      getAdminBooking(bookingId),
-      getBookingChangeInfo(bookingId),
-      getAdminSessions(today, addDays(today, TRANSFER_DAYS - 1)),
-    ]);
+    // The booking, and what may be changed
+    [booking, change] = await Promise.all([getAdminBooking(bookingId), getBookingChangeInfo(bookingId)]);
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
@@ -113,24 +101,24 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
   }
   if (!booking) notFound();
 
-  // Classes the booking can move to: open, not ended, a free seat, not its own
-  // (the database checks all of this again when moving)
-  const ownSession = booking.session_id;
-  const classOptions = classes
-    .filter((item) => item.status === "open" && !item.has_ended && item.seats_left > 0 && item.session_id !== ownSession)
-    .map((item) => ({
-      value: item.session_id,
-      label: `${formatClassDate(item.date).short} · ${formatTimeRange(item.start_time, item.end_time)} · ${item.seats_left} of ${item.capacity} free`,
-    }));
   const actions = change?.actions ?? [];
   const holdSecondsLeft = booking.hold_expires_at
     ? Math.max(0, (new Date(booking.hold_expires_at).getTime() - nowMs) / 1000)
     : 0;
-  const status = adminBookingStatusBadge(booking.shown_status, holdSecondsLeft);
+  // The cafe cancelled the class while this booking still holds the seat:
+  // the header says so instead of "Confirmed" (Version 1.4)
+  const classCancelled =
+    booking.session_status === "cancelled" &&
+    (booking.status === "confirmed" || booking.status === "paid_needs_action");
+  const status: { label: string; variant: BadgeVariant } = classCancelled
+    ? { label: "Class cancelled", variant: "error" }
+    : adminBookingStatusBadge(booking.shown_status, holdSecondsLeft);
   const seats = adminSeatsBadge(booking.capacity - booking.seats_left, booking.capacity, booking.session_status);
   const classLabel = `${formatClassDate(booking.class_date).short} · ${formatTimeRange(booking.start_time, booking.end_time)}`;
   const classEnded = classStartsAt(booking.class_date, booking.end_time).getTime() <= nowMs;
   const pendingManual = booking.payments.some((pay) => pay.provider === "manual" && pay.status === "pending");
+  // A receipt can only be printed once money was received
+  const hasPaidPayment = booking.payments.some((pay) => pay.status === "paid");
 
   return (
     <>
@@ -143,6 +131,14 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
             {booking.is_walkin ? "Walk-in booking" : "Online booking"}
           </span>
         }
+        actions={
+          hasPaidPayment && (
+            <ButtonLink href={`/admin/receipt/${booking.booking_id}`} variant="secondary">
+              <Printer aria-hidden="true" className="size-4" />
+              Print receipt
+            </ButtonLink>
+          )
+        }
       />
 
       {/* Things the admin should know first */}
@@ -150,8 +146,9 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
         <Notice>
           This client paid, but the seat couldn&apos;t be confirmed (the payment came after the hold ended and the
           class was full, the class was cancelled, closed or had started, or the amount didn&apos;t match the total;
-          compare the payments below). Contact them to agree what to do, then use <strong>Cancel or transfer</strong>{" "}
-          below (moving them to another class is the normal step; for a refund, refund outside the website first).
+          compare the payments below). If the payment covers the total, the client can move to any open class for
+          free from My Bookings. Otherwise, contact them and use <strong>Cancel booking</strong> below (for a refund,
+          refund outside the website first).
         </Notice>
       )}
       {pendingManual && (
@@ -163,10 +160,10 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
           .
         </Notice>
       )}
-      {booking.session_status === "cancelled" && booking.status === "confirmed" && (
+      {classCancelled && (
         <Notice>
-          The cafe cancelled this class. The client keeps this booking and can move it to another class for free from
-          My Bookings.
+          This class was cancelled by the cafe. The client&apos;s payment remains valid, and they may transfer to any
+          open class at no additional cost through My Bookings.
         </Notice>
       )}
 
@@ -186,19 +183,15 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
                 ? "Cancelled by the cafe."
                 : `${booking.seats_left} of ${booking.capacity} seats free right now.`}
             </p>
-            <div className="flex flex-wrap gap-2">
-              <ButtonLink href={`/admin/attendance?session=${booking.session_id}`} variant="secondary">
-                <ListChecks aria-hidden="true" className="size-4" />
-                Attendance list
-              </ButtonLink>
-              {booking.session_status !== "cancelled" && !classEnded && (
+            {booking.session_status !== "cancelled" && !classEnded && (
+              <div className="flex flex-wrap gap-2">
                 <CancelClassButton
                   sessionId={booking.session_id}
                   classLabel={classLabel}
                   bookedCount={booking.capacity - booking.seats_left}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </AdminCard>
 
           {/* ---- The guest ---- */}
@@ -255,13 +248,14 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
         </div>
 
         <div className="flex flex-col gap-5">
-          {/* ---- Cancel or transfer this booking ---- */}
+          {/* ---- Cancel this booking (transfers are done by the client) ---- */}
           {change?.can_change && change.rule && (
             <AdminCard className="flex flex-col gap-3">
-              <AdminOverline as="h2">Change this booking</AdminOverline>
+              <AdminOverline as="h2">Cancel this booking</AdminOverline>
               <p className="text-sm text-muted">
-                Cancel it or move it to another class for the client. You follow the cancellation rules by default; a
-                different choice needs a reason.
+                {classCancelled
+                  ? "The client can move to another class for free in My Bookings. Cancel only if they ask you to; it needs a reason."
+                  : "Clients move to another class themselves in My Bookings. You follow the cancellation rules by default; a different choice needs a reason."}
               </p>
               <div>
                 <BookingChangeBox
@@ -271,21 +265,17 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
                   rule={change.rule}
                   normalAction={change.normal_action}
                   voucherAllowed={change.voucher_allowed}
-                  classOptions={classOptions}
                 />
               </div>
             </AdminCard>
           )}
 
-          {/* ---- Attendance ---- */}
-          {(booking.can_mark_attendance || booking.status === "confirmed") && (
+          {/* ---- Attendance: only for PAID bookings, from the class day, not
+               in a cancelled class (can_mark_attendance, migration 18) ---- */}
+          {booking.can_mark_attendance && (
             <AdminCard className="flex flex-col gap-3">
               <AdminOverline as="h2">Attendance</AdminOverline>
-              {booking.can_mark_attendance ? (
-                <AttendanceButtons bookingId={booking.booking_id} status={booking.status} guestName={booking.guest_name} />
-              ) : (
-                <p className="text-sm text-muted">Attendance can be marked from the class day.</p>
-              )}
+              <AttendanceButtons bookingId={booking.booking_id} status={booking.status} guestName={booking.guest_name} />
             </AdminCard>
           )}
 

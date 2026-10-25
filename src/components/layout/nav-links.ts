@@ -42,16 +42,15 @@ export const adminHomeHref = "/admin";
 
 // The admin side menu (src/components/admin/AdminNav.tsx), in order.
 // `tab`  = also shown in the phone's bottom tab bar (the 4 pages the counter
-//          uses most; the rest are in the phone menu).
+//          uses most; the rest are in the phone menu). Version 1.4 removed
+//          the Walk-in booking and Attendance pages.
 export type AdminNavLink = NavLink & { tab?: boolean; tabLabel?: string };
 
 export const adminNavLinks: AdminNavLink[] = [
   { href: "/admin", label: "Dashboard", tab: true, tabLabel: "Home" },
   { href: "/admin/bookings", label: "Bookings", tab: true },
-  { href: "/admin/walk-in", label: "Walk-in booking", tab: true, tabLabel: "Walk-in" },
-  { href: "/admin/attendance", label: "Attendance", tab: true },
-  { href: "/admin/payments", label: "Payments" },
-  { href: "/admin/schedule", label: "Schedule" },
+  { href: "/admin/payments", label: "Payments", tab: true },
+  { href: "/admin/schedule", label: "Schedule", tab: true },
   { href: "/admin/pricing", label: "Pricing & Vouchers" },
   { href: "/admin/content", label: "Content" },
   { href: "/admin/users", label: "Users" },

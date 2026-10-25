@@ -136,7 +136,7 @@ export function bookingStatusBadge(status: BookingStatus): { label: string; vari
     pending_payment: { label: "Waiting for payment", variant: "warning" },
     awaiting_verification: { label: "Checking your payment", variant: "info" },
     confirmed: { label: "Confirmed", variant: "success" },
-    paid_needs_action: { label: "Paid, cafe will contact you", variant: "error" },
+    paid_needs_action: { label: "Paid late, pick a class", variant: "warning" },
     expired: { label: "Expired", variant: "error" },
     transferred: { label: "Transferred", variant: "neutral" },
     cancelled_with_voucher: { label: "Cancelled with voucher", variant: "neutral" },

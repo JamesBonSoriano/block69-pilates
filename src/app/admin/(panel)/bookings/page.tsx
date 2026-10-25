@@ -1,5 +1,6 @@
 // The admin Bookings list: /admin/bookings
-// Where it's used: the admin menu and tab bar, the Dashboard's "All bookings".
+// Where it's used: the admin menu and tab bar, the Dashboard's Bookings card.
+// Version 1.4: no Attendance list / Walk-in buttons; "Forfeited" includes no-shows.
 // Layout follows docs/designs/AdminBookings.html and PhoneAdminBookings.html.
 //
 // Filters live in the address, e.g.
@@ -13,14 +14,12 @@
 // LIVE DATA: loaded on every visit, never cached.
 // Protection: proxy + requireAdmin() + the database's own admin check.
 
-import { ListChecks, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AdminBookingList } from "@/components/admin/AdminBookingList";
 import { AdminLoadError, AdminLoading, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
 import { BookingFilters, type BookingFilterValues } from "@/components/admin/BookingFilters";
-import { ButtonLink } from "@/components/ui/Button";
 import { STATUS_CHIPS } from "@/lib/admin/display";
 import { firstParam } from "@/lib/auth/safe-next";
 import { requireAdmin } from "@/lib/auth/user";
@@ -44,18 +43,6 @@ export default function AdminBookingsPage({ searchParams }: PageProps<"/admin/bo
         overline="Mat Pilates admin"
         title="Bookings"
         intro="One row per seat. PayMongo payments confirm on their own."
-        actions={
-          <>
-            <ButtonLink href="/admin/attendance" variant="secondary">
-              <ListChecks aria-hidden="true" className="size-4" />
-              Attendance list
-            </ButtonLink>
-            <ButtonLink href="/admin/walk-in">
-              <UserPlus aria-hidden="true" className="size-4" />
-              Walk-in booking
-            </ButtonLink>
-          </>
-        }
       />
       <Suspense fallback={<AdminLoading label="the bookings" />}>
         <BookingsResults searchParams={searchParams} />

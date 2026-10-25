@@ -22,7 +22,6 @@ import {
 import type { AuthFormState } from "@/lib/auth/form-state";
 import {
   ADMIN_LOGIN_PATH,
-  CLIENT_LOGIN_PATH,
   isWrongPortal,
   landingPath,
   type LoginPortal,
@@ -269,6 +268,16 @@ export async function logOut(): Promise<void> {
   redirect("/");
 }
 
+// Logs an ADMIN out on this device and goes back to the admin login page
+// (Version 1.4: staff stay on the admin side instead of landing on Home).
+// Takes: nothing (used as a form's action, like logOut()).
+// Gives back: nothing; it always redirects to /admin/login.
+export async function adminLogOut(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.auth.signOut({ scope: "local" });
+  redirect(ADMIN_LOGIN_PATH);
+}
+
 // ---------------------------------------------------------------------------
 // Small helpers (not exported, so the browser can't call them)
 // ---------------------------------------------------------------------------
@@ -282,8 +291,8 @@ export async function logOut(): Promise<void> {
 //      who deactivated their own account (Version 1.4): they stay logged in
 //      and go to the "Welcome back! Reactivate your account?" page.
 //   3. The database's is_admin() says if it's an active admin. An account on
-//      the wrong login page is logged straight back out, with a link to the
-//      right page (Revisions part 1, item 1). We only say this AFTER the
+//      the wrong login page is logged straight back out (Revisions part 1,
+//      item 1; Version 1.4 dropped the link to the other login page). We only say this AFTER the
 //      password was right, so it never helps a stranger guess accounts.
 //   4. They go to "next" or their usual start page (landingPath()).
 async function logInThrough(portal: LoginPortal, formData: FormData): Promise<AuthFormState> {
@@ -331,16 +340,10 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
   }
   const isAdmin = isAdminAnswer === true;
   if (isWrongPortal(portal, isAdmin)) {
-    // "local" = only this browser's brand-new login is ended
+    // "local" = only this browser's brand-new login is ended.
+    // No link to the other login page (Version 1.4): the two stay separate.
     await supabase.auth.signOut({ scope: "local" });
-    return {
-      error: wrongPortalMessage(portal),
-      values,
-      otherLogin:
-        portal === "client"
-          ? { href: ADMIN_LOGIN_PATH, label: "Go to the admin login" }
-          : { href: CLIENT_LOGIN_PATH, label: "Go to the client login" },
-    };
+    return { error: wrongPortalMessage(portal), values };
   }
 
   // --- 4. Where to go now. redirect() works by stopping this function, so

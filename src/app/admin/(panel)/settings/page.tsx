@@ -197,8 +197,8 @@ async function SettingsBody() {
             <AdminCard className="flex flex-col gap-3">
               <h2 className="text-base font-semibold">Drink options</h2>
               <p className="text-xs text-muted">
-                Guests pick one upsized drink when they book (and walk-ins at the counter). It shows on the attendance
-                list.
+                Guests pick one upsized drink when they book. It shows on the Dashboard class cards and the booking
+                details.
               </p>
               <DrinkOptionsField initial={drinks} />
             </AdminCard>
