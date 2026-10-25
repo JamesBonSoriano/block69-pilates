@@ -1,8 +1,8 @@
 # Block 69 Cafe Pilates Website: Project Overview
 
-**Read this whole file before writing any code.** Then read `docs/PROGRESS.md` to see what's done and what's next. The full proposal is in `docs/PROPOSAL.md`, and the screen designs are in `docs/designs/`.
+**Read this whole file before writing any code.** Then read `docs/PROGRESS.md` (what's done, what's next, rules learned along the way). Older step details are in `docs/progress-archive.md`, the proposal is `docs/PROPOSAL.md`, step prompts are in `docs/prompts/`, and the screen designs are in `docs/designs/`. Where the group's **Proposal 3** (Change 17, `docs/prompts/17-client-revisions-2.md`) disagrees with older text, Proposal 3 wins.
 
-This is a school project (Group 6 PBL). We're building a booking and payment website for **Block 69 Cafe**, a coffee shop in Taguig City that runs beginner "Mindful Mat Pilates" classes. Clients book and pay online, and the cafe runs everything from an admin side.
+This is a school project (Group 6 PBL): a booking and payment website for **Block 69 Cafe**, a coffee shop in Taguig City that runs beginner "Mindful Mat Pilates" classes. Clients book and pay online, and the cafe runs everything from an admin side.
 
 ---
 
@@ -38,10 +38,14 @@ function seatsLeft(capacity: number, bookings: Booking[]): number {
 }
 ```
 
+### Tests (required)
+- Every database change gets tests in `supabase/tests/` (`npm run test:db`); plain logic gets unit tests in `tests/unit/` (`npm run test:unit`).
+- Before saying a step is done, run `npm run test:db`, `npm run test:unit`, the type check (`npx tsc --noEmit`), `npm run lint` and `npm run build`, and report the results honestly.
+
 ### How we work
 - I'm new to Next.js, Supabase and Claude Code. Explain things simply, with no jargon unless you explain it.
 - Work in **small steps**: one feature at a time. Give me a short plan first, build it, tell me how to test it, then stop and wait for me.
-- After each step, update `docs/PROGRESS.md` (done, next, known problems).
+- After each step, update `docs/PROGRESS.md` with **3–5 short lines** (done, next, known problems). Don't add long details there.
 - Don't add features that aren't in this file or the proposal without asking me.
 - If a rule in this file and something I say in chat disagree, ask me which one wins.
 
@@ -51,20 +55,20 @@ function seatsLeft(capacity: number, bookings: Booking[]): number {
 
 | Part | Tool | Notes |
 | --- | --- | --- |
-| Website and server code | **Next.js** (App Router, TypeScript, `src/` folder) | API routes are our backend. No PHP or XAMPP. |
-| Styling | **Tailwind CSS** | Mobile-first, with brand colors as theme tokens |
+| Website and server code | **Next.js 16** (App Router, TypeScript, `src/` folder) | API routes and Server Actions are our backend. Middleware is `src/proxy.ts` (Next.js 16's name for it). No PHP or XAMPP. |
+| Styling | **Tailwind CSS 4** | Mobile-first, with brand colors as theme tokens |
 | Database | **Supabase** Postgres | Changes are kept as SQL files in `supabase/migrations/` |
-| Login | **Supabase Auth** | Email and password, plus forgot password. Google login is optional, so add it last. |
-| File storage | **Supabase Storage** | Logo, page images, manual payment screenshots |
-| Supabase in Next.js | `@supabase/ssr` + `@supabase/supabase-js` | Browser client, server client, middleware |
+| Login | **Supabase Auth** | Email and password, forgot password, Google login, "Save login" (Never / Always) |
+| File storage | **Supabase Storage** | Buckets `site-images` (public) and `payment-screenshots` (private) |
+| Supabase in Next.js | `@supabase/ssr` + `@supabase/supabase-js` | Browser, server, guest and service clients in `src/lib/supabase/` |
 | Payments | **PayMongo, test mode only** | GCash, Maya and card through Checkout Sessions, plus a webhook |
-| Emails | Resend or Supabase email | **Build last** |
-| Timed jobs | Supabase `pg_cron` | Creates sessions 9 weeks ahead (so next month is always bookable), and sends reminders (**last**) |
-| Hosting | Vercel | Done at the very end |
+| Emails | Gmail SMTP with an App Password (`nodemailer`, server only) | **Build last** (Step 14) |
+| Timed jobs | Supabase `pg_cron` | Creates sessions 9 weeks ahead, and sends reminders (**last**) |
+| Hosting | Vercel | Step 13 |
 
 **Security rules**
-- Secret keys go only in `.env.local`, never in code. These are the Supabase service role key, the PayMongo secret key and the webhook secret. Keep `.env.example` updated with key names but no values. `.env.local` must stay in `.gitignore`.
-- Never use the service role key in browser code. Use it only in server code (API routes, server actions).
+- Secret keys go only in `.env.local`, never in code: `SUPABASE_SECRET_KEY` (the service role key), `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET` and the email password. Keep `.env.example` updated with key names but no values. `.env.local` must stay in `.gitignore`.
+- Never use the secret (service role) key in browser code. Use it only in server code (API routes, server actions).
 - Turn on **Row Level Security** for every table. Clients can read and change only their own rows. Only admins can change schedules, prices, content, users and settings.
 - Check the user's role on the server for every admin page and admin API route, not only by hiding buttons.
 - Never store card numbers or bank account digits. Store only the amount, method, PayMongo reference, status and time.
@@ -74,13 +78,13 @@ function seatsLeft(capacity: number, bookings: Booking[]): number {
 ## 3. Business facts
 
 - **Block 69 Cafe**, 444 Kamagong St., Comembo, Taguig City. Email block69cafe@gmail.com. Instagram and Facebook: @block69cafe.
-- The class is **Mindful Mat Pilates**, a beginner class using the STOTT method. It runs **Thursday to Sunday**.
+- The class is **Mindful Mat Pilates**, a beginner class using the STOTT method, taught by **Mhay Florence Corpuz**. Class days come from `schedule_templates` (currently **Thursday to Sunday**, never hard-coded).
   - Session 1: 9:00 to 9:50 AM
   - Session 2: 10:15 to 11:05 AM
 - **Capacity** is 4 per session by default. The admin can change it, for example to 3, for all sessions or for one date.
 - **Price**: ₱500, which includes an upsized matcha or coffee. **Mat rental** is +₱50, and all of it is donated to feed stray animals.
-- **Not suitable for pregnant participants.** This is stated in the Health and Safety Information on Home. Since Change 17 there is no "I am not pregnant" tick in online booking (walk-ins still confirm it in person).
-- What to bring: mat (or rent one), small towel, water bottle, grip socks.
+- **Not suitable for pregnant participants.** This is stated in the Health and Safety Information on Home. Online booking has no "I am not pregnant" tick (walk-ins still confirm it in person).
+- What to bring: mat (or rent one), water bottle, towel, comfortable workout clothes (editable on admin Content).
 - Private sessions are by appointment through the "Chat With Us" button (a Messenger or Instagram link). They are not part of online booking.
 
 ---
@@ -90,55 +94,56 @@ function seatsLeft(capacity: number, bookings: Booking[]): number {
 ### Who can do what
 | Role | Can do |
 | --- | --- |
-| Guest (not logged in) | See Home and About Us, see sessions with seats left, use Chat With Us. Must log in to book. |
-| Client | Book and pay, use voucher codes, see, cancel or transfer their own bookings, edit their profile, see their payments and vouchers |
-| Admin | Everything on the admin side |
+| Guest (not logged in) | See Home, About Us, Policies and the classes with seats left on `/book`, use Chat With Us. Must log in to book. |
+| Client | Book and pay, use voucher codes, see, cancel or transfer their own bookings, edit their profile, see their payments, vouchers and updates |
+| Admin | Everything on the admin side. Admins can't use the client booking or My Account pages. |
 
 ### Client flow
 ```
-Home ──> Book Now ──> (not logged in? ──> Log in / Sign up ──> back to booking)
-     ──> Step 1: month (this month / next month) ──> date chip ──> session (seats left, full = greyed out), mat rental tick
-     ──> Step 2: your details (prefilled from profile + health questions)
-     ──> Step 3: review & pay (mat add-on, voucher, total, policy, agreement)
-     ──> PayMongo checkout (GCash / Maya / card)
-     ──> You're booked page + confirmation
-         (or) Payment expired page ──> try again
-         (or) Manual transfer page (backup, only if admin turned it on)
+Home ──> Book Your Session ──> Step 1: month (this month / next month) ──> date chip ──> session (seats left, full = greyed out), Rent a mat tick
+     ──> (not logged in? ──> Log in / Sign up / Google ──> Finish your profile if mobile or birthday is missing ──> back to booking)
+     ──> Step 2: your details (name, mobile, email, Instagram shown from the profile; drink, notes, voucher, Registration Agreement tick)
+     ──> Step 3: review & pay (total, 15-minute countdown, GCash / Maya / card)
+     ──> PayMongo checkout
+     ──> You're booked page
+         (or) Seat released / payment expired ──> try again
+         (or) Manual transfer (backup, only if admin turned it on): GCash / BPI details + screenshot upload
 ```
 
 **Client pages**
-- **Home** (guests can see it): hero with a Book Now button, about the class, location and free drink, feature cards, "Next open sessions" with seats left, and a footer with the address and the stray animals note.
-- **About Us** (guests can see it): the cafe and the instructor, the address with a map link, contact details, and health and safety notes.
-- **Log in, Sign up, Forgot password.** Admins who log in go to the admin Dashboard.
-- **Booking:** a 3-step flow (above). Step 1 (Change 17): a month navigator limited to this month and next month, date chips for only the dates that have classes (days come from `schedule_templates`), that date's sessions with seat badges, and the Booking details card (what to bring, Rent a mat, total). Step 2 shows the name, mobile, email and Instagram from the profile, and collects injuries or medical notes, drink choice (options come from settings), a voucher code, and the Registration Agreement checkbox (there is **no** not-pregnant checkbox since Change 17). Step 3 is payment.
-- **You're booked**, **Payment expired**, and **Manual transfer** (shows GCash and BPI details, plus a screenshot upload).
-- **My Account** (with a side menu on desktop and a list on phone):
-  - My Profile (Change 17), three cards:
+- **Home** (guests can see it): hero "Mat Pilates For Beginners" with a "Book Your Session" button (no price), Class Details & Location (description, full address, Open in Google Maps, the mat rental line), What's included + What to bring, How it works, a call-to-action box, and **Health and Safety Information** last before the footer. No "Next open sessions" list.
+- **About Us** (guests can see it): the cafe, the class (quick facts), the instructor, a short cancellation policy, FAQ, visit us, and contact (email, Instagram, Facebook, Chat With Us; no phone number).
+- **Policies**: the full cancellation policy and the Registration Agreement.
+- **Log in** (`/login`), **Sign up**, **Forgot password**: password show / hide, "Save login next time" (Never / Always), Continue / Sign up with Google. Sign-up rules: mobile is 11 digits starting with 09, birthday MM/DD/YYYY (a real past date), email @gmail.com or @yahoo.com only, password 8+.
+- **Booking:** the 3-step flow above. Step 1 has a month navigator (this month and next month only), date chips for only the dates that have classes, that date's sessions with seat badges, and the Booking details card (what to bring, Rent a mat, total).
+- **You're booked**, **seat released / Payment expired**, and **Manual transfer**.
+- **My Account** (side menu on desktop, list on phone):
+  - My Profile, three cards:
     - Account Information: email (changed with two 6-digit codes, gmail/yahoo only), change password, forgot password
-    - Personal Information: full name, mobile (09 + 11 digits), Instagram, birthday (editable, a real past date)
+    - Personal Information: full name, mobile, Instagram, birthday (editable, a real past date)
     - Account Management: deactivate account, delete account (bookings and payments are kept, the profile is blanked and the login removed)
-  - My Bookings: upcoming bookings (status badge, Cancel and Transfer buttons) and past bookings. Transfer uses the same month navigator + date chips as booking step 1
+  - My Bookings: upcoming (status badge, Cancel and Transfer) and past. Transfer uses the same month navigator + date chips as booking step 1
   - Payments: payment history with receipts ("Payment Date"), with a Filter (status, method, month or date range)
   - My Vouchers: codes with their status and expiry date
   - Notifications: email settings only (the booking updates are in the header's bell)
 
-The nav on every client page has Home, About Us, Book a Class, a notifications bell, the person icon (My Account), and Log in or Log out (far right; not in the My Account menu). On phones it collapses into a menu button. A floating **Chat With Us** button links to Messenger or Instagram.
+The client nav has Home, About Us, Book a Class, a notifications bell, the person icon (My Account), and Log in or Log out (far right). On the login and sign-up pages the guest button says "Book Now". On phones the nav collapses into a menu button. A floating **Chat With Us** button (lower right, never covering the footer) links to Messenger or Instagram.
 
 ### Admin flow
-Admins use the same login page and are sent to `/admin`. On desktop the admin side has a brown sidebar. On phones it has a top bar with a menu.
+Admins log in at **`/admin/login`** (separate from the client `/login`; each page refuses the other kind of account) and land on `/admin`. On desktop the admin side has a brown sidebar. On phones it has a top bar with a menu and a bottom tab bar.
 
 **Admin pages**
-- **Dashboard:** today's and this week's sessions with seats filled, and a "Needs action" list (awaiting verification, paid needs action, no-shows to mark). It also shows earnings for this week and this month, and shortcuts.
-- **Bookings:** a table with filters (date, session, status) and search by name. It has a booking details panel. Actions: approve or reject a manual payment, cancel, transfer, mark attended or no-show.
+- **Dashboard:** today's and this week's sessions with seats filled, a "Needs action" list (awaiting verification, paid needs action, no-shows to mark), earnings for this week and this month, and shortcuts.
+- **Bookings:** a table with filters (date, session, status) and search. A booking details page with: approve or reject a manual payment, cancel or transfer (an override of the normal rule needs a reason), mark attended or no-show.
 - **Walk-in booking:** pick a session, enter name and contact, confirm the health check and agreement in person, and record a cash or transfer payment. It takes a seat like an online booking.
-- **Attendance list** per session: each guest, their drink choice and their mat rental, so the barista can prepare. It should be printable and work on a phone.
-- **Schedule Management:** the weekly pattern (days, times, default capacity) and a calendar of dated sessions. Here the admin can change capacity for one date, or close a session or a whole day.
+- **Attendance list** per session: each guest, their drink choice and their mat rental, so the barista can prepare. Printable and works on a phone.
+- **Schedule:** the weekly pattern (days, times, default capacity), "Create classes", and the dated classes (change capacity for one date, close or cancel a session).
 - **Pricing & Vouchers:** the class price and the mat rental price, creating promo codes, and viewing the 50% codes the system has issued.
-- **Manage Billings:** a payments list (method, amount, status, PayMongo reference), earnings by day, week and month, and the mat rental donation total shown separately.
-- **Content Management:** edit the text and images on Home and About Us, the what-to-bring list, the policy text and the agreement text.
-- **User Management:** search users, view their details and booking history, deactivate or reactivate them, and make someone an admin.
+- **Payments (Billings):** a payments list (method, amount, status, PayMongo reference), earnings by day, week and month, and the mat rental donation total shown separately.
+- **Content:** edit the text and images on Home and About Us, the what-to-bring list, the policy text and the agreement text.
+- **Users:** search users, view their details and booking history, deactivate or reactivate them, and make someone an admin.
 - **Communications:** resend a confirmation, or send a notice to everyone in a session. Build this last, with emails.
-- **Settings:** logo, cafe name, contact details, social links, booking cutoff time, seat hold minutes, the manual payment backup on or off, and drink options.
+- **Settings:** cafe name, contact details, social links, booking cutoff time, seat hold minutes, the manual payment backup on or off, and drink options.
 
 ---
 
@@ -149,11 +154,11 @@ These rules are enforced by the code and the database, not just shown as text.
 **Seats**
 - One booking = one seat = one person. Friends book separately.
 - **Seats left** = capacity minus the bookings that are `confirmed`, `awaiting_verification`, `attended`, or `pending_payment` with `hold_expires_at` still in the future. (`attended` counts so a walk-in can't overbook a class after the admin marks people as here.)
-- **15-minute seat hold:** when the client clicks Pay, create the booking as `pending_payment` with `hold_expires_at = now + 15 min`. No timer is needed, because expired holds simply stop counting.
+- **15-minute seat hold:** when the client confirms, create the booking as `pending_payment` with `hold_expires_at = now + 15 min`. No timer is needed, because expired holds simply stop counting.
 - **No overbooking:** the seat check and the booking insert happen in **one Postgres function**, which locks the session row (`SELECT ... FOR UPDATE`). Two people can never get the last seat.
 - **Cutoff:** online booking closes at **8:00 AM on class day** (a setting), or when the session is full.
 - **How far ahead:** clients can book this month and next month. Dated classes must exist **9 weeks ahead** (setting `sessions_weeks_ahead`; "Create classes" on the admin Schedule page until the nightly job exists).
-- **Required to book online:** only the Registration Agreement tick (`book_seat` and the `bookings_agreement_required` check). The not-pregnant tick was removed in Change 17.
+- **Required to book online:** only the Registration Agreement tick (`book_seat` and the `bookings_agreement_required` check).
 - If the class is less than 12 hours away, warn the client that cancelling will give no credit.
 
 **Prices**
@@ -162,9 +167,9 @@ These rules are enforced by the code and the database, not just shown as text.
 - Vouchers discount **only the class fee**, never the mat rental.
 
 **PayMongo payment (test mode)**
-1. The client clicks Pay. The server works out the total, creates the booking (`pending_payment`, 15-minute hold), and creates a PayMongo Checkout Session that expires when the hold does.
+1. The client clicks Pay. The server works out the total, the booking already holds the seat (`pending_payment`, 15-minute hold), and the server creates a PayMongo Checkout Session.
 2. The client is sent to PayMongo's page and pays with GCash, Maya or card.
-3. PayMongo calls our **webhook**. We verify the signature, then set the payment to `paid` and the booking to `confirmed`.
+3. PayMongo calls our **webhook** (and the return page checks too). We verify the signature, then set the payment to `paid` and the booking to `confirmed`.
 4. If a payment arrives **after** the hold has ended and the class is now full, the booking becomes `paid_needs_action` and shows at the top of the admin Dashboard.
 5. If payment fails or the time runs out, the booking becomes `expired`.
 
@@ -190,17 +195,19 @@ These rules are enforced by the code and the database, not just shown as text.
 
 | Table | One row is | Main columns |
 | --- | --- | --- |
-| `profiles` | One user (linked to `auth.users`) | full_name, email, mobile, instagram, birthday, role (`client`/`admin`), is_active, email_reminders |
+| `profiles` | One user (linked to `auth.users`) | full_name, email, mobile, instagram, birthday, role (`client`/`admin`), is_active, email_reminders, deleted_at |
 | `schedule_templates` | One weekly slot pattern | weekday, start_time, end_time, default_capacity, is_active |
 | `class_sessions` | One dated class | date, start_time, end_time, capacity, status (`open`/`closed`/`cancelled`) |
-| `bookings` | One seat for one person | user_id (or walkin_name + walkin_contact), session_id, status, mat_rental, drink_choice, voucher_id, class_fee, mat_fee, discount, total, first_time, health_notes, not_pregnant_confirmed (optional: null = not asked, online bookings since Change 17), agreed_at (required), hold_expires_at, transferred_from |
+| `bookings` | One seat for one person | user_id (or walkin_name + walkin_contact), session_id, status, mat_rental, drink_choice, voucher_id, class_fee, mat_fee, discount, total, first_time, health_notes, not_pregnant_confirmed (null = not asked, online bookings), agreed_at (required), hold_expires_at, transferred_from |
 | `payments` | One payment attempt | booking_id, provider (`paymongo`/`manual`/`cash`), method (`gcash`/`maya`/`card`/`bpi`/`cash`), amount, status, paymongo_ref, screenshot_path, verified_by, paid_at |
-| `vouchers` | One discount code | code, percent_off or amount_off, owner_id (if personal), source (`cancellation`/`promo`), uses_left, expires_at |
-| `settings` | One setting | key, value (class_price, mat_price, cutoff_time, hold_minutes, drink_options, manual_payment_enabled, contact details) |
+| `vouchers` | One discount code | code, percent_off or amount_off, owner_id (if personal), source (`cancellation`/`promo`), uses_left, expires_at, disabled_at |
+| `settings` | One setting | key, value, is_public (class_price, mat_price, cutoff_time, hold_minutes, drink_options, manual_payment_enabled, sessions_weeks_ahead, contact details) |
 | `site_content` | One editable block of page content | page, section, title, body, image_path |
 | `email_log` | One email sent | user_id, booking_id, type, sent_at |
+| `notifications` | One update in a client's bell | user_id, booking_id, kind, voucher code, created, read |
+| `booking_admin_actions` | One admin cancel / transfer (admins only) | who, when, action, normal rule, override, reason, 50% code |
 
-Seed data: the Thu to Sun templates for both sessions, the default settings, and one admin account.
+Default data (settings, the Thu–Sun templates, page text) is in the migrations. `supabase/seed.sql` and `supabase/manual-tests/` are test data only.
 
 ---
 
@@ -211,9 +218,9 @@ Seed data: the Thu to Sun templates for both sessions, the default settings, and
 - **Montserrat** for body text, forms, tables and labels
 - Load both with `next/font/google`.
 
-**Colors** (set them as Tailwind theme tokens in `globals.css` with `@theme`, and never repeat hex codes in components)
+**Colors** (Tailwind theme tokens in `globals.css` with `@theme`; never repeat hex codes in components)
 
-The **client side** (Change 17) uses a green / beige palette. The **admin side keeps the brown palette**: the admin frame and `/admin/login` have `data-theme="admin"`, which sets the same token names back to the admin values (see the top of `globals.css`).
+The **client side** uses a green / beige palette. The **admin side keeps the brown palette**: the admin frame and `/admin/login` have `data-theme="admin"`, which sets the same token names back to the admin values (see the top of `globals.css`).
 
 | Token | Client | Admin | Used for |
 | --- | --- | --- | --- |
@@ -244,9 +251,9 @@ Status badge colors (background / text):
 
 **Shapes and layout**
 - Cards: rounded corners (20 to 24px), cream-white fill, thin tan border, no heavy shadows.
-- Buttons: fully rounded pills. Primary is a `primary` fill with light text (sage-dark on the client side, brown on the admin side). Secondary is a brown outline. Danger is a red outline.
+- Buttons: fully rounded pills. Primary is a `primary` fill with light text. Secondary is a brown outline. Danger is a red outline.
 - Inputs: rounded (12px), white, tan border, with the label above the field.
-- Client header: sage-dark, with "Block 69 Cafe" (Poppins) and "MAT PILATES + CAFÉ" in small letter-spaced caps under it. It's 96px tall on desktop and 64px on phone, where it shows a menu button.
+- Client header: sage-dark, with "Block 69 Cafe" (Poppins) and "MAT PILATES + CAFÉ" in small letter-spaced caps under it. 96px tall on desktop, 64px on phone (with a menu button).
 - Footer: brown (`#5B3F2E`), with the address, contact details, quick links and the stray animals note.
 - Admin: a brown sidebar (280px) on desktop and a top bar with a menu on phone. Content goes on white cards.
 
@@ -260,76 +267,49 @@ Status badge colors (background / text):
 - Keep text contrast readable, and give icon-only buttons an `aria-label`.
 
 **Designs to follow**
-- `docs/designs/` has 21 HTML mockups: open them in a browser to look at them. (They link a missing `support.js`; ignore that.) Copy their **layout, spacing and colors**, but use our fonts (Poppins and Montserrat), not the fonts written in the mockups. **Client mockups:** copy layout and spacing only; their brown colors were replaced by the green / beige palette above (Change 17). Admin mockups keep their colors.
-  - Client desktop: Profile, Payments, Vouchers, Notifications
-  - Admin desktop: AdminPayments, AdminPricing, AdminBookings, AdminWalkIn, AdminAttendance, AdminSettings
-  - Phone client: PhoneHome, PhoneMenu, PhoneBook1, PhoneBook2, PhoneBook3, PhoneBooked, PhoneMyBookings, PhoneLogin
-  - Phone admin: PhoneAdminDashboard, PhoneAdminBookings, PhoneAdminAttendance
-- Pages without a mockup (desktop Home, About, Login, Booking, admin Dashboard, Schedule, Content, Users, Communications) should **follow the same style** as the mockups.
-- Use simple line icons (for example `lucide-react`), never emoji.
+- `docs/designs/` has 21 HTML mockups (open them in a browser; ignore the missing `support.js`). Copy their **layout, spacing and colors**, but use Poppins and Montserrat. **Client mockups:** copy layout and spacing only; their brown colors were replaced by the green / beige palette. Admin mockups keep their colors.
+- Pages without a mockup follow the same style. Use simple line icons (`lucide-react`), never emoji.
 
 ---
 
-## 8. Suggested folder layout
+## 8. Folder layout
 
 ```
 src/
+  proxy.ts             login refresh + route protection (Next.js 16 "middleware")
   app/
-    (client)/          Home, About, booking, account pages
-    (auth)/            login, signup, forgot-password
-    admin/             all admin pages (role-protected)
-    api/               API routes (checkout, paymongo webhook, etc.)
-  components/          shared UI (Header, Footer, Button, Card, Badge...)
+    (client)/          Home, About, Policies, booking, account pages
+    (auth)/            login, signup, forgot-password, reset-password
+    admin/login/       admin login (no admin menu)
+    admin/(panel)/     all other admin pages (role-protected)
+    api/               API routes (PayMongo webhook)
+    auth/              /auth/confirm, /auth/deactivated
+  components/          shared UI (ui/, layout/, booking, admin...)
   lib/
-    data/              functions pages call to read/write Supabase
-    supabase/          browser + server Supabase clients
+    auth/ booking/ account/ admin/   Server Actions and guards
+    data/              functions pages call to read Supabase
+    supabase/          browser, server, guest and service clients
     paymongo.ts        PayMongo helpers (server only)
-    booking-rules.ts   small helpers for showing rules in the UI (real checks are in the database)
-  types/               TypeScript types for tables
+    booking-rules.ts   helpers for showing rules in the UI (real checks are in the database)
+  types/               database.ts (generated) and app types
+tests/unit/            unit tests (npm run test:unit)
 supabase/
   migrations/          SQL files: tables, RLS policies, functions
-  seed.sql             test data (settings, templates, sessions, sample bookings)
-  tests/               SQL test scripts for the booking rules
+  seed.sql             test data only, never pushed
+  tests/               database tests (npm run test:db)
+  manual-tests/        setup / cleanup SQL pasted by hand for click-throughs
 docs/
-  PROPOSAL.md, PROGRESS.md, designs/
+  PROPOSAL.md, PROGRESS.md, progress-archive.md, HANDOFF.md, prompts/, designs/
 ```
 
 ---
 
-## 9. Build order (one step at a time)
+## 9. Build order and database rules
 
-We build the **database first**, then the website on top of it. Every page reads **real data** from Supabase as soon as it's built, so there's no fake data to replace later.
+Phases A to D (steps 1–12), Revisions part 1, Change 16 and Change 17 are done; see `docs/PROGRESS.md`. Still to do: **Step 13** deploy to Vercel, **Step 14** emails, pg_cron jobs (create sessions, reminders) and the Communications page, **Step 15** final check at 390px and 1440px. Each has a prompt in `docs/prompts/`.
 
 **Database rules (important)**
-- Every database change is a SQL file in `supabase/migrations/`, named with a timestamp (for example `20261022000001_tables.sql`). Never change the database only by clicking in the dashboard. The group must be able to rebuild it from these files.
-- Business rules that must never break live **in the database**: the seat check and booking (one Postgres function with a row lock), seats left, and RLS policies. The website calls these functions instead of repeating the logic.
-- Test data (sample sessions and bookings) goes in `supabase/seed.sql`, not in the migrations.
-- Use the Supabase CLI through `npx supabase ...`. If the CLI gives trouble on Windows, give me the SQL to paste into the Supabase **SQL Editor** instead.
-
-**Phase A: Database (Supabase)**
-1. **Supabase project and CLI setup:** I create the project on supabase.com. Claude Code runs `npx supabase init`, links the project and makes `.env.example`.
-2. **Tables:** all tables from section 6 with types, defaults, foreign keys, status enums, checks and indexes, plus a trigger that creates a `profiles` row when someone signs up.
-3. **Security:** turn on RLS and write policies for every table, plus an `is_admin()` helper.
-4. **Functions:** `seats_left(session_id)`, `book_seat(...)` (seat check, cutoff and 15-minute hold in one locked step), `generate_sessions(weeks)` from the templates, cancel and transfer rules, and the voucher check.
-5. **Seed and test:** default settings, the Thu–Sun templates, 4 weeks of sessions, sample bookings, and one admin. Then a test script that proves overbooking can't happen and the cancellation rules work.
-
-**Phase B: Website setup**
-
-6. Next.js, Tailwind theme tokens, Poppins + Montserrat, shared components (Button, Card, Badge, Input, Header with phone menu, Footer), Supabase clients, generated TypeScript types (`npx supabase gen types`)
-7. Auth: log in, sign up, forgot password, admin redirect, route protection (middleware)
-
-**Phase C: Pages (connected to real data)**
-
-8. Home and About Us, with live "next open sessions"
-9. Booking flow: steps 1 to 3 (calls `book_seat`), You're booked, Payment expired
-10. My Account: Profile, My Bookings (cancel and transfer), Payments, My Vouchers, Notifications
-11. Admin: layout, Dashboard, Bookings, Walk-in, Attendance, Schedule, Pricing & Vouchers, Billings, Content, Users, Settings
-
-**Phase D: Payments**
-
-12. PayMongo test mode: checkout, webhook, the late payment rule, the manual transfer backup with screenshot upload
-
-**Phase E: Finish**
-
-13. Emails, pg_cron jobs (create sessions, reminders), Communications page, optional Google login
-14. Final check of every page at 390px and 1440px, then deploy to Vercel
+- Every database change is a new SQL file in `supabase/migrations/`, named with a timestamp (for example `20261022000001_tables.sql`). Never change the database only by clicking in the dashboard. The group must be able to rebuild it from these files.
+- Business rules that must never break live **in the database**: the seat check and booking (one Postgres function with a row lock), seats left, and RLS policies. The website calls these functions instead of repeating the logic. If a new decision clashes with a database rule, change the rule in a new migration; don't work around it in page code.
+- Test data goes in `supabase/seed.sql` or `supabase/manual-tests/`, not in the migrations.
+- Use the Supabase CLI through `npx supabase ...` (`db push`, then `npm run gen:types`). If the CLI gives trouble on Windows, give me the SQL to paste into the Supabase **SQL Editor** instead.
