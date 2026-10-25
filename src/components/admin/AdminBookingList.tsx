@@ -102,7 +102,7 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
                 className="flex flex-col gap-1.5 rounded-2xl border border-admin-line bg-white p-3.5 focus-visible:outline-2 focus-visible:outline-brown active:bg-admin-bg"
               >
                 <span className="flex items-start justify-between gap-2.5">
-                  <span className="min-w-0 text-sm font-semibold text-ink">{booking.guest_name}</span>
+                  <span className="min-w-0 break-words text-sm font-semibold text-ink">{booking.guest_name}</span>
                   <Badge variant={badge.variant}>{badge.label}</Badge>
                 </span>
                 <span className="text-xs text-muted">

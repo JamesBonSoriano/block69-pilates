@@ -179,18 +179,18 @@ async function SettingsBody() {
 
       <AdminActionForm id={FORM_ID} action={saveSettings} submitLabel="Save changes" footerNote="Everything on this page is saved together.">
         <input type="hidden" name="form" value="settings" />
-        <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
           <div className="flex flex-col gap-5">
             {/* ---- Cafe details ---- */}
             <AdminCard className="flex flex-col gap-4">
               <h2 className="text-base font-semibold">Cafe information</h2>
-              <div className="grid gap-4 sm:grid-cols-2">{CAFE_FIELDS.map(field)}</div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{CAFE_FIELDS.map(field)}</div>
             </AdminCard>
 
             {/* ---- Links ---- */}
             <AdminCard className="flex flex-col gap-4">
               <h2 className="text-base font-semibold">Social links and Chat With Us</h2>
-              <div className="grid gap-4 sm:grid-cols-2">{LINK_FIELDS.map(field)}</div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{LINK_FIELDS.map(field)}</div>
             </AdminCard>
 
             {/* ---- Drinks ---- */}
@@ -228,7 +228,7 @@ async function SettingsBody() {
                   </>
                 }
               />
-              <div className="grid gap-4 sm:grid-cols-2">{PAYMENT_FIELDS.map(field)}</div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{PAYMENT_FIELDS.map(field)}</div>
               <p className="text-xs text-muted">
                 These are the CAFE&apos;s own accounts, shown so clients can pay you. Clients&apos; card or bank numbers
                 are never stored.
@@ -238,7 +238,7 @@ async function SettingsBody() {
             {/* ---- Alerts ---- */}
             <AdminCard className="flex flex-col gap-4">
               <h2 className="text-base font-semibold">Alerts</h2>
-              <div className="grid gap-4 sm:grid-cols-2">{ALERT_FIELDS.map(field)}</div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{ALERT_FIELDS.map(field)}</div>
             </AdminCard>
 
             {/* ---- Where the other rules live ---- */}

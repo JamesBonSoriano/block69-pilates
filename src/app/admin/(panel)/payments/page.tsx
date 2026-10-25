@@ -174,7 +174,7 @@ async function PaymentsBody({ searchParams }: { searchParams: PageProps<"/admin/
       </div>
 
       {/* ---- Earnings ---- */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <EarningsByWeek weeks={weeks} note={`Last ${WEEKS_SHOWN} weeks, Monday to Sunday`} />
         <EarningsByMethod methods={methods} note={monthName} />
       </div>
@@ -232,7 +232,7 @@ async function PaymentsBody({ searchParams }: { searchParams: PageProps<"/admin/
               : "No payments match these filters."}
         </AdminCard>
       ) : values.view === "review" ? (
-        <ul className="grid gap-4 lg:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {list.rows.map((payment) => (
             <ReviewCard
               key={payment.payment_id}
@@ -281,7 +281,7 @@ function LatePaymentHelp() {
 // Takes: the current filters. Gives back: the form.
 function PaymentFilters({ values }: { values: PaymentFilterValues }) {
   return (
-    <Form action="/admin/payments" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_auto] lg:items-end">
+    <Form action="/admin/payments" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_auto] lg:items-end">
       <Input
         label="Search"
         name="q"
@@ -388,7 +388,7 @@ function PaymentList({ payments, late }: { payments: AdminPayment[]; late: boole
                 className="flex flex-col gap-1.5 rounded-2xl border border-admin-line bg-white p-3.5 focus-visible:outline-2 focus-visible:outline-brown active:bg-admin-bg"
               >
                 <span className="flex items-start justify-between gap-2.5">
-                  <span className="min-w-0 text-sm font-semibold text-ink">
+                  <span className="min-w-0 break-words text-sm font-semibold text-ink">
                     {payment.is_walkin ? `Walk-in: ${payment.guest_name}` : payment.guest_name}
                   </span>
                   <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -397,7 +397,7 @@ function PaymentList({ payments, late }: { payments: AdminPayment[]; late: boole
                   {formatManilaDateTime(payment.paid_at ?? payment.created_at)} · {classLine(payment)}
                 </span>
                 <span className="flex items-center justify-between gap-2 text-xs">
-                  <span className="truncate text-muted">{referenceLine(payment)}</span>
+                  <span className="min-w-0 truncate text-muted">{referenceLine(payment)}</span>
                   <span className="shrink-0 font-semibold text-ink">
                     {formatPeso(Number(payment.amount))} · {paymentMethodName(payment.method, payment.provider)}
                   </span>
@@ -423,7 +423,7 @@ function ReviewCard({ payment, screenshotUrl }: { payment: AdminPayment; screens
       <AdminCard className="flex h-full flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold">{payment.guest_name}</p>
+            <p className="break-words text-sm font-semibold">{payment.guest_name}</p>
             <p className="text-xs text-muted">
               {bookingReference(payment.booking_id)} · {classLine(payment)}
             </p>

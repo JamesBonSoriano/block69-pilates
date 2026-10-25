@@ -5,9 +5,10 @@
 //   Settings + Pricing pages: saveSettings()
 //   Pricing & Vouchers:       createPromo(), setPromoEnabled()
 //   Payments (Needs review):  reviewPayment()
-//   Schedule:                 saveTemplate(), addTemplate(), createClasses(), updateClass()
+//   Schedule:                 saveTemplate(), addTemplate(), openNextWeeks(), updateClass()
 //   Content:                  saveContent(), saveSiteImage(), removeSiteImage()
-//   Users:                    setUserActive(), setUserRole()
+//   (Users moved to src/lib/admin/user-actions.ts in Version 1.4: no more
+//   Deactivate or Make admin buttons; admins are set with SQL)
 //
 // "use server" = these run ONLY on our server. Each one:
 //   1. reads and checks the form (friendly first checks),
@@ -206,7 +207,7 @@ export async function reviewPayment(_previous: AdminSaveState, formData: FormDat
 // Takes: the previous state, and the form: template_id, weekday (0-6),
 // start_time and end_time ("HH:MM"), capacity, is_active ("on" = on).
 // Gives back: { saved } or { error }.
-// Only FUTURE classes made with "Create classes" use the new values. Classes
+// Only FUTURE classes made with "Open the next 9 weeks" use the new values. Classes
 // that already have a date are NOT changed (change those one by one below).
 export async function saveTemplate(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
   const templateId = readText(formData, "template_id");
@@ -244,32 +245,34 @@ export async function addTemplate(_previous: AdminSaveState, formData: FormData)
 
   updateTag("schedule");
   refresh();
-  return done("Class time added. Press \"Create classes\" to add its dated classes.");
+  return done("Class time added. Press \"Open the next 9 weeks\" to add its dated classes.");
 }
 
-// Makes the dated classes from the weekly pattern, from today up to N weeks
-// ahead. Classes that already exist are skipped (not changed).
-// Takes: the previous state, and the form: weeks (1 to 12).
-// Gives back: { saved } saying how many new classes were made, or { error }.
-export async function createClasses(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
-  const weeks = Number(readText(formData, "weeks"));
-  if (!Number.isInteger(weeks) || weeks < 1 || weeks > 12) {
-    return { error: "Please pick between 1 and 12 weeks." };
-  }
+// How many weeks of dated classes "Open the next 9 weeks" makes: enough to
+// cover all of next month, which clients can book (Change 17).
+const WEEKS_AHEAD = 9;
 
+// "Open the next 9 weeks" (Schedule > Open classes for booking): makes the
+// dated classes from the weekly pattern, from today up to 9 weeks ahead.
+// Classes that already exist are skipped (not changed).
+// Takes: nothing (the form's previous state and empty form are ignored), so
+// the number of weeks can't be changed from the browser.
+// Gives back: { saved } saying how many new classes were made, or { error }.
+export async function openNextWeeks(): Promise<AdminSaveState> {
   const supabase = await createClient();
   if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
 
-  // generate_sessions (migration 3) checks is_admin() itself too
-  const { data, error } = await supabase.rpc("generate_sessions", { p_weeks: weeks });
+  // generate_sessions (migration 3) checks is_admin() itself too, and gives
+  // back how many NEW classes it made
+  const { data, error } = await supabase.rpc("generate_sessions", { p_weeks: WEEKS_AHEAD });
   if (error) return { error: friendlyDatabaseError(error) };
 
   refresh();
   const made = data ?? 0;
   return done(
     made === 0
-      ? `Nothing new to add: every class for the next ${weeks} week${weeks === 1 ? "" : "s"} already exists.`
-      : `${made} new class${made === 1 ? "" : "es"} added for the next ${weeks} week${weeks === 1 ? "" : "s"}.`,
+      ? `No new classes: the next ${WEEKS_AHEAD} weeks are already open.`
+      : `${made} new class${made === 1 ? "" : "es"} made. Clients can book them now.`,
   );
 }
 
@@ -395,56 +398,6 @@ export async function removeSiteImage(_previous: AdminSaveState, formData: FormD
   updateTag("site-content");
   refresh();
   return done("Photo removed.");
-}
-
-// ---------------------------------------------------------------------------
-// USERS
-// ---------------------------------------------------------------------------
-
-// Deactivates or reactivates someone else's account.
-// Takes: the previous state, and the form: user_id, active ("true" / "false").
-// Gives back: { saved } or { error }. The database refuses the admin's own
-// account (admin_set_user_active, migration 10).
-export async function setUserActive(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
-  const userId = readText(formData, "user_id");
-  const active = readText(formData, "active");
-  if (!isUuid(userId) || (active !== "true" && active !== "false")) {
-    return { error: "Sorry, we couldn't find that account." };
-  }
-
-  const supabase = await createClient();
-  if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
-
-  const { error } = await supabase.rpc("admin_set_user_active", { p_user_id: userId, p_active: active === "true" });
-  if (error) return { error: friendlyDatabaseError(error) };
-
-  refresh();
-  return done(
-    active === "true"
-      ? "Account reactivated. They can log in and book again."
-      : "Account deactivated. They are logged out the next time they open a private page, and can't book.",
-  );
-}
-
-// Makes someone else an admin, or changes an admin back to a client.
-// Takes: the previous state, and the form: user_id, role ("admin" / "client").
-// Gives back: { saved } or { error }. The database refuses the admin's own
-// role (admin_set_user_role, migration 10), so the cafe can't lock itself out.
-export async function setUserRole(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
-  const userId = readText(formData, "user_id");
-  const role = readText(formData, "role");
-  if (!isUuid(userId) || (role !== "admin" && role !== "client")) {
-    return { error: "Sorry, we couldn't find that account." };
-  }
-
-  const supabase = await createClient();
-  if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
-
-  const { error } = await supabase.rpc("admin_set_user_role", { p_user_id: userId, p_role: role });
-  if (error) return { error: friendlyDatabaseError(error) };
-
-  refresh();
-  return done(role === "admin" ? "They are an admin now." : "They are a client now (no admin pages).");
 }
 
 // ---------------------------------------------------------------------------

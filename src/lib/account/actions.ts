@@ -38,6 +38,9 @@ import { cancelTiming } from "@/lib/booking-rules";
 import { loadMyBookings } from "@/lib/data/account";
 import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
 import type { MyNotification } from "@/lib/data/notifications";
+import { getPublicSettings } from "@/lib/data/settings";
+import { sendEmail } from "@/lib/email";
+import { emailChangedAlert } from "@/lib/email-text";
 import { formatManilaDate } from "@/lib/format";
 import { toNotificationListItem } from "@/lib/notifications";
 import { getSiteUrl } from "@/lib/site-url";
@@ -276,9 +279,10 @@ export async function updateProfileField(_previous: AccountFormState, formData: 
 //   2. confirmEmailChange(): the code is checked with verifyOtp(type
 //      "email_change"). Supabase changes the login email, and the database
 //      copies it into profiles.email (migration 16's trigger).
-//   3. A security alert goes to the OLD email ("Your Block 69 email was
-//      changed..."): Supabase's own "Email address changed" notification
-//      (Authentication > Emails, needs our own email sender, Step 14).
+//   3. A security alert goes to the OLD email ("Your Block 69 Cafe email was
+//      changed..."), sent by US through Gmail SMTP (sendEmailChangedAlert
+//      below, Version 1.4). Leave Supabase's own "Email address changed"
+//      notification OFF, or the client gets two alerts.
 // The code email needs the "Change Email Address" template to show {{ .Token }}.
 
 // Starts an email change: checks the password and sends the code.
@@ -373,14 +377,41 @@ export async function confirmEmailChange(_previous: EmailChangeState, formData: 
     return { ...codeStep, error: "Your new email isn't confirmed yet. Please message the cafe with Chat With Us." };
   }
 
-  // TODO(Step 14): if Supabase's "Email address changed" notification can't
-  // be turned on, send our own alert to the OLD email (user.email) here:
-  // "Your Block 69 email was changed. If this wasn't you, contact us."
+  // Security alert to the OLD email. A failed email never stops the change
+  await sendEmailChangedAlert(supabase, user.id, user.email, newEmail);
 
   // Draw the page again with the new email (profiles.email was synced by the
   // database trigger, migration 16)
   refresh();
   return { step: "done", newEmail };
+}
+
+// Emails the "your email was changed" alert to the OLD address (step 3 above).
+// Takes: the logged-in Supabase client, the user id, the old and the new email.
+// Gives back: nothing. Never throws: a missing SMTP key or a Gmail problem
+// is only written to the server log, so the email change still finishes.
+// (Not exported, so the browser can't call it.)
+async function sendEmailChangedAlert(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  oldEmail: string,
+  newEmail: string,
+): Promise<void> {
+  try {
+    const [settings, { data: profile }] = await Promise.all([
+      getPublicSettings(),
+      supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+    ]);
+    const email = emailChangedAlert(profile?.full_name?.trim() || null, newEmail, {
+      name: settings.cafeName,
+      address: settings.cafeAddress,
+      email: settings.cafeEmail,
+    });
+    const result = await sendEmail({ to: oldEmail, ...email, replyTo: settings.cafeEmail });
+    if (!result.ok) console.error("Email-changed alert was not sent:", result.error);
+  } catch (error) {
+    console.error("Email-changed alert was not sent:", error);
+  }
 }
 
 // ---------------------------------------------------------------------------

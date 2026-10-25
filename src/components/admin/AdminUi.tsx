@@ -6,8 +6,11 @@
 //   StatCard         a number card (Dashboard, Attendance)
 //   AdminLoading     grey placeholders while live data loads
 //   AdminLoadError   "couldn't load" message
+//   AdminBackLink    "← Back" at the top of a page
 // Where it's used: the pages in src/app/admin/ and src/components/admin/.
 
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
@@ -117,6 +120,22 @@ export function AdminLoading({ label, blocks = 3 }: { label: string; blocks?: nu
         <div key={n} aria-hidden="true" className="h-28 animate-pulse rounded-2xl border border-admin-line bg-white" />
       ))}
     </div>
+  );
+}
+
+// A "Back" link at the top of an admin page (Version 1.4: Content sections,
+// View / Edit user, Communications).
+// Takes: where it goes and the words (default "Back").
+// Gives back: a link with a left arrow, at least 44px tall.
+export function AdminBackLink({ href, label = "Back" }: { href: string; label?: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-full pr-3 text-sm font-semibold text-brown hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown"
+    >
+      <ArrowLeft aria-hidden="true" className="size-4" />
+      {label}
+    </Link>
   );
 }
 

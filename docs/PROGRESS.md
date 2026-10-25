@@ -24,16 +24,21 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - 2026-10-26 Version 1.4 (client): no Save login (always remembered), Log out only on My Profile, one-code email change (password first), Deactivate blocked like Delete + "Welcome back!" self-reactivation (`/reactivate`), payments filter tidy, Notification Settings, 11-digit phone box, Home mat card -> `/book?mat=yes` (migration 17, pushed 2026-10-26, types regenerated)
 - 2026-10-26 Version 1.4 (admin part 1): split `/admin/login`, no cross-login links, admin Log out -> `/admin/login`, no View website, Walk-in + Attendance pages removed, Dashboard 2 cards + View all + Overview grid, Bookings chips (Forfeited incl. no-show), booking details: "Class cancelled", cancel-only box (no admin transfer), Attendance only when paid, printable `/admin/receipt/[id]` (migration 18 `v14_admin`, pushed 2026-10-26, types regenerated)
 - 2026-10-26 Late payments: clients move their own `paid_needs_action` booking free, any time ("Move to another class" on My Bookings), only if paid covers the total (migration 19 `late_transfer`, pushed, types regenerated)
-- Last checks: `test:db` 628/628, `test:unit` 37/37, `tsc` / `lint` / `build` clean
+- 2026-10-26 Version 1.4 (admin part 2): Schedule = 2 tables (weekly pattern with Edit pop-up; upcoming classes, 10 per page) + Create classes; Content = hub of 5 cards -> `/admin/content/<section>` (no Fill-in sidebar); Users = table with search / sort / pages, View, Edit (name, mobile, Instagram, birthday), Communications (email message, resend confirmation, history); no Deactivate / Make admin buttons
+- Emails: Gmail SMTP via nodemailer (`src/lib/email.ts`, never throws), admin-only `communications` log; email-changed alert to the OLD email is ours now (migration 20 `v14_admin_users`, pushed 2026-10-26, types regenerated)
+- 2026-10-26 Admin phones: Schedule rows and other admin tables (Pricing 50% codes, Payments weekly earnings) are stacked cards under 768px; every admin grid has `grid-cols-1` so nothing widens the page; "Open classes for booking" always makes 9 weeks and says how many were new
+- Last checks: `test:db` 676/676, `test:unit` 41/41, `tsc` / `lint` / `build` clean
 
 ## Next
 - **You:** click-through Version 1.4 (client + admin part 1) at 390px and 1440px
 - **Transfer bug:** some open dates seemed missing on the transfer page (Thu Oct 29 10:15). Find the real cause and add a test that every open class with seats shows
-- **Home page** to match Figma node 103-26 (a bigger export would help), then Revisions part 2 (admin) and part 3 (emails)
+- **You:** click-through Version 1.4 admin part 2 (Schedule, Content, Users, Communications, plus no sideways scroll on every admin page) at 390px and 1440px
+- **You, email:** Gmail App Password -> `SMTP_*` + `EMAIL_FROM` in `.env.local` (restart `npm run dev`), and the same Gmail as Supabase custom SMTP
+- **Home page** to match Figma node 103-26 (a bigger export would help); reminders + pg_cron still Step 14
 - **Step 13** deploy (`docs/prompts/13-deploy.md`), **Step 14** emails + pg_cron + Communications (`14-emails-reminders.md`), **Step 15** final check (`15-final-check.md`)
 - **You, `.env.local`:** add `SUPABASE_SECRET_KEY` (webhook, PayMongo return, Delete account) and `PAYMONGO_SECRET_KEY`, then restart `npm run dev`
 - **You, Supabase dashboard:** turn ON "Require current password when updating"; enable the Google provider (Google Cloud OAuth client, redirect `https://mbfshqndgiywphuannuw.supabase.co/auth/v1/callback`); delete the throwaway `step10-check-…@example.com` users
-- **You, after SMTP (Step 14):** turn OFF "Secure email change" (one code, new email only); Change Email template shows `{{ .Token }}`; turn ON the "Email address changed" security notification (alert to the old email; else TODO in `confirmEmailChange`); Reset password → `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`; Confirm signup → same with `type=email`; then turn Confirm email ON and retest
+- **You, after SMTP (Step 14):** turn OFF "Secure email change" (one code, new email only); Change Email template shows `{{ .Token }}`; leave Supabase's "Email address changed" notification OFF (we send our own alert); Reset password → `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`; Confirm signup → same with `type=email`; then turn Confirm email ON and retest
 - **You, after deploy:** add the Vercel URL to Supabase Site URL + Redirect URLs (`https://<site>/**`, keep localhost); add the PayMongo webhook `https://<site>/api/paymongo/webhook` (event `checkout_session.payment.paid`) and put its secret in Vercel as `PAYMONGO_WEBHOOK_SECRET`
 - **You:** click-throughs at 390px and 1440px for Step 11 (both parts), Step 12, R1 and Change 17 (SQL in `supabase/manual-tests/`, setup + cleanup, pasted by hand); fill in the [PLACEHOLDERS] on admin Settings and Content
 
@@ -43,7 +48,8 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - **No `₱` or other non-English characters in migration files**, even in comments (the Windows test database reads them as WIN1252). Use `{class_price}` in page text and "pesos" in comments
 - **Types:** `npm run gen:types` after every `db push`, never `npx ... > file` in PowerShell (saves UTF-16)
 - **New fill-in word:** add it to `FILL_INS` (`src/lib/content-text.ts`) **and** `KNOWN_FILL_INS` (`supabase/tests/08-page-content.test.mjs`)
-- **Env keys** (`.env.example`, values only in `.env.local`, made by hand): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` (server only), `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET` (can stay empty on localhost), `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY` (unused; Step 14 plans Gmail SMTP keys `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`)
+- **Env keys** (`.env.example`, values only in `.env.local`, made by hand): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` (server only), `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET` (can stay empty on localhost), `NEXT_PUBLIC_SITE_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` (Gmail App Password, server only)
+- Never rewrite files with PowerShell `Get-Content | Set-Content` (garbles `…` `·` `₱`); use the editor or python
 - `supabase/manual-tests/*.sql` and `seed.sql` are test data, pasted by hand, never pushed. Test promo codes start with TEST so cleanup removes them
 - Client Server Actions refuse admins (`STAFF_ACCOUNT_ERROR`); admin actions re-check `is_admin()` before calling the database
 - Money is `numeric(10,2)` pesos (× 100 only for PayMongo). Class dates and times are Manila time

@@ -148,7 +148,7 @@ async function Receipt({ params }: { params: PageProps<"/admin/receipt/[bookingI
         </header>
 
         {/* Who and what */}
-        <dl className="grid gap-4 text-sm sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <Detail label="Billed to">
             <span className="block font-semibold">{booking.guest_name}</span>
             {booking.guest_email && <span className="block break-all">{booking.guest_email}</span>}

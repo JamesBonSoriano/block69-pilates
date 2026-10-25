@@ -73,7 +73,7 @@ async function PricingBody() {
 
   return (
     <>
-      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         {/* ---- Prices and booking rules ---- */}
         <AdminCard>
           <AdminActionForm
@@ -83,7 +83,7 @@ async function PricingBody() {
           >
             <input type="hidden" name="form" value="pricing" />
             <h2 className="text-base font-semibold">Prices</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Class price (per seat, ₱)"
                 name="class_price"
@@ -113,7 +113,7 @@ async function PricingBody() {
             </p>
 
             <h2 className="pt-2 text-base font-semibold">Booking rules</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Seat hold while paying (minutes)"
                 name="hold_minutes"
@@ -142,7 +142,7 @@ async function PricingBody() {
         <AdminCard>
           <AdminActionForm action={createPromo} submitLabel="Create code" pendingLabel="Creating…" resetOnSave>
             <h2 className="text-base font-semibold">Create a promo code</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Code"
                 name="code"
@@ -221,8 +221,10 @@ async function PricingBody() {
         {personal.length === 0 ? (
           <p className="px-4 py-5 text-sm text-muted lg:px-5">No 50% codes have been issued yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-[13px]">
+          <>
+          {/* ===== Tablet and laptop: table ===== */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full border-collapse text-[13px]">
               <caption className="sr-only">50% codes issued by the system</caption>
               <thead>
                 <tr className="border-b border-admin-line text-left text-[11px] uppercase tracking-[0.06em] text-muted">
@@ -256,6 +258,27 @@ async function PricingBody() {
               </tbody>
             </table>
           </div>
+
+          {/* ===== Phone: one small card per code (nothing wider than the screen) ===== */}
+          <ul className="flex flex-col divide-y divide-admin-bg md:hidden">
+            {personal.map((code) => {
+              const badge = adminVoucherBadge(code.state, code.used_for_date);
+              return (
+                <li key={code.voucher_id} className="flex flex-col gap-1 px-4 py-3 text-[13px]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold">{code.code}</span>
+                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                  </div>
+                  <p className="break-all text-xs text-muted">{code.owner_name ?? code.owner_email ?? "Client"}</p>
+                  <p className="text-xs text-muted">
+                    Issued {formatManilaDate(code.created_at)} · expires{" "}
+                    {code.expires_at ? formatManilaDate(code.expires_at) : "never"}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+          </>
         )}
       </AdminCard>
     </>
@@ -272,7 +295,7 @@ function PromoRow({ promo }: { promo: AdminVoucher }) {
   const isOff = promo.state === "off";
 
   return (
-    <li className="grid gap-2 px-4 py-3.5 text-[13px] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center lg:px-5">
+    <li className="grid grid-cols-1 gap-2 px-4 py-3.5 text-[13px] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center lg:px-5">
       <div className="flex items-center justify-between gap-2 sm:block">
         <span className="font-semibold">{promo.code}</span>
         <Badge variant={badge.variant} className="sm:hidden">

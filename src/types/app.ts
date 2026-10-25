@@ -297,6 +297,44 @@ export type AdminUser = Omit<AdminUserRow, "full_name" | "email" | "mobile" | "i
   last_class_date: string | null;
 };
 
+// One account's details and totals on the View user page (admin_get_user,
+// migration 20). The generated types say every column is filled in, but
+// these are empty (null) when there's nothing to show.
+type AdminUserDetailsRow = PublicSchema["Functions"]["admin_get_user"]["Returns"][number];
+export type AdminUserDetails = Omit<
+  AdminUserDetailsRow,
+  | "full_name"
+  | "email"
+  | "mobile"
+  | "instagram"
+  | "birthday"
+  | "last_class_date"
+  | "last_class_time"
+  | "next_class_date"
+  | "next_class_time"
+  | "last_payment_amount"
+  | "last_payment_at"
+> & {
+  full_name: string | null;
+  email: string | null;
+  mobile: string | null;
+  instagram: string | null;
+  birthday: string | null;
+  last_class_date: string | null;
+  last_class_time: string | null;
+  next_class_date: string | null;
+  next_class_time: string | null;
+  last_payment_amount: number | null;
+  last_payment_at: string | null;
+};
+
+// One of a person's bookings on the View user and Communications pages
+// (admin_user_bookings, migration 20).
+export type AdminUserBooking = PublicSchema["Functions"]["admin_user_bookings"]["Returns"][number];
+
+// One email the admin sent to a client (the communications table, migration 20).
+export type CommunicationRow = PublicSchema["Tables"]["communications"]["Row"];
+
 // What admin_change_rule() says for one booking: the client's rules
 // (ChangeRule) plus "late_payment" (paid after the hold ended, class full).
 export type AdminChangeRule = ChangeRule | "late_payment";

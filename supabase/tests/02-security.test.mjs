@@ -117,9 +117,9 @@ export default async function run(t) {
     order by 1`);
   const weak = tables.filter((x) => !x.rls || x.policies === 0);
   // (11 = the 9 from migration 1 + booking_admin_actions from migration 10
-  // + notifications from migration 12)
-  check('RLS is on, with policies, for every table', '11 tables, all protected',
-    tables.length === 11 && weak.length === 0,
+  // + notifications from migration 12 + communications from migration 20)
+  check('RLS is on, with policies, for every table', '12 tables, all protected',
+    tables.length === 12 && weak.length === 0,
     `${tables.length} tables` + (weak.length ? `; NOT protected: ${weak.map((x) => x.name).join(', ')}` : ', all protected'));
 
   // Which of our functions each browser role may call. (Trigger functions are
@@ -144,11 +144,13 @@ export default async function run(t) {
     // migration 11 (payments) adds admin_billing_summary, confirm_free_booking,
     // save_online_checkout, start_online_payment and submit_manual_payment
     // (confirm_online_payment is for the server key only, so it's NOT here)
+    // migration 20 (Users + Communications) adds admin_finish_message, admin_get_user,
+    // admin_start_message, admin_update_user and admin_user_bookings
     'admin_billing_summary', 'admin_booking_change_info', 'admin_cancel_booking', 'admin_cancel_session', 'admin_class_rosters', 'admin_create_promo', 'admin_dashboard_summary',
-    'admin_earnings', 'admin_get_booking', 'admin_list_payments', 'admin_list_sessions', 'admin_list_users',
+    'admin_earnings', 'admin_finish_message', 'admin_get_booking', 'admin_get_user', 'admin_list_payments', 'admin_list_sessions', 'admin_list_users',
     'admin_list_vouchers', 'admin_review_manual_payment', 'admin_search_bookings', 'admin_set_attendance',
-    'admin_set_promo_enabled', 'admin_set_user_active', 'admin_set_user_role', 'admin_transfer_booking', 'admin_update_session',
-    'admin_update_settings', 'admin_walkin_booking',
+    'admin_set_promo_enabled', 'admin_set_user_active', 'admin_set_user_role', 'admin_start_message', 'admin_transfer_booking', 'admin_update_session',
+    'admin_update_settings', 'admin_update_user', 'admin_user_bookings', 'admin_walkin_booking',
     // migration 16 (Change 17) adds close_my_account and my_account_deletion_blockers
     // (Delete account: each only touches the caller's own account)
     'book_seat', 'cancel_my_booking', 'check_voucher', 'close_my_account', 'confirm_free_booking', 'deactivate_my_account', 'generate_sessions',

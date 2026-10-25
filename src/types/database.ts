@@ -252,6 +252,73 @@ export type Database = {
           },
         ]
       }
+      communications: {
+        Row: {
+          body: string
+          booking_id: string | null
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          kind: string
+          sent_by: string | null
+          status: string
+          subject: string
+          to_email: string
+          user_id: string | null
+        }
+        Insert: {
+          body: string
+          booking_id?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind: string
+          sent_by?: string | null
+          status?: string
+          subject: string
+          to_email: string
+          user_id?: string | null
+        }
+        Update: {
+          body?: string
+          booking_id?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          sent_by?: string | null
+          status?: string
+          subject?: string
+          to_email?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_log: {
         Row: {
           booking_id: string | null
@@ -694,6 +761,10 @@ export type Database = {
           provider: Database["public"]["Enums"]["payment_provider"]
         }[]
       }
+      admin_finish_message: {
+        Args: { p_error?: string; p_message_id: string; p_sent: boolean }
+        Returns: undefined
+      }
       admin_get_booking: {
         Args: { p_booking_id: string }
         Returns: {
@@ -737,6 +808,33 @@ export type Database = {
           user_id: string
           voucher_code: string
           voucher_source: Database["public"]["Enums"]["voucher_source"]
+        }[]
+      }
+      admin_get_user: {
+        Args: { p_user_id: string }
+        Returns: {
+          birthday: string
+          created_at: string
+          email: string
+          full_name: string
+          instagram: string
+          is_active: boolean
+          is_deleted: boolean
+          last_class_date: string
+          last_class_time: string
+          last_payment_amount: number
+          last_payment_at: string
+          mat_rentals: number
+          mobile: string
+          next_class_date: string
+          next_class_time: string
+          payments_count: number
+          role: Database["public"]["Enums"]["user_role"]
+          sessions_attended: number
+          sessions_booked: number
+          total_spent: number
+          upcoming: number
+          user_id: string
         }[]
       }
       admin_list_payments: {
@@ -793,7 +891,13 @@ export type Database = {
         }[]
       }
       admin_list_users: {
-        Args: { p_limit?: number; p_role?: string; p_search?: string }
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_role?: string
+          p_search?: string
+          p_sort?: string
+        }
         Returns: {
           bookings: number
           created_at: string
@@ -892,6 +996,20 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      admin_start_message: {
+        Args: {
+          p_body: string
+          p_booking_id?: string
+          p_kind: string
+          p_subject: string
+          p_user_id: string
+        }
+        Returns: {
+          full_name: string
+          message_id: string
+          to_email: string
+        }[]
+      }
       admin_transfer_booking: {
         Args: {
           p_booking_id: string
@@ -916,6 +1034,31 @@ export type Database = {
         }[]
       }
       admin_update_settings: { Args: { p_values: Json }; Returns: number }
+      admin_update_user: {
+        Args: {
+          p_birthday: string
+          p_full_name: string
+          p_instagram: string
+          p_mobile: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_user_bookings: {
+        Args: { p_limit?: number; p_user_id: string }
+        Returns: {
+          booking_id: string
+          class_ended: boolean
+          date: string
+          end_time: string
+          mat_rental: boolean
+          paid_amount: number
+          session_status: Database["public"]["Enums"]["session_status"]
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"]
+          total: number
+        }[]
+      }
       admin_walkin_booking: {
         Args: {
           p_agreed: boolean

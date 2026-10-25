@@ -116,21 +116,27 @@ export async function getAdminVouchers(): Promise<AdminVoucher[]> {
   return data as AdminVoucher[];
 }
 
-// Loads the accounts for the Users page.
-// Takes: search text (name, email or mobile; "" = everyone) and a role
-// ("client", "admin" or "" for everyone).
-// Gives back: the accounts (at most 200), by name, and the total count.
+// Loads the accounts for the Users page (and the Dashboard's new clients).
+// Takes: search text (name, email or mobile; "" = everyone), a role
+// ("client", "admin" or "" for everyone), and optionally (Version 1.4,
+// migration 20) the sort ("name" = A-Z, "newest") and which page of how many.
+// Gives back: the accounts (one page, or the first 200), and the total count.
 // Throws if Supabase can't be reached.
 export async function getAdminUsers(
   search: string,
   role: "" | "client" | "admin",
+  options: { sort?: "name" | "newest"; page?: number; perPage?: number } = {},
 ): Promise<{ rows: AdminUser[]; totalMatches: number }> {
   await io();
   const supabase = await createClient();
+  const perPage = options.perPage ?? 200;
   const { data, error } = await supabase.rpc("admin_list_users", {
     p_search: search || undefined,
     p_role: role || undefined,
-    p_limit: 200,
+    p_limit: perPage,
+    // Page 1 skips 0 rows, page 2 skips one page, ...
+    p_offset: (Math.max(1, options.page ?? 1) - 1) * perPage,
+    p_sort: options.sort ?? "name",
   });
   if (error) {
     throw new Error(`Could not load the accounts: ${error.message}`);

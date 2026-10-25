@@ -87,8 +87,9 @@ export function EarningsByWeek({ weeks, note }: { weeks: WeekEarnings[]; note: R
       {/* The same numbers as a table (for screen readers, and anyone who wants exact figures) */}
       <details className="text-xs">
         <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-brown">Show as a table</summary>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] border-collapse">
+        {/* Wider screens: a table */}
+        <div className="hidden overflow-x-auto sm:block">
+          <table className="w-full border-collapse">
             <caption className="sr-only">Earnings by week</caption>
             <thead>
               <tr className="border-b border-admin-line text-left text-muted">
@@ -112,6 +113,21 @@ export function EarningsByWeek({ weeks, note }: { weeks: WeekEarnings[]; note: R
             </tbody>
           </table>
         </div>
+        {/* Phones: one small stacked card per week, so nothing is wider than the screen */}
+        <ul className="flex flex-col divide-y divide-admin-bg sm:hidden">
+          {weeks.map((week) => (
+            <li key={week.label} className="flex flex-col gap-0.5 py-2">
+              <span className="flex justify-between gap-3 font-semibold">
+                {week.label}
+                <span>{formatPeso(week.classFees + week.mats)}</span>
+              </span>
+              <span className="text-muted">
+                Class fees {formatPeso(week.classFees)} · mat rental {formatPeso(week.mats)} · {week.payments} payment
+                {week.payments === 1 ? "" : "s"}
+              </span>
+            </li>
+          ))}
+        </ul>
       </details>
     </AdminCard>
   );

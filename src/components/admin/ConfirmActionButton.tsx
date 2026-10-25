@@ -3,12 +3,11 @@
 // "Are you sure?" box. Used for small actions on a list row:
 //   Pricing:  Turn off / Turn on a promo code
 //   Payments: Approve / Reject a manual transfer
-//   Users:    Deactivate / Reactivate, Make admin / Make client
-// Where it's used: the pages in src/app/admin/ (Pricing, Payments, Users).
+// Where it's used: the pages in src/app/admin/ (Pricing, Payments).
 //
 // The values the action needs (e.g. voucher_id) are sent as hidden fields.
-// The database checks everything again (e.g. an admin can't deactivate
-// their own account), so this button is never the only safety check.
+// The database checks everything again, so this button is never the only
+// safety check.
 //
 // "use client" = it opens the box (<dialog>), shows "Saving…" and the answer.
 

@@ -167,7 +167,7 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
         </Notice>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <div className="flex flex-col gap-5">
           {/* ---- The class ---- */}
           <AdminCard className="flex flex-col gap-3">
