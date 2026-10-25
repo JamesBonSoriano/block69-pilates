@@ -18,14 +18,15 @@ import {
   MIN_PASSWORD_LENGTH,
   RESET_EMAIL_SENT_MESSAGE,
   friendlyAuthError,
+  loginErrorMessage,
 } from "@/lib/auth/errors";
 import type { AuthFormState } from "@/lib/auth/form-state";
 import {
   ADMIN_LOGIN_PATH,
+  INCORRECT_LOGIN_MESSAGE,
   isWrongPortal,
   landingPath,
   type LoginPortal,
-  wrongPortalMessage,
 } from "@/lib/auth/login-portal";
 import { safeNextPath } from "@/lib/auth/safe-next";
 import { reactivatePath } from "@/lib/auth/user";
@@ -144,8 +145,9 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
 // Gives back: nothing; it sends the browser to Google. After the person
 // agrees, Google sends them to Supabase, and Supabase sends them to our
 // /auth/confirm?flow=google&next=... with a one-time code, which logs them
-// in (src/app/auth/confirm/route.ts also refuses deactivated and admin
-// accounts there, and sends self-deactivated clients to "Welcome back!"). A first-time Google user gets a new client account; the
+// in (src/app/auth/confirm/route.ts also refuses admin accounts with
+// "Incorrect email or password." and deactivated accounts, and sends
+// self-deactivated clients to "Welcome back!"). A first-time Google user gets a new client account; the
 // sign-up trigger saves their Google name, and "Finish your profile" asks for
 // the mobile number and birthday Google doesn't give us.
 // Any Google account is accepted (you approved this: Google has already
@@ -286,15 +288,19 @@ export async function adminLogOut(): Promise<void> {
 // Takes: which login page was used ("client" or "admin") and the form.
 // Gives back: an error to show, or sends them to their start page.
 // Steps:
-//   1. Supabase checks the email and password.
-//   2. Deactivated accounts are logged straight back out, EXCEPT a client
+//   1. Supabase checks the email and password. A wrong password and an
+//      unknown email both get "Incorrect email or password."
+//   2. An account on the WRONG login page (an admin on /login, a client on
+//      /admin/login) is logged straight back out with that SAME message, so
+//      the page never gives away that the account exists or is staff. This
+//      comes before the deactivated check, so a deactivated account on the
+//      wrong page looks the same too.
+//   3. Deactivated accounts are logged straight back out, EXCEPT a client
 //      who deactivated their own account (Version 1.4): they stay logged in
 //      and go to the "Welcome back! Reactivate your account?" page.
-//   3. The database's is_admin() says if it's an active admin. An account on
-//      the wrong login page is logged straight back out (Revisions part 1,
-//      item 1; Version 1.4 dropped the link to the other login page). We only say this AFTER the
-//      password was right, so it never helps a stranger guess accounts.
-//   4. They go to "next" or their usual start page (landingPath()).
+//   4. The database's is_admin() (an ACTIVE admin) is checked once more for
+//      the right login page; a mismatch is refused like step 2.
+//   5. They go to "next" or their usual start page (landingPath()).
 async function logInThrough(portal: LoginPortal, formData: FormData): Promise<AuthFormState> {
   const email = readText(formData, "email").toLowerCase();
   const password = readPassword(formData, "password");
@@ -309,19 +315,30 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
   // --- 1. Checks the password. If it's right, Supabase saves the login in cookies.
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    return { error: friendlyAuthError(error), values };
+    return { error: loginErrorMessage(error), values };
   }
 
-  // --- 2. Deactivated accounts may not log in: log them straight back out.
+  // Their own profile row (Row Level Security: only their own row)
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("is_active, self_deactivated_at")
+    .select("role, is_active, self_deactivated_at")
     .eq("id", data.user.id)
     .maybeSingle();
   if (profileError) {
     await supabase.auth.signOut({ scope: "local" });
     return { error: "Something went wrong on our side. Please try again in a moment.", values };
   }
+
+  // --- 2. Wrong login page for this kind of account? Log out at once and
+  //        show the same message as a wrong password (no hint about staff).
+  //        The role is checked even for a deactivated account.
+  if (isWrongPortal(portal, profile?.role === "admin")) {
+    // "local" = only this browser's brand-new login is ended
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: INCORRECT_LOGIN_MESSAGE, values };
+  }
+
+  // --- 3. Deactivated accounts may not log in: log them straight back out.
   if (!profile?.is_active) {
     // They turned it off themselves: ask if they want it back on (only the
     // client login; reactivate_my_account() checks the flag again)
@@ -332,7 +349,8 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
     return { error: DEACTIVATED_MESSAGE, values };
   }
 
-  // --- 3. Right login page for this account? (is_admin() = an ACTIVE admin)
+  // --- 4. Check the login page again with the database's own rule
+  //        (is_admin() = an ACTIVE admin)
   const { data: isAdminAnswer, error: roleError } = await supabase.rpc("is_admin");
   if (roleError) {
     await supabase.auth.signOut({ scope: "local" });
@@ -340,13 +358,11 @@ async function logInThrough(portal: LoginPortal, formData: FormData): Promise<Au
   }
   const isAdmin = isAdminAnswer === true;
   if (isWrongPortal(portal, isAdmin)) {
-    // "local" = only this browser's brand-new login is ended.
-    // No link to the other login page (Version 1.4): the two stay separate.
     await supabase.auth.signOut({ scope: "local" });
-    return { error: wrongPortalMessage(portal), values };
+    return { error: INCORRECT_LOGIN_MESSAGE, values };
   }
 
-  // --- 4. Where to go now. redirect() works by stopping this function, so
+  // --- 5. Where to go now. redirect() works by stopping this function, so
   //        it must be the last step (and never inside a try/catch).
   redirect(landingPath(isAdmin, next));
 }

@@ -11,8 +11,8 @@
 //      each with a pen icon (Save / Cancel)
 //   3. Account Management: Deactivate account, Delete account (both greyed
 //      out while an upcoming class, a seat hold or a payment check blocks them)
-// and a Log out button at the bottom (Version 1.4: it's no longer in the
-// header or the phone menu).
+// The Log out button sits in the top card, beside the name (under it on
+// phones). Version 1.4: it's no longer in the header or the phone menu.
 //
 // ?back=/book/details?session=...  (from booking step 2's "Edit in My
 // Profile") shows a "Back to your booking" link at the top.
@@ -101,19 +101,24 @@ async function ProfileContent({ searchParams }: Pick<PageProps<"/account/profile
         </Link>
       )}
 
-      {/* Who you are: the round picture placeholder (initials) */}
-      <Card className="flex items-center gap-4">
-        <span
-          aria-hidden="true"
-          className="flex size-20 shrink-0 items-center justify-center rounded-full border-4 border-card bg-tan-soft font-heading text-[26px] font-semibold text-brown outline outline-1 outline-line"
-        >
-          {initialsOf(user.fullName, user.email)}
-        </span>
-        <div className="min-w-0">
-          <p className="break-words font-heading text-xl font-semibold text-brown">{user.fullName || "No name yet"}</p>
-          <p className="text-sm text-muted">Member since {memberSince}</p>
-          {account.hasGoogle && <p className="text-xs text-muted">You can log in with Google.</p>}
+      {/* Who you are: the round picture placeholder (initials), and Log out
+          (only this device). Phones: Log out goes full width under the name;
+          wider screens: on the right, centred top to bottom. */}
+      <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
+          <span
+            aria-hidden="true"
+            className="flex size-20 shrink-0 items-center justify-center rounded-full border-4 border-card bg-tan-soft font-heading text-[26px] font-semibold text-brown outline outline-1 outline-line"
+          >
+            {initialsOf(user.fullName, user.email)}
+          </span>
+          <div className="min-w-0">
+            <p className="break-words font-heading text-xl font-semibold text-brown">{user.fullName || "No name yet"}</p>
+            <p className="text-sm text-muted">Member since {memberSince}</p>
+            {account.hasGoogle && <p className="text-xs text-muted">You can log in with Google.</p>}
+          </div>
         </div>
+        <LogoutButton fullWidth className="sm:w-auto" formClassName="sm:shrink-0" />
       </Card>
 
       {/* ===== 1. Account Information ===== */}
@@ -159,9 +164,6 @@ async function ProfileContent({ searchParams }: Pick<PageProps<"/account/profile
           <DeleteAccount blockers={account.deletionBlockers} hasPassword={account.hasPassword} />
         </div>
       </Card>
-
-      {/* Log out (only this device), at the bottom of the page */}
-      <LogoutButton fullWidth className="sm:w-auto" formClassName="flex sm:justify-end" />
     </div>
   );
 }

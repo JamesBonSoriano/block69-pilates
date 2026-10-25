@@ -2,8 +2,10 @@
 // Where it's used: guests who open any admin page are sent here by
 // src/proxy.ts (with ?next=<that page>), admins land here after Log out,
 // and staff can bookmark it.
-// Only ADMIN accounts can log in here. A client account is refused. The
-// client login refuses admins the same way (src/lib/auth/actions.ts).
+// Only ADMIN accounts can log in here. A client account is logged straight
+// back out with "Incorrect email or password." (the same as a wrong
+// password), and the client login refuses admins the same way
+// (src/lib/auth/actions.ts).
 // The two login pages never link to each other (Version 1.4).
 //
 // Version 1.4 layout (the group's Figma design, PDF page 28), in the admin

@@ -20,13 +20,21 @@ export type LoginPortal = "client" | "admin";
 export const CLIENT_LOGIN_PATH = "/login";
 export const ADMIN_LOGIN_PATH = "/admin/login";
 
-// Shown on /login when an ADMIN account tries to log in there.
-export const USE_ADMIN_LOGIN_MESSAGE =
-  "This is a staff account, so it can't log in here. Please use the admin login page.";
+// The ONE message for every refused login, on both login pages: a wrong
+// password, an email with no account, an admin on /login, a client on
+// /admin/login, and an admin's Google account on the client side.
+// Because they all look the same, nobody can use the login pages to find
+// out which emails have an account, or which accounts are staff. It never
+// mentions staff, admins or the other login page.
+export const INCORRECT_LOGIN_MESSAGE = "Incorrect email or password.";
 
-// Shown on /admin/login when a CLIENT account tries to log in there.
-export const USE_CLIENT_LOGIN_MESSAGE =
-  "This login is only for cafe staff. To book classes, please use the client login page.";
+// Supabase error codes from a password login that must show
+// INCORRECT_LOGIN_MESSAGE (and nothing more specific):
+//   - invalid_credentials: wrong password OR no account with that email
+//     (Supabase already gives the same code for both)
+//   - user_not_found, user_banned: in case Supabase ever names these
+//     separately, they must not give away that the email exists
+export const HIDDEN_LOGIN_ERROR_CODES = ["invalid_credentials", "user_not_found", "user_banned"];
 
 // Pages only clients use. A logged-in admin opening one goes to /admin.
 // (/book covers the class list, the booking steps and the booked page.)
@@ -40,11 +48,12 @@ export function isWrongPortal(portal: LoginPortal, isAdmin: boolean): boolean {
   return portal === "client" ? isAdmin : !isAdmin;
 }
 
-// The message to show when isWrongPortal() is true.
-// Takes: which login page was used.
-// Gives back: the message that points them to the other login page.
-export function wrongPortalMessage(portal: LoginPortal): string {
-  return portal === "client" ? USE_ADMIN_LOGIN_MESSAGE : USE_CLIENT_LOGIN_MESSAGE;
+// Checks if a Supabase login error must be shown as the plain
+// "Incorrect email or password." (see HIDDEN_LOGIN_ERROR_CODES).
+// Takes: the error's code (may be missing).
+// Gives back: true if the real reason must stay hidden.
+export function isHiddenLoginError(code: string | undefined): boolean {
+  return code !== undefined && HIDDEN_LOGIN_ERROR_CODES.includes(code);
 }
 
 // Checks if a path is one of the given pages or a page under it.

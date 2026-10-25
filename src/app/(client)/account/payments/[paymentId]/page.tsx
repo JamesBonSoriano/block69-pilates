@@ -1,11 +1,13 @@
 // A payment receipt: /account/payments/<payment id>
 // Where it's used: the "Receipt" link on the Payments page.
-// It's made to be printed or saved as a PDF: the header, footer and account
-// menu are left out of the printout (print:hidden), and so is the Print button.
+// The receipt itself is ReceiptSheet (narrow, like a shop receipt). Under it
+// is "Download receipt (PDF)" (paid payments only): a real PDF made on the
+// server by ./pdf/route.ts, named Block69-Receipt-<receipt no>.pdf. People
+// who want paper print that PDF.
 //
 // ONLY THE PAYMENT'S OWNER: requireClient() checks the login, and
 // get_my_payments(id) (migration 8) gives nothing back for someone else's
-// payment, so they get "page not found".
+// payment, so they get "page not found" (the PDF route checks the same way).
 // Money: the amounts are the ones SAVED on the booking and payment
 // (book_seat() worked them out from settings). Nothing is recalculated here.
 // No card or bank numbers are ever stored, so none can show here.
@@ -13,16 +15,14 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import { AccountLoadError, AccountLoading } from "@/components/account/AccountHeading";
-import { PrintButton } from "@/components/account/PrintButton";
-import { Badge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
+import { DownloadReceiptButton } from "@/components/receipt/DownloadReceiptButton";
+import { ReceiptSheet } from "@/components/receipt/ReceiptSheet";
 import { requireClient } from "@/lib/auth/user";
-import { bookingReference, paymentMethodName, paymentStatusBadge, receiptNumber } from "@/lib/booking-rules";
 import { getMyPayment } from "@/lib/data/account";
 import { getPublicSettings } from "@/lib/data/settings";
-import { formatClassDate, formatManilaDate, formatManilaDateTime, formatPeso, formatTimeRange } from "@/lib/format";
+import { clientReceiptData } from "@/lib/receipt";
 import { isUuid } from "@/lib/validation";
 import type { MyPayment } from "@/types/app";
 
@@ -50,7 +50,7 @@ export default function ReceiptPage({ params }: PageProps<"/account/payments/[pa
 
 // Loads the payment and draws the receipt.
 // Takes: the params promise.
-// Gives back: the receipt card and the Print button.
+// Gives back: the receipt sheet and the Download (PDF) button.
 async function Receipt({ params }: { params: PageProps<"/account/payments/[paymentId]">["params"] }) {
   const { paymentId } = await params;
   if (!isUuid(paymentId)) notFound();
@@ -67,118 +67,22 @@ async function Receipt({ params }: { params: PageProps<"/account/payments/[payme
   }
   if (!payment) notFound();
 
-  const badge = paymentStatusBadge(payment.status, payment.provider);
-  const date = formatClassDate(payment.class_date);
-  const classFee = Number(payment.class_fee);
-  const matFee = Number(payment.mat_fee);
-  const discount = Number(payment.discount);
+  const receipt = clientReceiptData(
+    payment,
+    { name: user.fullName, email: user.email },
+    { name: settings.cafeName, address: settings.cafeAddress, email: settings.cafeEmail },
+  );
 
   return (
     <div className="flex flex-col gap-4">
-      {/* print:border-0 = no box around it on paper */}
-      <Card className="flex flex-col gap-6 print:border-0 print:p-0">
-        {/* Cafe name and address on the left, receipt number on the right */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="font-heading text-2xl font-semibold text-brown">{settings.cafeName}</p>
-            {settings.cafeAddress && <p className="text-sm text-muted">{settings.cafeAddress}</p>}
-            {settings.cafeEmail && <p className="text-sm text-muted">{settings.cafeEmail}</p>}
-          </div>
-          <div className="sm:text-right">
-            <h1 className="font-heading text-xl font-semibold text-brown">Payment receipt</h1>
-            <p className="text-sm text-muted">{receiptNumber(payment.payment_id)}</p>
-            <div className="mt-1">
-              <Badge variant={badge.variant}>{badge.label}</Badge>
-            </div>
-          </div>
-        </div>
-
-        {/* Who, when, how */}
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <Detail label="Paid by">
-            {user.fullName || user.email}
-            <span className="block break-all text-muted">{user.email}</span>
-          </Detail>
-          <Detail label="Date paid">
-            {payment.paid_at ? formatManilaDateTime(payment.paid_at) : `Not paid (started ${formatManilaDate(payment.created_at)})`}
-          </Detail>
-          <Detail label="Method">{paymentMethodName(payment.method, payment.provider)}</Detail>
-          {payment.paymongo_ref && (
-            <Detail label="PayMongo reference">
-              <span className="break-all">{payment.paymongo_ref}</span>
-            </Detail>
-          )}
-          <Detail label="Booking">{bookingReference(payment.booking_id)}</Detail>
-          <Detail label="Class">
-            Mindful Mat Pilates, {date.full} · {formatTimeRange(payment.start_time, payment.end_time)}
-            {payment.now_date && payment.now_start_time && payment.now_end_time && (
-              <span className="block text-muted">
-                Moved to {formatClassDate(payment.now_date).full} ·{" "}
-                {formatTimeRange(payment.now_start_time, payment.now_end_time)}
-              </span>
-            )}
-          </Detail>
-        </dl>
-
-        {/* The money, line by line */}
-        <table className="w-full border-collapse text-sm">
-          <caption className="sr-only">What was paid for</caption>
-          <tbody>
-            <tr className="border-b border-line">
-              <th scope="row" className="py-2.5 text-left font-normal">
-                Class fee{payment.drink_choice ? ` (includes ${payment.drink_choice})` : " (includes your drink)"}
-              </th>
-              <td className="py-2.5 text-right">{formatPeso(classFee)}</td>
-            </tr>
-            {payment.mat_rental && (
-              <tr className="border-b border-line">
-                <th scope="row" className="py-2.5 text-left font-normal">
-                  Mat rental (donated to feed stray animals)
-                </th>
-                <td className="py-2.5 text-right">{formatPeso(matFee)}</td>
-              </tr>
-            )}
-            {discount > 0 && (
-              <tr className="border-b border-line">
-                <th scope="row" className="py-2.5 text-left font-normal">
-                  Voucher{payment.voucher_code ? ` ${payment.voucher_code}` : ""} (class fee only)
-                </th>
-                <td className="py-2.5 text-right">−{formatPeso(discount)}</td>
-              </tr>
-            )}
-            <tr>
-              <th scope="row" className="pt-3 text-left font-heading text-base font-semibold text-brown">
-                {payment.status === "paid" ? "Amount paid" : "Amount"}
-              </th>
-              <td className="pt-3 text-right font-heading text-base font-semibold text-brown">
-                {formatPeso(Number(payment.amount))}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <p className="text-xs leading-relaxed text-muted">
-          Thank you for booking with {settings.cafeName}. This receipt shows a payment for one class. Card and bank
-          details are never stored by the cafe.
-        </p>
-      </Card>
-
-      <div className="flex">
-        <PrintButton />
+      <ReceiptSheet data={receipt} />
+      <div className="flex flex-col items-center gap-2.5 sm:flex-row sm:justify-center print:hidden">
+        {payment.status === "paid" ? (
+          <DownloadReceiptButton href={`/account/payments/${payment.payment_id}/pdf`} />
+        ) : (
+          <p className="text-sm text-muted">A PDF receipt is available once this payment is paid.</p>
+        )}
       </div>
-    </div>
-  );
-}
-
-// One labelled detail on the receipt.
-// Takes: the label and the value.
-// Gives back: a <div> with a <dt> and <dd> (inside the receipt's <dl>).
-function Detail({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      {/* Same look as <Overline> (small bold capitals) */}
-      <dt className="mb-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-brown">{label}</dt>
-      <dd>{children}</dd>
     </div>
   );
 }

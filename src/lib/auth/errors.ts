@@ -7,6 +7,7 @@
 // on the code, never on the English text, because the text can change.
 
 import type { AuthError } from "@supabase/supabase-js";
+import { INCORRECT_LOGIN_MESSAGE, isHiddenLoginError } from "@/lib/auth/login-portal";
 import { MIN_PASSWORD } from "@/lib/validation";
 
 // Shown when a deactivated account tries to log in or is logged out.
@@ -23,6 +24,16 @@ export const RESET_EMAIL_SENT_MESSAGE =
 // checks that also run in the browser).
 export const MIN_PASSWORD_LENGTH = MIN_PASSWORD;
 
+// The message for an error from a PASSWORD LOGIN (both login pages).
+// Takes: the error Supabase gave back.
+// Gives back: "Incorrect email or password." for anything that could tell
+// whether the email has an account (wrong password, unknown email, ...),
+// otherwise the usual friendly message (e.g. "Too many tries").
+export function loginErrorMessage(error: AuthError): string {
+  if (isHiddenLoginError(error.code)) return INCORRECT_LOGIN_MESSAGE;
+  return friendlyAuthError(error);
+}
+
 // Works out the message to show for a Supabase Auth error.
 // Takes: the error Supabase gave back.
 // Gives back: a friendly sentence for the person using the form.
@@ -30,7 +41,7 @@ export function friendlyAuthError(error: AuthError): string {
   switch (error.code) {
     // Wrong email or password (Supabase never says which one, on purpose)
     case "invalid_credentials":
-      return "That email and password don't match. Please check them and try again.";
+      return INCORRECT_LOGIN_MESSAGE;
 
     // Signing up with an email that already has an account
     case "email_exists":

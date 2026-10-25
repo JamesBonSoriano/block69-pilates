@@ -16,8 +16,8 @@
 //     override does, and the reason shows in History (admins only).
 //     Version 1.4: the admin no longer transfers clients; they move
 //     themselves from My Bookings.
-//   - Print receipt: opens /admin/receipt/<booking id>, a page made only for
-//     printing (not a print of this screen)
+//   - View receipt: opens /admin/receipt/<booking id>, the shop-style
+//     receipt with its "Download receipt (PDF)" button
 // If the CAFE cancelled the class, the header says "Class cancelled", the
 // banner explains the free transfer, and there's no Attendance card.
 // Approving / rejecting a GCash or BPI screenshot is on the Payments page
@@ -26,7 +26,7 @@
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
 // database's own admin check (admin_get_booking, migration 9).
 
-import { ArrowLeft, Printer, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ReceiptText, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
@@ -134,8 +134,8 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
         actions={
           hasPaidPayment && (
             <ButtonLink href={`/admin/receipt/${booking.booking_id}`} variant="secondary">
-              <Printer aria-hidden="true" className="size-4" />
-              Print receipt
+              <ReceiptText aria-hidden="true" className="size-4" />
+              View receipt
             </ButtonLink>
           )
         }

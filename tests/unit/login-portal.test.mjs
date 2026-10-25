@@ -5,6 +5,8 @@
 // What it proves:
 //   - an admin account can't log in through the client login (/login), and a
 //     client account can't log in through the admin login (/admin/login)
+//   - every refused login shows the same "Incorrect email or password.",
+//     with no hint about staff or the other login page
 //   - after logging in, admins only ever land on admin pages and clients
 //     never land on admin pages, whatever "next" says
 //   - /admin/login is NOT a protected admin page (guests must reach it), but
@@ -24,19 +26,29 @@ import {
   isWrongPortal,
   landingPath,
   loginPathFor,
-  USE_ADMIN_LOGIN_MESSAGE,
-  USE_CLIENT_LOGIN_MESSAGE,
-  wrongPortalMessage,
+  INCORRECT_LOGIN_MESSAGE,
+  isHiddenLoginError,
 } from '../../src/lib/auth/login-portal.ts';
 
 test('an admin account cannot log in through the client login', () => {
   assert.equal(isWrongPortal('client', true), true);
-  assert.equal(wrongPortalMessage('client'), USE_ADMIN_LOGIN_MESSAGE);
 });
 
 test('a client account cannot log in through the admin login', () => {
   assert.equal(isWrongPortal('admin', false), true);
-  assert.equal(wrongPortalMessage('admin'), USE_CLIENT_LOGIN_MESSAGE);
+});
+
+test('every refused login uses one plain message that gives nothing away', () => {
+  assert.equal(INCORRECT_LOGIN_MESSAGE, 'Incorrect email or password.');
+  assert.doesNotMatch(INCORRECT_LOGIN_MESSAGE, /staff|admin|login page/i);
+  // Wrong password and unknown email (one Supabase code), plus the codes
+  // that could hint an email exists
+  assert.equal(isHiddenLoginError('invalid_credentials'), true);
+  assert.equal(isHiddenLoginError('user_not_found'), true);
+  assert.equal(isHiddenLoginError('user_banned'), true);
+  // Other problems keep their own message (e.g. "Too many tries")
+  assert.equal(isHiddenLoginError('over_request_rate_limit'), false);
+  assert.equal(isHiddenLoginError(undefined), false);
 });
 
 test('each account can log in through its own login page', () => {

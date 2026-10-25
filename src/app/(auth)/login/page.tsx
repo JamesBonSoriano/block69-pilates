@@ -10,15 +10,19 @@
 //   ?error=link-expired     an email link was old or already used
 //   ?error=other-browser    an email link was opened in a different browser
 //   ?error=google-failed    Google sign-in was cancelled or didn't work
-//   ?error=admin-google     a staff account tried Google sign-in here
+//   ?error=login-failed     a Google login was refused (an admin's account);
+//                           it shows the same "Incorrect email or password."
+//                           as a wrong password, with no hint about staff
 //   ?error=account-deleted  (not an error) the person just deleted their account
 // Clients who log in (with no "next") go to the Home page. ADMIN accounts
-// can't log in here: they are pointed to /admin/login (src/lib/auth/actions.ts).
+// can't log in here: they get "Incorrect email or password." like a wrong
+// password (src/lib/auth/actions.ts), with no mention of staff.
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AuthFormSkeleton, AuthPage } from "@/components/auth/AuthPage";
 import { DEACTIVATED_MESSAGE } from "@/lib/auth/errors";
+import { INCORRECT_LOGIN_MESSAGE } from "@/lib/auth/login-portal";
 import { firstParam, safeNextPath } from "@/lib/auth/safe-next";
 import { LoginForm } from "@/components/auth/LoginForm";
 
@@ -52,11 +56,9 @@ const NOTICES = {
     tone: "info",
     text: "Your account has been deleted and you've been logged out. Thank you for joining our classes.",
   },
-  // A staff account used Google on the client login (staff use /admin/login)
-  "admin-google": {
-    tone: "error",
-    text: "That Google account belongs to cafe staff. Please use the admin login page instead.",
-  },
+  // A Google login that was refused (an admin's account): the same message
+  // as a wrong password, so it gives nothing away
+  "login-failed": { tone: "error", text: INCORRECT_LOGIN_MESSAGE },
 } as const;
 
 // The login page.

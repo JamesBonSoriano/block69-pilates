@@ -23,10 +23,12 @@
 //
 // GOOGLE (?flow=google&code=...): the same code swap as kind 1. Then, like
 // the password login (logInThrough in src/lib/auth/actions.ts):
+//   - an ADMIN account is logged straight back out with the same message as
+//     a wrong password, "Incorrect email or password." (?error=login-failed),
+//     so the client login never gives away which accounts are staff. This is
+//     checked first, so a deactivated admin looks the same.
 //   - a deactivated account is logged straight back out (?error=deactivated),
 //     except a client who turned it off themselves: they go to /reactivate
-//   - an ADMIN account is logged straight back out: staff use /admin/login
-//     (?error=admin-google)
 //   - a client with no mobile number or birthday yet (always true for a new
 //     Google account) goes to "Finish your profile" first, then to "next"
 //   - if Google or Supabase said no (they pressed Cancel, or Google sign-in
@@ -106,7 +108,7 @@ export async function GET(request: NextRequest) {
 
 // The checks after a Google login worked (the person is logged in now).
 // Takes: the logged-in Supabase client, and the safe "next" path (or null).
-// Gives back: where to send them. Deactivated and admin accounts are logged
+// Gives back: where to send them. Admin and deactivated accounts are logged
 // out first (only this browser).
 async function afterGoogleLogin(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -120,7 +122,7 @@ async function afterGoogleLogin(
   // Google account's row was just made by the sign-up trigger.
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("is_active, self_deactivated_at, mobile, birthday")
+    .select("role, is_active, self_deactivated_at, mobile, birthday")
     .eq("id", userId)
     .maybeSingle();
   // Is it an ACTIVE admin? (the database's rule, migration 2)
@@ -130,6 +132,13 @@ async function afterGoogleLogin(
     await supabase.auth.signOut({ scope: "local" });
     return "/login?error=google-failed";
   }
+  // An admin's Google account (active or not, by the saved role or the
+  // database's is_admin()): refused with the plain "Incorrect email or
+  // password." message, never a hint about staff
+  if (profile?.role === "admin" || isAdmin === true) {
+    await supabase.auth.signOut({ scope: "local" });
+    return "/login?error=login-failed";
+  }
   if (!profile?.is_active) {
     // They turned it off themselves (Version 1.4): stay logged in and ask
     // "Welcome back! Reactivate your account?"
@@ -137,12 +146,6 @@ async function afterGoogleLogin(
     await supabase.auth.signOut({ scope: "local" });
     return "/login?error=deactivated";
   }
-  if (isAdmin === true) {
-    // Staff use the admin login page (Revisions part 1, item 1)
-    await supabase.auth.signOut({ scope: "local" });
-    return "/login?error=admin-google";
-  }
-
   // Missing details: ask for them first, then carry on to "next" (or Home)
   const goTo = next ?? "/";
   if (!profile.mobile || !profile.birthday) {

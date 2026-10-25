@@ -1,6 +1,6 @@
 // A "Log out" button.
-// Where it's used: the bottom of My Profile (Version 1.4 took it out of the
-// client header and phone menu) and the admin frame.
+// Where it's used: the top card of My Profile, beside the name (Version 1.4
+// took it out of the client header and phone menu) and the admin frame.
 //
 // It's a tiny form whose action is the logOut Server Action
 // (src/lib/auth/actions.ts), so it works even before the page's JavaScript

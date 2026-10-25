@@ -27,7 +27,12 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - 2026-10-26 Version 1.4 (admin part 2): Schedule = 2 tables (weekly pattern with Edit pop-up; upcoming classes, 10 per page) + Create classes; Content = hub of 5 cards -> `/admin/content/<section>` (no Fill-in sidebar); Users = table with search / sort / pages, View, Edit (name, mobile, Instagram, birthday), Communications (email message, resend confirmation, history); no Deactivate / Make admin buttons
 - Emails: Gmail SMTP via nodemailer (`src/lib/email.ts`, never throws), admin-only `communications` log; email-changed alert to the OLD email is ours now (migration 20 `v14_admin_users`, pushed 2026-10-26, types regenerated)
 - 2026-10-26 Admin phones: Schedule rows and other admin tables (Pricing 50% codes, Payments weekly earnings) are stacked cards under 768px; every admin grid has `grid-cols-1` so nothing widens the page; "Open classes for booking" always makes 9 weeks and says how many were new
-- Last checks: `test:db` 676/676, `test:unit` 41/41, `tsc` / `lint` / `build` clean
+- 2026-10-26 My Profile: Log out sits in the profile header card (full width under the name on phones)
+- 2026-10-26 Receipts: shop-style narrow sheet (`src/components/receipt/ReceiptSheet.tsx`) on `/account/payments/[id]` and `/admin/receipt/[id]`; "Download receipt (PDF)" made on the server with **pdf-lib** (`src/lib/receipt-pdf.ts`, routes `.../pdf`, owner or admin only, `Block69-Receipt-<no>.pdf`)
+- 2026-10-26 Receipts: Print button removed (print the PDF instead; `PrintButton` deleted); admin booking link now says "View receipt"; `@page { margin: 0 }` stays for Ctrl+P
+- PDF limit: its built-in Helvetica font can't draw the peso sign, so the PDF says "PHP 550.00" (the web page still shows the peso sign)
+- 2026-10-26 Login security: wrong password, unknown email, admin on `/login`, client on `/admin/login` and an admin Google account all get one message, "Incorrect email or password." (signed out at once, no staff hint; `INCORRECT_LOGIN_MESSAGE` in `src/lib/auth/login-portal.ts`); role checked before the deactivated check
+- Last checks: `test:db` 676/676, `test:unit` 45/45, `tsc` / `lint` / `build` clean
 
 ## Next
 - **You:** click-through Version 1.4 (client + admin part 1) at 390px and 1440px
