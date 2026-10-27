@@ -82,7 +82,11 @@ export function emailIsSetUp(): boolean {
 // Never throws.
 export async function sendEmail(message: EmailMessage): Promise<EmailResult> {
   const settings = readSmtpSettings();
-  if (!settings) return { ok: false, error: EMAIL_NOT_SET_UP };
+  if (!settings) {
+    // Keys missing: log it on the server, but don't break the page or action
+    console.error("Email was not sent:", EMAIL_NOT_SET_UP);
+    return { ok: false, error: EMAIL_NOT_SET_UP };
+  }
 
   try {
     await getTransporter(settings).sendMail({

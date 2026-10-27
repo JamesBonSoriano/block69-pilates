@@ -32,6 +32,7 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - 2026-10-26 Receipts: Print button removed (print the PDF instead; `PrintButton` deleted); admin booking link now says "View receipt"; `@page { margin: 0 }` stays for Ctrl+P
 - PDF limit: its built-in Helvetica font can't draw the peso sign, so the PDF says "PHP 550.00" (the web page still shows the peso sign)
 - 2026-10-26 Login security: wrong password, unknown email, admin on `/login`, client on `/admin/login` and an admin Google account all get one message, "Incorrect email or password." (signed out at once, no staff hint; `INCORRECT_LOGIN_MESSAGE` in `src/lib/auth/login-portal.ts`); role checked before the deactivated check
+- 2026-10-27 Fix "Can't resolve 'nodemailer'": packages were listed but not installed; `npm install` fixed it. `sendEmail()` now also logs when the SMTP keys are missing. After pulling new packages, always run `npm install`
 - Last checks: `test:db` 676/676, `test:unit` 45/45, `tsc` / `lint` / `build` clean
 
 ## Next
