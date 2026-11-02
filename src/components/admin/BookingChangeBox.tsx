@@ -51,6 +51,9 @@ const RULE_TEXT: Record<AdminChangeRule, string> = {
   no_credit: "The class is less than 12 hours away. The normal rule is: cancel with no credit.",
   free_transfer:
     "The cafe cancelled this class. The client keeps their payment and can move to any open class for free in My Bookings. Cancel only if the client asks; it is an override.",
+  // (Only My Bookings uses this word today; kept so every rule has words)
+  move_window_ended:
+    "The cafe cancelled this class and the client's time to move it for free has ended. Any change you make is an override.",
   started:
     "This class has already started. The rules allow no change, so anything you do is an override. (To mark attendance, use Attended / No-show.)",
   late_payment:

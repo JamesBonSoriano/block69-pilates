@@ -27,6 +27,9 @@ export type MyNotification = {
   class_date: string | null; // "YYYY-MM-DD", the class it's about
   start_time: string | null; // "HH:MM:SS"
   end_time: string | null;
+  // Version 1.5: for "class cancelled", the last day to move for free
+  // ("YYYY-MM-DD"); empty for every other update
+  move_by: string | null;
 };
 
 // Counts the logged-in client's unread notifications (for the bell's count).

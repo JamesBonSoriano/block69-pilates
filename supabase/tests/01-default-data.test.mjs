@@ -15,6 +15,8 @@ const PUBLIC_KEYS = [
   'cafe_name', 'cafe_address', 'cafe_email', 'cafe_phone', 'maps_url', 'logo_path',
   'instagram_url', 'facebook_url', 'chat_url',
   'gcash_name', 'gcash_number', 'bpi_account_name', 'bpi_account_number',
+  // Version 1.5 (migration 21): days to use a free move after a cafe cancellation
+  'reschedule_window_days',
 ];
 // Settings only admins need.
 const PRIVATE_KEYS = ['admin_alert_email', 'sessions_weeks_ahead'];
@@ -94,25 +96,27 @@ export default async function run(t) {
   const templates = (await q(`
     select weekday || ' ' || to_char(start_time, 'HH24:MI') || '-' || to_char(end_time, 'HH24:MI') || ' cap ' || default_capacity as slot
     from public.schedule_templates where is_active`)).map((r) => r.slot);
-  const expectedSlots = [4, 5, 6, 0].flatMap((d) => [`${d} 09:00-09:50 cap 4`, `${d} 10:15-11:05 cap 4`]);
-  check('Thu-Sun, 9:00-9:50 and 10:15-11:05, 4 seats', '8 templates (weekdays 4, 5, 6, 0)',
+  // (Migration 4 made Thu-Sun; migration 21, Version 1.5, switched Sunday off)
+  const expectedSlots = [4, 5, 6].flatMap((d) => [`${d} 09:00-09:50 cap 4`, `${d} 10:15-11:05 cap 4`]);
+  check('Thu-Sat, 9:00-9:50 and 10:15-11:05, 4 seats', '6 active templates (weekdays 4, 5, 6)',
     sameItems(templates, expectedSlots), `${templates.length} templates: ${templates.join('; ')}`);
 
   // ===========================================================================
   // (Migration 4 made 4 weeks; migration 15, Change 17, adds up to 9 weeks
-  // so booking step 1 can show next month.)
+  // so booking step 1 can show next month. Migration 21, Version 1.5,
+  // removed the Sunday ones.)
   t.section('Classes (generate_sessions: 4 weeks, then 9 weeks)');
   // ===========================================================================
   const sess = await one(`
     select count(*)::int as n,
-           count(*) filter (where extract(dow from date) not in (4, 5, 6, 0))::int as wrong_day,
+           count(*) filter (where extract(dow from date) not in (4, 5, 6))::int as wrong_day,
            count(*) filter (where capacity <> 4 or status <> 'open' or template_id is null)::int as odd,
            count(*) filter (where date <= public.manila_today() + 28)::int as in_four_weeks,
            (min(date) - public.manila_today())::int as first_day,
            (max(date) - public.manila_today())::int as last_day
     from public.class_sessions`);
-  check('9 weeks of classes created', '72 (36 days x 2 sessions)', sess.n === 72, sess.n);
-  check('All on Thursday to Sunday', '0 on other days', sess.wrong_day === 0, `${sess.wrong_day} on other days`);
+  check('9 weeks of classes created', '54 (27 days x 2 sessions)', sess.n === 54, sess.n);
+  check('All on Thursday to Saturday', '0 on other days', sess.wrong_day === 0, `${sess.wrong_day} on other days`);
   check('All open, 4 seats, linked to a template', '0 odd ones', sess.odd === 0, `${sess.odd} odd ones`);
   check('From today up to 9 weeks ahead', 'days 0..62 from today', sess.first_day >= 0 && sess.last_day <= 62,
     `days ${sess.first_day}..${sess.last_day} from today`);

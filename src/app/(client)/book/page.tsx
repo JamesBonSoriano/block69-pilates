@@ -6,7 +6,7 @@
 // (◀ October 2026 ▶, this month and next month only), a row of DATE CHIPS
 // for the dates that have classes, and the picked date's classes under them
 // (ClassDayPicker). Plus the "Booking details" card (Date, Session, What to
-// bring with the Rent a mat tick, Proceed to payment). On phones that card is
+// bring with the Rent a mat tick, Book Now). On phones that card is
 // the sticky bottom bar, and "What to bring" is listed under the classes.
 // The class days come from the dated classes (made from schedule_templates),
 // never typed in here.

@@ -23,7 +23,8 @@ export default async function run(t) {
   r = await as('admin', 'select public.generate_sessions(9) as n');
   check('Admin runs it again (migration 15 already made 9 weeks)', '0 created', r.ok && r.row.n === 0, r.ok ? `${r.row.n} created` : r.err);
   r = await as('admin', 'select public.generate_sessions(10) as n');
-  check('Admin asks for 10 weeks', '8 created (1 more week x Thu-Sun x 2)', r.ok && r.row.n === 8, r.ok ? `${r.row.n} created` : r.err);
+  // (Version 1.5: Thursday to Saturday only)
+  check('Admin asks for 10 weeks', '6 created (1 more week x Thu-Sat x 2)', r.ok && r.row.n === 6, r.ok ? `${r.row.n} created` : r.err);
   r = await as('server', 'select public.generate_sessions(4) as n');
   check('Server key / nightly job can run it', 'allowed', r.ok, r.ok ? `allowed, ${r.row.n} created` : r.err);
   r = await as('admin', 'select public.generate_sessions(13) as n');
@@ -83,7 +84,9 @@ export default async function run(t) {
   await q('update public.class_sessions set capacity = 1 where id = $1', [S[1]]);
   r = await book('A', S[1], { mat: true });
   const holdMin = r.ok ? (new Date(r.row.hold_expires_at) - Date.now()) / 60000 : 0;
-  check('A books the only seat', 'pending_payment, held ~15 min', r.ok && holdMin > 14.9 && holdMin <= 15,
+  // (Up to 1 second over 15 is allowed: the test's clock and the database's
+  // clock can differ by a few milliseconds, which made this fail now and then)
+  check('A books the only seat', 'pending_payment, held ~15 min', r.ok && holdMin > 14.9 && holdMin <= 15 + 1 / 60,
     r.ok ? `${await status(r.row.booking_id)}, held ${holdMin.toFixed(2)} min` : r.err);
   const aHold = r.row?.booking_id;
   r = await book('B', S[1]);

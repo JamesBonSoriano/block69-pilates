@@ -235,6 +235,14 @@ export function cancelExplanation(rule: ChangeRule, timeLeft: string, cancelOpen
         confirmLabel: null,
         offerTransfer: true,
       };
+    // Version 1.5: the time to use the free move has ended
+    case "move_window_ended":
+      return {
+        title: "The time to move this class has ended",
+        body: "The cafe cancelled this class, and the time to move it for free is over. Please message the cafe with Chat With Us if you need help.",
+        confirmLabel: null,
+        offerTransfer: false,
+      };
     case "started":
       return {
         title: "This class has started",
@@ -329,12 +337,19 @@ export function receiptNumber(paymentId: string): string {
 // Picks the status badge for one booking on the ADMIN pages. The words are
 // the admin's (e.g. "Awaiting verification"), not the client's ("Checking
 // your payment").
-// Takes: the booking's status, and for an unpaid hold the seconds left.
-// Gives back: the badge text and color, e.g. "Pending payment · 9 min".
+// Takes: the booking's status, for an unpaid hold the seconds left, and
+// (Version 1.5) whether attendance is due: confirmed, the class has ended,
+// and Attended / No-show isn't marked yet.
+// Gives back: the badge text and color, e.g. "Pending payment · 9 min", or
+// "Pending Attendance Verification" (amber) when attendance is due.
 export function adminBookingStatusBadge(
   status: BookingStatus,
   holdSecondsLeft = 0,
+  attendanceDue = false,
 ): { label: string; variant: BadgeVariant } {
+  if (status === "confirmed" && attendanceDue) {
+    return { label: "Pending Attendance Verification", variant: "warning" };
+  }
   const badges: Record<BookingStatus, { label: string; variant: BadgeVariant }> = {
     pending_payment: {
       // Round UP, so "0 min" never shows while a few seconds are left

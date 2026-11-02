@@ -9,7 +9,8 @@
 // refuse an account on the wrong login page.
 //
 // Change 17 (client login only; the admin login is unchanged apart from the
-// show / hide password button): "or continue with" + "Continue with Google".
+// show / hide password button): "or continue with" + the "Google" button
+// (Version 1.5: just the logo and "Google").
 // That button sends THIS form to signInWithGoogle() instead (formAction), so
 // "next" goes with it; formNoValidate lets it go without an email or
 // password typed in.

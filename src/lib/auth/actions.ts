@@ -1,8 +1,8 @@
 "use server";
 // Server Actions for logging in and out, signing up and passwords.
 // Where it's used: the forms on /login, /admin/login, /signup,
-// /forgot-password and /reset-password, the "Continue with Google" /
-// "Sign up with Google" buttons, and every Log out button.
+// /forgot-password and /reset-password, the "Google" buttons on /login and
+// /signup, and every Log out button.
 //
 // "use server" = these functions run ONLY on our server. The browser just
 // sends the form to them. So the checks here can't be skipped by someone
@@ -21,6 +21,7 @@ import {
   loginErrorMessage,
 } from "@/lib/auth/errors";
 import type { AuthFormState } from "@/lib/auth/form-state";
+import { googleSignInIsOn } from "@/lib/auth/google-provider";
 import {
   ADMIN_LOGIN_PATH,
   INCORRECT_LOGIN_MESSAGE,
@@ -139,8 +140,8 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
 // GOOGLE SIGN-IN (Change 17)
 // ---------------------------------------------------------------------------
 
-// Starts a REAL Google sign-in through Supabase ("Continue with Google" on
-// /login, "Sign up with Google" on /signup).
+// Starts a REAL Google sign-in through Supabase (the "Google" button on
+// /login and /signup).
 // Takes: the form: an optional "next".
 // Gives back: nothing; it sends the browser to Google. After the person
 // agrees, Google sends them to Supabase, and Supabase sends them to our
@@ -155,10 +156,19 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
 // email changes.
 export async function signInWithGoogle(formData: FormData): Promise<void> {
   const next = safeNextPath(formData.get("next"));
-
-  const supabase = await createClient();
   const back = new URLSearchParams({ flow: "google" });
   if (next) back.set("next", next);
+
+  // Version 1.5 (C1): if Google is switched OFF in Supabase, say so plainly
+  // here. (Otherwise the browser would land on Supabase's raw error page,
+  // because signInWithOAuth() below never checks.) Keeps "next" for later.
+  if ((await googleSignInIsOn()) === false) {
+    const query = new URLSearchParams({ error: "google-off" });
+    if (next) query.set("next", next);
+    redirect(`/login?${query.toString()}`);
+  }
+
+  const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {

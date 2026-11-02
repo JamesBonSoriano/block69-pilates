@@ -14,6 +14,7 @@
 
 import "server-only"; // never sent to the browser
 import { io } from "next/cache";
+import type { BookingFilterWord } from "@/lib/admin/display";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/validation";
 import type {
@@ -22,7 +23,6 @@ import type {
   AdminDashboardSummary,
   AdminRosterItem,
   AdminSession,
-  BookingStatus,
 } from "@/types/app";
 
 // Loads the Dashboard numbers (today's seats, needs action, money).
@@ -77,17 +77,22 @@ export async function getClassRosters(sessionIds: string[]): Promise<AdminRoster
 // The filters on the admin Bookings page.
 export type AdminBookingFilters = {
   search?: string; // name, email, phone or booking code
-  statuses?: BookingStatus[]; // empty = every status except expired
+  // Empty = every status except expired. Version 1.5: may also hold
+  // "pending_attendance" (confirmed, class over, attendance not marked)
+  statuses?: BookingFilterWord[];
   date?: string; // "YYYY-MM-DD": only that class date
   startTime?: string; // "09:00": only classes starting then
   when: "upcoming" | "past" | "all"; // used when there's no date
   limit?: number; // default 200
+  offset?: number; // Version 1.5: how many matches to skip (pages), default 0
 };
 
-// Loads the admin Bookings list.
+// Loads the admin Bookings list (one page of it).
 // Takes: the filters above.
-// Gives back: the matching bookings (at most `limit`), and how many matched
-// in total. Throws if Supabase can't be reached.
+// Gives back: the matching bookings (at most `limit`, after skipping
+// `offset`), and how many matched in total. (When the offset is past the
+// end, there are no rows and totalMatches is 0: the caller then asks again
+// for page 1.) Throws if Supabase can't be reached.
 export async function searchAdminBookings(
   filters: AdminBookingFilters,
 ): Promise<{ rows: AdminBookingListItem[]; totalMatches: number }> {
@@ -100,6 +105,7 @@ export async function searchAdminBookings(
     p_start_time: filters.startTime || undefined,
     p_when: filters.when,
     p_limit: filters.limit ?? 200,
+    p_offset: filters.offset ?? 0,
   });
   if (error) {
     throw new Error(`Could not load the bookings: ${error.message}`);

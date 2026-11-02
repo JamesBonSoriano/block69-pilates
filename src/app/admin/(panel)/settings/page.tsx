@@ -15,7 +15,8 @@
 // public settings, so the header, footer, About Us and the booking pages
 // show the change at once.
 // Prices, the seat hold and the cutoff are on Pricing & Vouchers; seats per
-// class are on Schedule.
+// class are on Schedule. Version 1.5: the "Booking rules" card has the
+// rescheduling window (days to use a free move after the cafe cancels a class).
 //
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
 // database's own admin checks.
@@ -259,6 +260,20 @@ async function SettingsBody() {
                 Cancellation policy (set by the database, the same for everyone): more than 24 hours before, one free
                 transfer. 12 to 24 hours before, a 50% code. Less than 12 hours or no-show, forfeited. No cash refunds.
               </p>
+              {/* Version 1.5 (C8): how long a free move lasts after the cafe
+                  cancels a class. The database checks it (1 to 365 days). */}
+              <Input
+                label="Rescheduling window (days)"
+                name="reschedule_window_days"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={365}
+                step={1}
+                required
+                defaultValue={typeof settings.reschedule_window_days === "number" ? settings.reschedule_window_days : 30}
+                hint="When you cancel a class, booked clients can move for free until this many days after the cancellation (or after the class date, if that is later). After that the move is no longer offered."
+              />
             </AdminCard>
           </div>
         </div>

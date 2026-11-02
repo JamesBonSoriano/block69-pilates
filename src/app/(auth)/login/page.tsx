@@ -10,6 +10,7 @@
 //   ?error=link-expired     an email link was old or already used
 //   ?error=other-browser    an email link was opened in a different browser
 //   ?error=google-failed    Google sign-in was cancelled or didn't work
+//   ?error=google-off       Google sign-in is switched off in Supabase (Version 1.5)
 //   ?error=login-failed     a Google login was refused (an admin's account);
 //                           it shows the same "Incorrect email or password."
 //                           as a wrong password, with no hint about staff
@@ -50,6 +51,11 @@ const NOTICES = {
   "google-failed": {
     tone: "error",
     text: "Google sign-in didn't finish, so you're not logged in. Please try again, or log in with your email and password.",
+  },
+  // Version 1.5 (C1): the Google provider is switched off in Supabase
+  "google-off": {
+    tone: "info",
+    text: "Google sign-in isn't available yet. Please log in with your email and password, or create an account.",
   },
   // After Delete account on My Profile (Change 17)
   "account-deleted": {

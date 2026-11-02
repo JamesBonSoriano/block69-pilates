@@ -54,8 +54,10 @@ export type MyBooking = Omit<
 };
 
 // What Cancel / Transfer means for one confirmed booking right now (from the
-// database's change_rule(), migration 8):
-//   free_transfer       the cafe cancelled the class: free transfer, any time
+// database's change_rule(), migration 8, and get_my_bookings(), migration 21):
+//   free_transfer       the cafe cancelled the class: free transfer, until move_by
+//   move_window_ended   the cafe cancelled the class and the time to move it
+//                       has ended (Version 1.5): nothing more can be done
 //   started             the class has started: nothing can change
 //   transfer            more than 24h before: transfer once (no cancel)
 //   already_transferred more than 24h before, but it was moved once already
@@ -63,6 +65,7 @@ export type MyBooking = Omit<
 //   no_credit           less than 12h before: cancel gives nothing
 export type ChangeRule =
   | "free_transfer"
+  | "move_window_ended"
   | "started"
   | "transfer"
   | "already_transferred"
@@ -83,8 +86,12 @@ export type MyBookingListItem = Omit<
   | "paid_amount"
   | "paid_method"
   | "change_rule"
+  | "move_by"
 > & {
   drink_choice: string | null;
+  // Version 1.5: the last day to move for free after the cafe cancelled the
+  // class ("YYYY-MM-DD"); empty for every other booking
+  move_by: string | null;
   moved_from_date: string | null;
   moved_from_start_time: string | null;
   moved_to_date: string | null;

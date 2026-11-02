@@ -58,11 +58,13 @@ const FORM_KEYS = {
     "bpi_account_number",
     "manual_payment_enabled",
     "drink_options",
+    // Version 1.5: days to use a free move after the cafe cancels a class
+    "reschedule_window_days",
   ],
 } as const;
 
-// Settings saved as numbers (pesos and minutes).
-const NUMBER_KEYS = new Set(["class_price", "mat_price", "hold_minutes"]);
+// Settings saved as numbers (pesos, minutes and days).
+const NUMBER_KEYS = new Set(["class_price", "mat_price", "hold_minutes", "reschedule_window_days"]);
 
 // Saves the settings of one page (Pricing or Settings) in one go.
 // Takes: the previous state, and the form: form = "pricing" or "settings",

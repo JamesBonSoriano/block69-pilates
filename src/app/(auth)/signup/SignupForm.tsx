@@ -1,6 +1,7 @@
 "use client";
 // The sign-up form: full name, phone number, birthday, email and password,
-// plus "Sign up with Google" under it.
+// plus the "Google" sign-up button under it (screen readers hear "Sign up
+// with Google"; Version 1.5 shows just the logo and "Google").
 // Where it's used: src/app/(auth)/signup/page.tsx.
 //
 // The rules (Change 17) are checkSignupFields() in src/lib/validation.ts:

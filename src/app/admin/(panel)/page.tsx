@@ -238,9 +238,11 @@ async function Dashboard() {
               <li key={session.session_id}>
                 {/* Attendance is marked on each booking's page (Version 1.4
                     removed the Attendance list), so open that class's
-                    confirmed bookings */}
+                    bookings, every status (Version 1.5: once the class has
+                    ended they show as "Pending Attendance Verification";
+                    while it's still running they're "Confirmed") */}
                 <Link
-                  href={`/admin/bookings?status=confirmed&date=${session.date}&time=${session.start_time}`}
+                  href={`/admin/bookings?date=${session.date}&time=${session.start_time}`}
                   className="flex flex-col gap-1.5 rounded-xl border border-admin-line px-3.5 py-3 text-sm hover:bg-admin-bg sm:flex-row sm:items-center sm:gap-3"
                 >
                   <Badge variant="neutral" className="self-start sm:self-auto">

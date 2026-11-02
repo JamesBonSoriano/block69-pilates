@@ -4,7 +4,7 @@
 //   - Date and Session, filled in as soon as a class is picked
 //   - What to bring (booking/what_to_bring in site_content), with the
 //     "Rent a mat" tick under the mat line (price from settings)
-//   - the total so far, and "Proceed to payment"
+//   - the total so far, and "Book Now" (Version 1.5; was "Proceed to payment")
 // Mat rental is chosen HERE now. The tick is sent to step 2 as ?mat=yes, so
 // step 2 doesn't ask again.
 // Where it's used: src/app/(client)/book/page.tsx, inside its class form.
@@ -179,7 +179,8 @@ export function BookingDetailsCard({
               }
             }}
           >
-            Proceed to payment
+            {/* Version 1.5: "Book Now" (it was "Proceed to payment") */}
+            Book Now
             <ChevronRight aria-hidden="true" className="size-4" />
           </Button>
         </div>

@@ -7,7 +7,7 @@
 // changed here without touching the database.
 
 import type { BadgeVariant } from "@/components/ui/Badge";
-import { formatClassDate, formatTime } from "@/lib/format";
+import { formatClassDate, formatMoveBy, formatTime } from "@/lib/format";
 import type { MyNotification } from "@/lib/data/notifications";
 
 // What one update looks like on the page.
@@ -103,7 +103,10 @@ export function notificationText(n: MyNotification): NotificationText {
     case "class_cancelled":
       return {
         title: "Class cancelled by the cafe",
-        body: `The cafe cancelled the class on ${when}. You can move to another class for free in My Bookings.`,
+        // Version 1.5: the free move has a deadline ("Move by Nov 30")
+        body: n.move_by
+          ? `The cafe cancelled the class on ${when}. Move to another class for free in My Bookings. Move by ${formatMoveBy(n.move_by)}.`
+          : `The cafe cancelled the class on ${when}. You can move to another class for free in My Bookings.`,
         tone: "error",
         ...bookings,
       };

@@ -74,7 +74,7 @@ export function CancelClassButton({ sessionId, classLabel, bookedCount, classNam
               {state.done.bookedCount === 0
                 ? "Nobody was booked in it. It no longer shows as open for booking."
                 : `${state.done.bookedCount} booking${state.done.bookedCount === 1 ? " was" : "s were"} holding a seat. ` +
-                  "Those clients keep their bookings and will see a free transfer in My Bookings."}
+                  "Those clients keep their bookings and will see a free transfer in My Bookings, with the last day to use it."}
             </p>
             {state.done.bookedCount > 0 && (
               <FormMessage tone="info">
@@ -99,7 +99,7 @@ export function CancelClassButton({ sessionId, classLabel, bookedCount, classNam
               <li>
                 {bookedCount === 0
                   ? "Nobody is booked in it right now."
-                  : `${bookedCount} ${bookedCount === 1 ? "person is" : "people are"} booked. They keep their booking and can move to any open class for free from My Bookings, even less than 24 hours before class.`}
+                  : `${bookedCount} ${bookedCount === 1 ? "person is" : "people are"} booked. They keep their booking and can move to any open class for free from My Bookings, even less than 24 hours before class, within the rescheduling window (Settings).`}
               </li>
               <li>There are no cash refunds. Moving to another class is how clients get their class back.</li>
               <li>This can&apos;t be undone from the website.</li>

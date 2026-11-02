@@ -22,6 +22,8 @@
 // Version 1.4: the mat rental line is a card linking to /book?mat=yes (Rent a
 // mat already ticked), and the call to action has no Chat With Us button (the
 // floating one is the only one).
+// Version 1.5: that mat rental card moved from Class Details & Location to
+// just under the call to action ("Ready for your first class?").
 // (The old "About the class" + 3 cards, the old location block and the small
 // health note are no longer shown; their rows stay in the database.)
 
@@ -160,26 +162,6 @@ export default async function HomePage() {
                   <ArrowRight aria-hidden="true" className="size-4" />
                 </ButtonLink>
               )}
-
-              {/* The mat rental card: "Mat rental is {mat_price}, and 100% goes
-                  to feeding stray animals in Taguig. Add it to your booking"
-                  (the price from settings). The whole card is one link to
-                  booking step 1 with Rent a mat already ticked. */}
-              {matNote?.body && (
-                <Link
-                  href="/book?mat=yes"
-                  className="group flex min-h-11 items-start gap-2.5 rounded-2xl border border-transparent bg-sage-light px-4 py-3 text-sm text-ink hover:border-tan focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                  <PawPrint aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <span>
-                    <ContentText text={fill(matNote.body)} />{" "}
-                    <span className="inline-flex items-center gap-1 font-semibold text-primary group-hover:underline">
-                      Add it to your booking
-                      <ArrowRight aria-hidden="true" className="size-4" />
-                    </span>
-                  </span>
-                </Link>
-              )}
             </div>
           </Card>
         </Section>
@@ -248,27 +230,50 @@ export default async function HomePage() {
         </Section>
       )}
 
-      {/* ===== Call to action ===== */}
-      {cta && (
-        <Section aria-labelledby="cta-heading" className="pb-10 lg:pb-16">
-          <div className="flex flex-col gap-4 rounded-3xl bg-brown px-6 py-8 text-center lg:items-center lg:px-12 lg:py-12">
-            {cta.title && (
-              // text-white: headings are dark by default, which can't be read on brown
-              <h2 id="cta-heading" className="text-2xl font-normal text-white lg:text-3xl">
-                {fill(cta.title)}
-              </h2>
-            )}
-            {cta.body && (
-              <p className="text-[15px] leading-relaxed text-tan-soft lg:max-w-xl">
-                <ContentText text={fill(cta.body)} />
-              </p>
-            )}
-            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <ButtonLink href="/book" variant="light" className="sm:min-w-56">
-                {BOOK_LABEL}
-              </ButtonLink>
+      {/* ===== Call to action, with the mat rental card under it ===== */}
+      {(cta || matNote?.body) && (
+        <Section aria-labelledby={cta ? "cta-heading" : undefined} className="flex flex-col gap-3 pb-10 lg:pb-16">
+          {cta && (
+            <div className="flex flex-col gap-4 rounded-3xl bg-brown px-6 py-8 text-center lg:items-center lg:px-12 lg:py-12">
+              {cta.title && (
+                // text-white: headings are dark by default, which can't be read on brown
+                <h2 id="cta-heading" className="text-2xl font-normal text-white lg:text-3xl">
+                  {fill(cta.title)}
+                </h2>
+              )}
+              {cta.body && (
+                <p className="text-[15px] leading-relaxed text-tan-soft lg:max-w-xl">
+                  <ContentText text={fill(cta.body)} />
+                </p>
+              )}
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <ButtonLink href="/book" variant="light" className="sm:min-w-56">
+                  {BOOK_LABEL}
+                </ButtonLink>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* The mat rental card (Version 1.5: moved here, under "Ready for
+              your first class?"): "Mat rental is {mat_price}, and 100% goes
+              to feeding stray animals in Taguig. Add it to your booking"
+              (the price from settings). The whole card is one link to
+              booking step 1 with Rent a mat already ticked. */}
+          {matNote?.body && (
+            <Link
+              href="/book?mat=yes"
+              className="group flex min-h-11 items-start gap-2.5 rounded-2xl border border-transparent bg-sage-light px-4 py-3 text-sm text-ink hover:border-tan focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:items-center lg:justify-center lg:px-6"
+            >
+              <PawPrint aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary lg:mt-0" />
+              <span>
+                <ContentText text={fill(matNote.body)} />{" "}
+                <span className="inline-flex items-center gap-1 font-semibold text-primary group-hover:underline">
+                  Add it to your booking
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </span>
+              </span>
+            </Link>
+          )}
         </Section>
       )}
 

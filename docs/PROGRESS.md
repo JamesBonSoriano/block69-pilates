@@ -34,9 +34,12 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - 2026-10-26 Login security: wrong password, unknown email, admin on `/login`, client on `/admin/login` and an admin Google account all get one message, "Incorrect email or password." (signed out at once, no staff hint; `INCORRECT_LOGIN_MESSAGE` in `src/lib/auth/login-portal.ts`); role checked before the deactivated check
 - 2026-10-27 Fix "Can't resolve 'nodemailer'": packages were listed but not installed; `npm install` fixed it. `sendEmail()` now also logs when the SMTP keys are missing. After pulling new packages, always run `npm install`
 - 2026-10-27 Remote check: `migration list` shows all 20 on Local and Remote (nothing to push); `gen:types` unchanged; live guest checks: old `book_seat` -> PGRST202, new `book_seat` / `my_account_deletion_blockers` / `close_my_account` -> 42501 (exist, guests refused)
-- Last checks: `test:db` 676/676, `test:unit` 45/45, `tsc` / `lint` / `build` clean
+- 2026-11-02 Version 1.5 client: Google button = logo + "Google", plain "Google sign-in isn't available yet" when the provider is off; mat card under "Ready for your first class?"; no About Chat button; "Book Now"; ▶ month arrow fixed (next/form dropped the clicked button's `show_month`; arrows now build the URL); classes Thu–Sat only (Sunday templates off, empty future Sundays deleted); free move after a cafe cancel has a window (`reschedule_window_days`, default 30, from the later of cancel day / class day; "Move by …"; after it: Past, no credit) (migration 21 `v15_client`, pushed, types regenerated)
+- 2026-11-02 Version 1.5 admin: "Pending Attendance Verification" = confirmed + class ended (worked out, no new status, under Needs action); Attended and No-show chips (Forfeited = real forfeits only); Bookings 10 per page (`p_offset`) (migration 22 `v15_admin`, pushed, types regenerated). Email code checked, only the SMTP keys are missing
+- Last checks: `test:db` 739/739 (one old 15-minute-hold check made clock-tolerant), `test:unit` 49/49, `tsc` / `lint` / `build` clean
 
 ## Next
+- **You:** click-through Version 1.5 at 390px and 1440px (`supabase/manual-tests/v15-setup.sql` / `v15-cleanup.sql`, test classes end in :15 seconds); enable Google (then test a new Google account + Finish your profile); SMTP keys + test send
 - **You:** click-through Version 1.4 (client + admin part 1) at 390px and 1440px
 - **Transfer bug:** some open dates seemed missing on the transfer page (Thu Oct 29 10:15). Find the real cause and add a test that every open class with seats shows
 - **You:** click-through Version 1.4 admin part 2 (Schedule, Content, Users, Communications, plus no sideways scroll on every admin page) at 390px and 1440px

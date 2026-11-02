@@ -42,7 +42,7 @@ import { bookingStatusBadge } from "@/lib/booking-rules";
 import { getMyBookings } from "@/lib/data/account";
 import { getBookingSessions } from "@/lib/data/booking";
 import { getPublicSettings } from "@/lib/data/settings";
-import { formatClassDate, formatPeso, formatTimeRange, manilaDateString } from "@/lib/format";
+import { formatClassDate, formatMoveBy, formatPeso, formatTimeRange, manilaDateString } from "@/lib/format";
 import { bookableMonths, monthRange } from "@/lib/month";
 import { nowForThisVisit } from "@/lib/server-clock";
 import { isUuid } from "@/lib/validation";
@@ -80,7 +80,8 @@ async function TransferContent({
 
   // Today in the Philippines, and the two months that can be booked
   // (requireClient() has waited for a real visit, so reading the clock is fine)
-  const today = manilaDateString(nowForThisVisit());
+  const nowMs = nowForThisVisit();
+  const today = manilaDateString(nowMs);
   const months = bookableMonths(today);
 
   let bookings: MyBookingListItem[];
@@ -178,6 +179,8 @@ async function TransferContent({
             <strong>The cafe cancelled this class, so this transfer is free.</strong> You can pick any open class,
             even one less than 24 hours away. Your drink and mat stay the same, and there&apos;s nothing to pay.
             After this, the new booking can&apos;t be transferred again.
+            {/* Version 1.5: the free move has a deadline */}
+            {booking.move_by && <> Move by {formatMoveBy(booking.move_by, nowMs)}.</>}
           </span>
         </p>
       ) : (
@@ -229,6 +232,9 @@ function notAllowedReason(booking: MyBookingListItem): string {
       return "This booking was already transferred once, so it can't be moved again. A booking can only be transferred one time.";
     case "started":
       return "This class has already started, so the booking can't be moved.";
+    // Version 1.5: the free move after a cafe cancellation has a deadline
+    case "move_window_ended":
+      return `The cafe cancelled this class, and the time to move it for free ended${booking.move_by ? ` on ${formatClassDate(booking.move_by).short}` : ""}. Please message the cafe with Chat With Us if you need help.`;
     default:
       // "voucher" or "no_credit": less than 24 hours before class
       return "Transfers close 24 hours before class. You can still cancel it from My Bookings (see what you'd get there first).";

@@ -1,6 +1,6 @@
 "use client";
-// The "Continue with Google" / "Sign up with Google" button, and the
-// "or continue with" line above it (Change 17, Part C).
+// The "Google" sign-in button (Google's "G" + the word Google, Version 1.5),
+// and the "or continue with" line above it (Change 17, Part C).
 // Where it's used: the login form (src/components/auth/LoginForm.tsx) and the
 // sign-up form (src/app/(auth)/signup/SignupForm.tsx).
 //
@@ -26,13 +26,16 @@ export function OrDivider() {
 }
 
 type GoogleButtonProps = Omit<ComponentProps<"button">, "type" | "children"> & {
-  label: string; // "Continue with Google" or "Sign up with Google"
+  // What screen readers hear, e.g. "Continue with Google" or "Sign up with
+  // Google". The button itself only SHOWS "Google" (Version 1.5, C2).
+  label: string;
 };
 
 // The Google button (a submit button for the form it's in).
-// Takes: the label, plus normal button attributes (e.g. formAction and
-// formNoValidate, when it shares a form with the email + password fields).
-// Gives back: a white pill with Google's "G" and the label.
+// Takes: the screen-reader label, plus normal button attributes (e.g.
+// formAction and formNoValidate, when it shares a form with the email +
+// password fields).
+// Gives back: a white pill with Google's "G" and the word "Google".
 export function GoogleButton({ label, className, ...props }: GoogleButtonProps) {
   // pending = the form this button is in is being sent
   const { pending } = useFormStatus();
@@ -40,11 +43,12 @@ export function GoogleButton({ label, className, ...props }: GoogleButtonProps) 
     <button
       type="submit"
       disabled={pending}
+      aria-label={pending ? undefined : label}
       className={cn(buttonClasses("secondary", true), "border-line bg-white text-ink hover:bg-cream", className)}
       {...props}
     >
       <GoogleLogo />
-      {pending ? "Opening Google…" : label}
+      {pending ? "Opening Google…" : "Google"}
     </button>
   );
 }

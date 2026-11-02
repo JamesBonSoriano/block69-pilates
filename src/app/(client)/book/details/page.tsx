@@ -1,5 +1,5 @@
 // Booking step 2, "Your details": /book/details?session=<class id>&mat=yes
-// Where it's used: "Proceed to payment" on step 1, and the class cards on the
+// Where it's used: "Book Now" on step 1, and the class cards on the
 // Home page.
 // Layout follows docs/designs/PhoneBook2.html (phone), with a summary card
 // on the right on laptops. Revisions part 1, item 5:

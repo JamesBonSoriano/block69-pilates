@@ -42,7 +42,8 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
           </thead>
           <tbody>
             {bookings.map((booking) => {
-              const badge = adminBookingStatusBadge(booking.status, booking.hold_seconds_left);
+              // (Version 1.5: "Pending Attendance Verification" after the class)
+              const badge = adminBookingStatusBadge(booking.status, booking.hold_seconds_left, booking.attendance_due);
               return (
                 <tr key={booking.booking_id} className="border-b border-admin-bg last:border-b-0 hover:bg-admin-bg/60">
                   <td className="px-4 py-3">
@@ -94,7 +95,7 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
       {/* ===== Phone: cards ===== */}
       <ul className="flex flex-col gap-2.5 lg:hidden">
         {bookings.map((booking) => {
-          const badge = adminBookingStatusBadge(booking.status, booking.hold_seconds_left);
+          const badge = adminBookingStatusBadge(booking.status, booking.hold_seconds_left, booking.attendance_due);
           return (
             <li key={booking.booking_id}>
               <Link

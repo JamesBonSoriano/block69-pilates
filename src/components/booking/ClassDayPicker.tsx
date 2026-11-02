@@ -19,12 +19,16 @@
 // WITHOUT JavaScript it still works: the chips and the arrows are real submit
 // buttons that reload the page with ?date= or ?show_month= (formAction), and
 // formNoValidate lets them through without a class picked yet.
+// WITH JavaScript the arrows open the other month themselves (Version 1.5
+// fix, see MonthArrow below).
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, type MouseEvent } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
 import { cn } from "@/lib/cn";
+import { monthArrowHref } from "@/lib/month";
 
 // One class, ready to show (worked out on the server).
 export type PickerSession = {
@@ -180,9 +184,14 @@ export function ClassDayPicker({
 // One arrow of the month navigator.
 // Takes: which arrow, the month it opens (null = none), the page address and
 // (on the transfer page) "get".
-// Gives back: a round submit button that reloads the page with
-// ?show_month=YYYY-MM (keeping the picked class and the mat tick, which are
-// in the same form), or a greyed-out one that does nothing.
+// Gives back: a round button that opens ?show_month=YYYY-MM (keeping the
+// picked class and the mat tick, which are in the same form), or a
+// greyed-out one that does nothing.
+// Version 1.5 (C6) fix: with JavaScript, the click builds the address itself
+// (monthArrowHref) and opens it, because Next.js's <Form> drops the clicked
+// button's show_month and ▶ used to reload the same month. Without
+// JavaScript it's still a normal submit button, which the browser sends
+// correctly (with show_month).
 function MonthArrow({
   direction,
   month,
@@ -194,8 +203,21 @@ function MonthArrow({
   reloadAction: string;
   reloadMethod?: "get";
 }) {
+  const router = useRouter();
   const Icon = direction === "previous" ? ChevronLeft : ChevronRight;
   const label = direction === "previous" ? "Previous month" : "Next month";
+
+  // The arrow was clicked (with JavaScript): open the other month ourselves.
+  // Takes: the click. Gives back: nothing.
+  function openMonth(event: MouseEvent<HTMLButtonElement>) {
+    const form = event.currentTarget.form;
+    if (!month || !form) return; // no form: let the browser do it
+    event.preventDefault();
+    // Every field of the form (picked class, mat tick...) as text pairs
+    const fields = [...new FormData(form)].map(([name, value]) => [name, String(value)] as [string, string]);
+    router.push(monthArrowHref(reloadAction, fields, month));
+  }
+
   return (
     <button
       type="submit"
@@ -204,6 +226,7 @@ function MonthArrow({
       formAction={reloadAction}
       formMethod={reloadMethod}
       formNoValidate
+      onClick={openMonth}
       disabled={!month}
       aria-label={month ? label : `${label} (only this month and next month can be booked)`}
       className="flex size-11 shrink-0 items-center justify-center rounded-full text-brown hover:bg-tan-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"

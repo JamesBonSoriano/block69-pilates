@@ -1,25 +1,32 @@
 // The admin Bookings list: /admin/bookings
 // Where it's used: the admin menu and tab bar, the Dashboard's Bookings card.
-// Version 1.4: no Attendance list / Walk-in buttons; "Forfeited" includes no-shows.
+// Version 1.4: no Attendance list / Walk-in buttons.
+// Version 1.5: "Needs action" also lists bookings still confirmed after their
+// class ended ("Pending Attendance Verification"), Attended and No-show have
+// their own chips (Forfeited is only real forfeits), and the list has pages
+// of 10.
 // Layout follows docs/designs/AdminBookings.html and PhoneAdminBookings.html.
 //
 // Filters live in the address, e.g.
 //   /admin/bookings?status=needs_action
-//   /admin/bookings?q=ana&when=past
+//   /admin/bookings?q=ana&when=past&page=2
 //   /admin/bookings?date=2026-10-24&time=09:00:00
-// The database does the filtering and searching (admin_search_bookings,
-// migration 9). Without a status filter, abandoned unpaid holds ("Expired")
-// are hidden, because "Change details" and closed tabs make lots of them.
+// The database does the filtering, searching and paging
+// (admin_search_bookings, migrations 9 and 22). Without a status filter,
+// abandoned unpaid holds ("Expired") are hidden, because "Change details" and
+// closed tabs make lots of them. A new search or chip goes back to page 1.
 //
 // LIVE DATA: loaded on every visit, never cached.
 // Protection: proxy + requireAdmin() + the database's own admin check.
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AdminBookingList } from "@/components/admin/AdminBookingList";
-import { AdminLoadError, AdminLoading, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
-import { BookingFilters, type BookingFilterValues } from "@/components/admin/BookingFilters";
+import { AdminPagination } from "@/components/admin/AdminPagination";
+import { AdminCard, AdminLoadError, AdminLoading, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
+import { BookingFilters, bookingsHref, type BookingFilterValues } from "@/components/admin/BookingFilters";
 import { STATUS_CHIPS } from "@/lib/admin/display";
 import { firstParam } from "@/lib/auth/safe-next";
 import { requireAdmin } from "@/lib/auth/user";
@@ -30,8 +37,8 @@ import type { AdminBookingListItem } from "@/types/app";
 
 export const metadata: Metadata = { title: "Bookings · Admin" };
 
-// The most bookings shown at once (the database never gives more than 500).
-const LIMIT = 200;
+// Bookings per page (Version 1.5, the same as the other admin tables).
+const PER_PAGE = 10;
 
 // The Bookings page.
 // Takes: searchParams (the filters).
@@ -56,23 +63,35 @@ export default function AdminBookingsPage({ searchParams }: PageProps<"/admin/bo
 // Gives back: the filter area and the matching bookings.
 async function BookingsResults({ searchParams }: { searchParams: PageProps<"/admin/bookings">["searchParams"] }) {
   await requireAdmin();
-  const values = readFilters(await searchParams);
+  const params = await searchParams;
+  const values = readFilters(params);
   const chip = STATUS_CHIPS.find((item) => item.key === values.status) ?? STATUS_CHIPS[0];
+  // Which page (?page=2); anything else = page 1
+  const pageParam = Number(firstParam(params.page));
+  const page = Number.isInteger(pageParam) && pageParam > 1 ? pageParam : 1;
+
+  // The same filters for every page; only where to start changes
+  const filters = {
+    search: values.q,
+    statuses: chip.statuses,
+    date: values.date,
+    startTime: values.time,
+    when: values.when,
+  };
 
   let result: { rows: AdminBookingListItem[]; totalMatches: number };
   let schedule;
   try {
     [result, schedule] = await Promise.all([
-      searchAdminBookings({
-        search: values.q,
-        statuses: chip.statuses,
-        date: values.date,
-        startTime: values.time,
-        when: values.when,
-        limit: LIMIT,
-      }),
+      // Only this page's bookings are loaded (the database skips the rest)
+      searchAdminBookings({ ...filters, limit: PER_PAGE, offset: (page - 1) * PER_PAGE }),
       getWeeklySchedule(),
     ]);
+    // A page past the end (e.g. after marking the last one): get the real
+    // count, so the page numbers still show and "Go to page 1" works
+    if (result.rows.length === 0 && page > 1) {
+      result = { rows: [], totalMatches: (await searchAdminBookings({ ...filters, limit: 1 })).totalMatches };
+    }
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
@@ -86,15 +105,43 @@ async function BookingsResults({ searchParams }: { searchParams: PageProps<"/adm
   const timeOptions = [...times].sort().map((time) => ({ value: time, label: formatTime(time) }));
 
   const { rows, totalMatches } = result;
-  const summary =
-    totalMatches > rows.length
-      ? `${totalMatches} bookings · showing the first ${rows.length}. Narrow the search to see the rest.`
-      : `${totalMatches} booking${totalMatches === 1 ? "" : "s"}`;
+  const summary = `${totalMatches} booking${totalMatches === 1 ? "" : "s"}`;
+
+  // The address of another page, keeping the search, chip and filters.
+  // Takes: the page number. Gives back: e.g. "/admin/bookings?status=attended&page=2".
+  const hrefFor = (n: number) => {
+    const base = bookingsHref(values);
+    if (n <= 1) return base;
+    return `${base}${base.includes("?") ? "&" : "?"}page=${n}`;
+  };
 
   return (
     <>
       <BookingFilters values={values} timeOptions={timeOptions} summary={summary} />
-      <AdminBookingList bookings={rows} />
+      {rows.length === 0 && totalMatches > 0 ? (
+        // Past the last page
+        <AdminCard className="text-sm text-muted">
+          This page is empty.{" "}
+          <Link href={hrefFor(1)} className="font-semibold text-brown underline underline-offset-2">
+            Go to page 1
+          </Link>
+        </AdminCard>
+      ) : (
+        <AdminBookingList bookings={rows} />
+      )}
+      {/* Page numbers (Version 1.5): "Showing 11–20 of 34 bookings" */}
+      {totalMatches > 0 && (
+        <AdminCard className="p-0 lg:p-0">
+          <AdminPagination
+            page={page}
+            perPage={PER_PAGE}
+            total={totalMatches}
+            noun={totalMatches === 1 ? "booking" : "bookings"}
+            label="Bookings pages"
+            hrefFor={hrefFor}
+          />
+        </AdminCard>
+      )}
     </>
   );
 }

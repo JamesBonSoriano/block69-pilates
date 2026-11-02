@@ -18,6 +18,7 @@
 // Change 17, Part E: the Class Schedule and the Health and Safety sections
 // were removed (Health and Safety is on Home now; the classes and times are
 // on /book), and the cafe's phone number is no longer listed under Contact.
+// Version 1.5: Contact us has no Chat With Us button (the floating one is enough).
 // Layout: one column on phones; two columns for several blocks on laptops.
 
 import {
@@ -29,7 +30,6 @@ import {
   Coffee,
   Mail,
   MapPin,
-  MessageCircle,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -252,12 +252,8 @@ export default async function AboutPage() {
                 </ContactItem>
               )}
             </ul>
-            {settings.chatUrl && (
-              <ButtonLink href={settings.chatUrl} external className="mt-auto self-start max-sm:w-full">
-                <MessageCircle aria-hidden="true" className="size-4" />
-                Chat With Us
-              </ButtonLink>
-            )}
+            {/* (No Chat With Us button here: Version 1.5 removed it, because
+                the floating chat button at the lower right does the same) */}
           </Card>
         )}
       </Section>
@@ -268,7 +264,7 @@ export default async function AboutPage() {
 // The quick facts about the class, worked out from the weekly schedule and
 // settings, so they always match what clients can book.
 // Takes: the weekly schedule and the class price.
-// Gives back: a list like "50 minutes · Up to 4 people · Thu to Sun · ₱500 per
+// Gives back: a list like "50 minutes · Up to 4 people · Thu to Sat · ₱500 per
 // class" (facts that can't be worked out, e.g. with no schedule, are left out).
 function ClassFacts({ schedule, classPrice }: { schedule: ScheduleDay[]; classPrice: number }) {
   const slots = schedule.flatMap((day) => day.slots);

@@ -48,6 +48,28 @@ export function allowedMonth(asked: string | null | undefined, months: readonly 
   return asked && /^\d{4}-\d{2}$/.test(asked) && months.includes(asked) ? asked : null;
 }
 
+// Builds the address a month arrow (◀ ▶) opens (Version 1.5, C6).
+// Why: Next.js's <Form> (booking step 1) makes the address from the form's
+// fields but LEAVES OUT the button that was clicked. The arrow's own
+// show_month was lost, only the hidden "month" (the month already shown) was
+// sent, and ▶ just reloaded the same month. So the arrow builds the address
+// itself, with this.
+// Takes: the page address (e.g. "/book"), the form's fields as [name, value]
+// pairs (from new FormData(form)), and the month the arrow opens ("YYYY-MM").
+// Gives back: e.g. "/book?session=<id>&mat=yes&show_month=2026-12". The
+// picked class and the mat tick are kept; the old month / date are dropped
+// (the new month starts on its own first date), and so are React's hidden
+// "$ACTION..." fields (from a Server Action form, e.g. the transfer page).
+export function monthArrowHref(action: string, fields: Iterable<[string, string]>, month: string): string {
+  const query = new URLSearchParams();
+  for (const [name, value] of fields) {
+    if (name === "month" || name === "show_month" || name === "date" || name.startsWith("$ACTION")) continue;
+    query.append(name, value);
+  }
+  query.set("show_month", month);
+  return `${action}?${query.toString()}`;
+}
+
 // The month's name for the navigator.
 // Takes: "2026-10". Gives back: "October 2026".
 export function formatMonth(month: string): string {

@@ -80,6 +80,17 @@ export function formatClassDate(date: string): {
   };
 }
 
+// Writes the last day of a free move (Version 1.5), e.g. "Move by Nov 30".
+// Takes: the day, "YYYY-MM-DD", and "now" in milliseconds (pages pass the
+// time of the visit; Server Actions can leave it out).
+// Gives back: "Nov 30", or "Jan 5, 2027" when the year is not this year
+// (this year = in the Philippines).
+export function formatMoveBy(date: string, todayMs: number = Date.now()): string {
+  const { month, day } = formatClassDate(date);
+  const sameYear = date.slice(0, 4) === manilaDateString(todayMs).slice(0, 4);
+  return sameYear ? `${month} ${day}` : `${month} ${day}, ${date.slice(0, 4)}`;
+}
+
 // Formats an exact moment from the database (e.g. when a payment was made or
 // a voucher expires) as a date in the Philippines.
 // Takes: the moment (text like "2026-12-22T07:15:00+00:00", or a Date).

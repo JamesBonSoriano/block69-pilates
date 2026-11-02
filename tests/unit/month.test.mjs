@@ -5,10 +5,11 @@
 //   - only this month and next month can be shown (also across a new year)
 //   - month ranges are right, including February and leap years
 //   - a month in the address that isn't allowed (or is junk) is ignored
+//   - Version 1.5: the ▶ arrow's address really asks for next month
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { addMonths, allowedMonth, bookableMonths, formatMonth, monthOf, monthRange } from '../../src/lib/month.ts';
+import { addMonths, allowedMonth, bookableMonths, formatMonth, monthArrowHref, monthOf, monthRange } from '../../src/lib/month.ts';
 
 test('this month and next month, also across the new year', () => {
   assert.deepEqual(bookableMonths('2026-10-23'), ['2026-10', '2026-11']);
@@ -31,6 +32,37 @@ test('only an allowed month from the address is used', () => {
   assert.equal(allowedMonth('2026-09', months), null); // the past
   assert.equal(allowedMonth('junk', months), null);
   assert.equal(allowedMonth(undefined, months), null);
+});
+
+// Version 1.5 (C6): Next.js's <Form> left out the clicked arrow's
+// show_month, so only the hidden month (the one already shown) was sent and
+// the next arrow reloaded the same month. The arrow now builds its address
+// with monthArrowHref().
+test('the next arrow opens NEXT month (not the month already shown)', () => {
+  // What the booking form holds when ▶ is clicked on October
+  const fields = [['month', '2026-10'], ['session', 'abc-123'], ['mat', 'yes']];
+  const href = monthArrowHref('/book', fields, '2026-11');
+  const query = new URL(href, 'http://x').searchParams;
+  assert.equal(query.get('show_month'), '2026-11');
+  assert.equal(query.has('month'), false); // the old month is not sent along
+  // and the picked class and the mat tick are kept
+  assert.equal(query.get('session'), 'abc-123');
+  assert.equal(query.get('mat'), 'yes');
+  assert.ok(href.startsWith('/book?'));
+});
+
+test('the arrow drops the old date and React action fields', () => {
+  const fields = [['date', '2026-10-30'], ['show_month', '2026-10'], ['$ACTION_ID_1', ''], ['booking_id', 'b1']];
+  const query = new URL(monthArrowHref('/account/bookings/b1/transfer', fields, '2026-12'), 'http://x').searchParams;
+  assert.deepEqual([...query.keys()].sort(), ['booking_id', 'show_month']);
+  assert.equal(query.get('show_month'), '2026-12');
+});
+
+test('the month the arrow asks for is the month the page shows', () => {
+  // The page reads ?show_month= and accepts it when it's next month
+  const months = bookableMonths('2026-11-02');
+  const asked = new URL(monthArrowHref('/book', [['month', months[0]]], months[1]), 'http://x').searchParams.get('show_month');
+  assert.equal(allowedMonth(asked, months), '2026-12');
 });
 
 test('month names for the navigator', () => {

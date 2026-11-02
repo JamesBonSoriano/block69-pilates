@@ -110,12 +110,14 @@ async function BookingDetails({ params }: { params: PageProps<"/admin/bookings/[
   const classCancelled =
     booking.session_status === "cancelled" &&
     (booking.status === "confirmed" || booking.status === "paid_needs_action");
+  const classEnded = classStartsAt(booking.class_date, booking.end_time).getTime() <= nowMs;
+  // Version 1.5: still "confirmed" after the class ended = "Pending
+  // Attendance Verification" (the same rule as the Bookings list)
   const status: { label: string; variant: BadgeVariant } = classCancelled
     ? { label: "Class cancelled", variant: "error" }
-    : adminBookingStatusBadge(booking.shown_status, holdSecondsLeft);
+    : adminBookingStatusBadge(booking.shown_status, holdSecondsLeft, classEnded);
   const seats = adminSeatsBadge(booking.capacity - booking.seats_left, booking.capacity, booking.session_status);
   const classLabel = `${formatClassDate(booking.class_date).short} · ${formatTimeRange(booking.start_time, booking.end_time)}`;
-  const classEnded = classStartsAt(booking.class_date, booking.end_time).getTime() <= nowMs;
   const pendingManual = booking.payments.some((pay) => pay.provider === "manual" && pay.status === "pending");
   // A receipt can only be printed once money was received
   const hasPaidPayment = booking.payments.some((pay) => pay.status === "paid");

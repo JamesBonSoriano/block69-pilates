@@ -210,6 +210,7 @@ export type Database = {
       }
       class_sessions: {
         Row: {
+          cancelled_at: string | null
           capacity: number
           created_at: string
           date: string
@@ -221,6 +222,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancelled_at?: string | null
           capacity?: number
           created_at?: string
           date: string
@@ -232,6 +234,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancelled_at?: string | null
           capacity?: number
           created_at?: string
           date?: string
@@ -943,12 +946,14 @@ export type Database = {
         Args: {
           p_date?: string
           p_limit?: number
+          p_offset?: number
           p_search?: string
           p_start_time?: string
           p_statuses?: string[]
           p_when?: string
         }
         Returns: {
+          attendance_due: boolean
           booking_id: string
           class_date: string
           created_at: string
@@ -1183,6 +1188,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      free_move_last_day: {
+        Args: { p_cancelled_at: string; p_class_date: string }
+        Returns: string
+      }
       generate_sessions: { Args: { p_weeks?: number }; Returns: number }
       get_my_booking: {
         Args: { p_booking_id: string }
@@ -1226,6 +1235,7 @@ export type Database = {
           hold_seconds_left: number
           is_upcoming: boolean
           mat_rental: boolean
+          move_by: string
           moved_from_date: string
           moved_from_start_time: string
           moved_to_date: string
@@ -1248,6 +1258,7 @@ export type Database = {
           end_time: string
           id: string
           kind: Database["public"]["Enums"]["notification_kind"]
+          move_by: string
           read_at: string
           start_time: string
           voucher_code: string

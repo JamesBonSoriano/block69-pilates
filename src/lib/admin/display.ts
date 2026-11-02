@@ -64,23 +64,38 @@ export function prepLine(summary: PrepSummary): string {
   return parts.join(" · ");
 }
 
+// What the Bookings list can filter on: a real booking status, or (Version
+// 1.5) "pending_attendance" = still confirmed after the class ended
+// (admin_search_bookings, migration 22, works that out; it isn't saved).
+export type BookingFilterWord = BookingStatus | "pending_attendance";
+
 // The status chips on the admin Bookings page (docs/designs/AdminBookings.html).
 // key      what goes in the address (?status=...)
 // label    the chip's text
 // statuses what admin_search_bookings filters on (empty = every status
 //          except expired, the default "All")
-// Version 1.4: no "Attended" / "No-show" chips. "Forfeited" also lists
-// no-shows ("No-shows automatically forfeit their booking"); each row still
-// shows its real status badge.
-export const STATUS_CHIPS: { key: string; label: string; statuses: BookingStatus[] }[] = [
+// Version 1.5:
+//   - "Needs action" also lists bookings pending attendance verification
+//     (confirmed, class over, Attended / No-show not marked yet), and
+//     "Confirmed" no longer does
+//   - "Attended" and "No-show" chips are back (the Attendance menu was
+//     removed in 1.4), so "Forfeited" is only real forfeits again
+//     (cancelled less than 12 hours before class)
+export const STATUS_CHIPS: { key: string; label: string; statuses: BookingFilterWord[] }[] = [
   { key: "all", label: "All", statuses: [] },
-  { key: "needs_action", label: "Needs action", statuses: ["awaiting_verification", "paid_needs_action"] },
+  {
+    key: "needs_action",
+    label: "Needs action",
+    statuses: ["awaiting_verification", "paid_needs_action", "pending_attendance"],
+  },
   { key: "confirmed", label: "Confirmed", statuses: ["confirmed"] },
   { key: "pending_payment", label: "Pending payment", statuses: ["pending_payment"] },
   { key: "awaiting_verification", label: "Awaiting verification", statuses: ["awaiting_verification"] },
   { key: "paid_needs_action", label: "Paid, needs action", statuses: ["paid_needs_action"] },
+  { key: "attended", label: "Attended", statuses: ["attended"] },
+  { key: "no_show", label: "No-show", statuses: ["no_show"] },
   { key: "transferred", label: "Transferred", statuses: ["transferred"] },
   { key: "cancelled_with_voucher", label: "Cancelled with voucher", statuses: ["cancelled_with_voucher"] },
-  { key: "forfeited", label: "Forfeited", statuses: ["forfeited", "no_show"] },
+  { key: "forfeited", label: "Forfeited", statuses: ["forfeited"] },
   { key: "expired", label: "Expired", statuses: ["expired"] },
 ];

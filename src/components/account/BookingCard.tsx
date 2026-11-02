@@ -6,6 +6,8 @@
 // Which buttons show (the database checks everything again when clicked):
 //   unpaid hold            -> "Pay now" (back to its pay page)
 //   confirmed, cafe cancelled the class -> a highlighted "free transfer" box
+//                                          with "Move by Nov 30" (Version 1.5)
+//   confirmed, cafe cancelled, window over -> a short note, no buttons (Past)
 //   confirmed, more than 24h away       -> Transfer + Cancel (the Cancel box
 //                                          explains "transfer instead")
 //   confirmed, 12 to 24h / under 12h    -> Cancel (the box explains the voucher
@@ -16,11 +18,11 @@
 
 import { ArrowRightLeft, CircleAlert, Clock } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/Badge";
+import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { bookingReference, bookingStatusBadge, cancelTiming, paymentMethodLabel } from "@/lib/booking-rules";
-import { formatClassDate, formatPeso, formatTime, formatTimeRange } from "@/lib/format";
+import { formatClassDate, formatMoveBy, formatPeso, formatTime, formatTimeRange } from "@/lib/format";
 import type { MyBookingListItem } from "@/types/app";
 import { CancelBookingButton } from "./CancelBookingButton";
 
@@ -32,7 +34,6 @@ import { CancelBookingButton } from "./CancelBookingButton";
 export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; nowMs: number }) {
   const date = formatClassDate(booking.class_date);
   const timeRange = formatTimeRange(booking.start_time, booking.end_time);
-  const badge = bookingStatusBadge(booking.status);
   const transferHref = booking.can_transfer ? `/account/bookings/${booking.booking_id}/transfer` : null;
 
   // "Iced Matcha · Rented mat · Paid ₱550 with GCash"
@@ -47,6 +48,10 @@ export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; no
   // The Cancel / Transfer rule for a confirmed booking (late payments have
   // their own box below, so "late_payment" is left out here)
   const rule = booking.status === "confirmed" && booking.change_rule !== "late_payment" ? booking.change_rule : null;
+  // The status badge. Version 1.5: once the time to move a cafe-cancelled
+  // class is over, it says "Class cancelled" (not a green "Confirmed")
+  const badge: { label: string; variant: BadgeVariant } =
+    rule === "move_window_ended" ? { label: "Class cancelled", variant: "neutral" } : bookingStatusBadge(booking.status);
 
   return (
     <li>
@@ -76,10 +81,10 @@ export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; no
           </p>
         )}
 
-        <StatusPart booking={booking} rule={rule} transferHref={transferHref} />
+        <StatusPart booking={booking} rule={rule} transferHref={transferHref} nowMs={nowMs} />
 
         {/* Buttons for a confirmed booking that can still change */}
-        {rule && rule !== "free_transfer" && rule !== "started" && (
+        {rule && rule !== "free_transfer" && rule !== "move_window_ended" && rule !== "started" && (
           <div className="flex flex-col gap-2">
             <div className="flex gap-3">
               {transferHref && (
@@ -115,24 +120,34 @@ export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; no
 
 // The part of the card that depends on the status: a note, and for some
 // statuses a button.
-// Takes: the booking, its rule (confirmed only) and the transfer page link.
+// Takes: the booking, its rule (confirmed only), the transfer page link and
+// "now" in milliseconds (for the "Move by" date's year).
 // Gives back: the note (or nothing).
 function StatusPart({
   booking,
   rule,
   transferHref,
+  nowMs,
 }: {
   booking: MyBookingListItem;
   rule: MyBookingListItem["change_rule"];
   transferHref: string | null;
+  nowMs: number;
 }) {
-  // The cafe cancelled the class: make the free transfer obvious
+  // "Nov 30": the last day of the free move (Version 1.5), if there is one
+  const moveBy = booking.move_by ? formatMoveBy(booking.move_by, nowMs) : null;
+
+  // The cafe cancelled the class: make the free transfer obvious, with its
+  // deadline
   if (rule === "free_transfer") {
     return (
       <div className="flex flex-col gap-3 rounded-2xl bg-warning-bg p-4 text-warning">
         <p className="flex items-start gap-2 text-sm font-semibold">
           <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          The cafe cancelled this class. Move to another class for free, even within 24 hours.
+          <span>
+            The cafe cancelled this class. Move to another class for free, even within 24 hours.
+            {moveBy && <span className="mt-1 block">Move by {moveBy}.</span>}
+          </span>
         </p>
         {transferHref && (
           <ButtonLink href={transferHref} className="sm:self-start">
@@ -140,6 +155,15 @@ function StatusPart({
           </ButtonLink>
         )}
       </div>
+    );
+  }
+
+  // The cafe cancelled the class and the time to move it is over (Version 1.5)
+  if (rule === "move_window_ended") {
+    return (
+      <p className="text-sm text-muted">
+        The cafe cancelled this class. The time to move it for free ended{moveBy ? ` on ${moveBy}` : ""}.
+      </p>
     );
   }
 
