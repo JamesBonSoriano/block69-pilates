@@ -23,6 +23,12 @@ import { useEffect, useState } from "react";
 // the top of the footer), in px.
 const GAP = 16;
 
+// A 3px cream ring around the green button. The footer is the same green as
+// the button (sage-dark, since the footer now matches the header), so the
+// ring keeps the button clearly separate when it rides just above the footer.
+// (On the cream page background the ring simply blends in.)
+const CHAT_RING = "ring-3 ring-cream";
+
 // The floating chat button (with the page-aware position).
 // Takes: chatUrl = the link from settings.
 // Gives back: a round link fixed to the lower right corner.
@@ -87,8 +93,10 @@ export function ChatButton({ chatUrl }: { chatUrl: string }) {
       // max(...) keeps it above an iPhone's home bar
       style={{ bottom: `max(${bottom}px, env(safe-area-inset-bottom))` }}
       // No slide animation on "bottom": while scrolling it must follow the
-      // footer exactly, not lag behind it
-      className="fixed right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:right-6 print:hidden"
+      // footer exactly, not lag behind it.
+      // ring-cream: a cream edge, so the green button never blends into the
+      // green footer (or header) next to it (CHAT_RING below)
+      className={`fixed right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:right-6 print:hidden ${CHAT_RING}`}
     >
       <MessageCircle aria-hidden="true" className="size-6" />
     </a>
@@ -106,7 +114,7 @@ export function ChatButtonFallback({ chatUrl }: { chatUrl: string }) {
       rel="noopener noreferrer"
       aria-label="Chat With Us (opens in a new tab)"
       title="Chat With Us"
-      className="fixed bottom-4 right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg lg:right-6 print:hidden"
+      className={`fixed bottom-4 right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg lg:right-6 print:hidden ${CHAT_RING}`}
     >
       <MessageCircle aria-hidden="true" className="size-6" />
     </a>

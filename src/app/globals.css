@@ -46,7 +46,7 @@
 
   /* ----- Shared names. On the client side they hold the green / beige
      values; [data-theme="admin"] below puts back the admin's brown ones ----- */
-  --color-brown: #5B3F2E;        /* Brown: accents, secondary button outline, footer */
+  --color-brown: #5B3F2E;        /* Brown: accents, secondary button outline (the client footer is bg-primary now, like the header) */
   --color-cream: #FFF9F2;        /* Cream: page background */
   --color-card: #F3E7D8;         /* cards (= beige) */
   --color-line: #E2D0B8;         /* card borders, dividers, input borders (a darker beige) */

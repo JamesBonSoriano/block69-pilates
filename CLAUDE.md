@@ -224,10 +224,10 @@ The **client side** uses a green / beige palette. The **admin side keeps the bro
 
 | Token | Client | Admin | Used for |
 | --- | --- | --- | --- |
-| `primary` | `#5F735D` (sage-dark) | `#43271B` | Primary buttons, client header bar, active pill, selected date, anything with white text on it |
+| `primary` | `#5F735D` (sage-dark) | `#43271B` | Primary buttons, client header bar and footer, active pill, selected date, anything with white text on it |
 | `on-primary` | `#FFFFFF` | `#FAF7F3` | Text on a `primary` fill |
 | `heading` | `#2E2A24` | `#43271B` | Headings (h1–h4) |
-| `brown` | `#5B3F2E` | `#43271B` | Accents, secondary button outline, client footer, admin sidebar |
+| `brown` | `#5B3F2E` | `#43271B` | Accents, secondary button outline, admin sidebar |
 | `cream` | `#FFF9F2` | `#FFEBC5` | Page background |
 | `card` | `#F3E7D8` (beige) | `#FAF7F3` | Cards |
 | `line` | `#E2D0B8` | `#E6D3AE` | Card borders, dividers, input borders |
@@ -254,7 +254,7 @@ Status badge colors (background / text):
 - Buttons: fully rounded pills. Primary is a `primary` fill with light text. Secondary is a brown outline. Danger is a red outline.
 - Inputs: rounded (12px), white, tan border, with the label above the field.
 - Client header: sage-dark, with "Block 69 Cafe" (Poppins) and "MAT PILATES + CAFÉ" in small letter-spaced caps under it. 96px tall on desktop, 64px on phone (with a menu button).
-- Footer: brown (`#5B3F2E`), with the address, contact details, quick links and the stray animals note.
+- Client footer: the same color as the header (`primary`, sage-dark `#5F735D`), with the address, contact details, quick links and the stray animals note. Text is cream, headings white (light sage text fails AA on sage-dark). The floating Chat With Us button has a cream ring so it doesn't blend into it.
 - Admin: a brown sidebar (280px) on desktop and a top bar with a menu on phone. Content goes on white cards.
 
 **Responsive (required)**

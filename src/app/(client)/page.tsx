@@ -234,15 +234,20 @@ export default async function HomePage() {
       {(cta || matNote?.body) && (
         <Section aria-labelledby={cta ? "cta-heading" : undefined} className="flex flex-col gap-3 pb-10 lg:pb-16">
           {cta && (
-            <div className="flex flex-col gap-4 rounded-3xl bg-brown px-6 py-8 text-center lg:items-center lg:px-12 lg:py-12">
+            // bg-primary: the same green as the header and footer (it was brown).
+            // On sage-dark: white heading 5.1:1, cream text 4.9:1 (WCAG AA).
+            // (Light sage text would only be 4.4:1 there, so it isn't used.)
+            // The "light" button is cream with brown text, a cream focus
+            // outline and a light sage hover, all visible on the green.
+            <div className="flex flex-col gap-4 rounded-3xl bg-primary px-6 py-8 text-center lg:items-center lg:px-12 lg:py-12">
               {cta.title && (
-                // text-white: headings are dark by default, which can't be read on brown
+                // text-white: headings are dark by default, which can't be read on green
                 <h2 id="cta-heading" className="text-2xl font-normal text-white lg:text-3xl">
                   {fill(cta.title)}
                 </h2>
               )}
               {cta.body && (
-                <p className="text-[15px] leading-relaxed text-tan-soft lg:max-w-xl">
+                <p className="text-[15px] leading-relaxed text-cream lg:max-w-xl">
                   <ContentText text={fill(cta.body)} />
                 </p>
               )}
