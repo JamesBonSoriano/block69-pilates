@@ -39,11 +39,11 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - Last checks: `test:db` 739/739 (one old 15-minute-hold check made clock-tolerant), `test:unit` 49/49, `tsc` / `lint` / `build` clean
 
 ## Next
-- **You:** click-through Version 1.5 at 390px and 1440px (`supabase/manual-tests/v15-setup.sql` / `v15-cleanup.sql`, test classes end in :15 seconds); enable Google (then test a new Google account + Finish your profile); SMTP keys + test send
+- **You:** click-through Version 1.5 at 390px and 1440px (`supabase/manual-tests/v15-setup.sql` / `v15-cleanup.sql`, test classes end in :15 seconds); enable Google (then test a new Google account + Finish your profile)
 - **You:** click-through Version 1.4 (client + admin part 1) at 390px and 1440px
 - **Transfer bug:** some open dates seemed missing on the transfer page (Thu Oct 29 10:15). Find the real cause and add a test that every open class with seats shows
 - **You:** click-through Version 1.4 admin part 2 (Schedule, Content, Users, Communications, plus no sideways scroll on every admin page) at 390px and 1440px
-- **You, email:** Gmail App Password -> `SMTP_*` + `EMAIL_FROM` in `.env.local` (restart `npm run dev`), and the same Gmail as Supabase custom SMTP
+- Email: `SMTP_*` + `EMAIL_FROM` set in `.env.local`, Communications test send worked (2026-11-02). **You, for Step 14:** the same Gmail as Supabase custom SMTP; add the 5 keys to Vercel at deploy (Step 13)
 - **Home page** to match Figma node 103-26 (a bigger export would help); reminders + pg_cron still Step 14
 - **Step 13** deploy (`docs/prompts/13-deploy.md`), **Step 14** emails + pg_cron + Communications (`14-emails-reminders.md`), **Step 15** final check (`15-final-check.md`)
 - **You, `.env.local`:** add `SUPABASE_SECRET_KEY` (webhook, PayMongo return, Delete account) and `PAYMONGO_SECRET_KEY`, then restart `npm run dev`
