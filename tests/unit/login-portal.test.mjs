@@ -11,7 +11,12 @@
 //     never land on admin pages, whatever "next" says
 //   - /admin/login is NOT a protected admin page (guests must reach it), but
 //     every other /admin page is
-//   - /book and /account are client-only pages; Home, About and Policies aren't
+//   - Version 1.6: Home, About, Policies, /book and /account are all client
+//     pages (a logged-in admin is sent to /admin); /auth/*, /api/*, the login
+//     pages and /reset-password are not
+//   - Version 1.6: the /login Google button only treats an account as
+//     brand-new (and removes it) when it has no password login, no mobile /
+//     birthday, and was made in the last 2 minutes
 //   - guests are sent to the right login page
 // (The login itself needs a real Supabase, so the actions in
 // src/lib/auth/actions.ts are checked by hand in the click-through list.)
@@ -22,7 +27,9 @@ import {
   ADMIN_LOGIN_PATH,
   CLIENT_LOGIN_PATH,
   isAdminPagePath,
+  isBrandNewGoogleAccount,
   isClientOnlyPath,
+  readGoogleMode,
   isWrongPortal,
   landingPath,
   loginPathFor,
@@ -84,13 +91,40 @@ test('the admin login page is open; every other admin page is protected', () => 
   assert.equal(isAdminPagePath('/'), false);
 });
 
-test('booking and My Account are client-only; public pages are not', () => {
-  for (const path of ['/book', '/book/details', '/book/pay/1', '/book/done/1', '/account', '/account/profile']) {
+test('admin redirected: every client page counts (Version 1.6)', () => {
+  for (const path of ['/', '/about', '/policies', '/book', '/book/details', '/book/pay/1', '/book/done/1',
+    '/account', '/account/profile', '/account/payments/1/pdf']) {
     assert.equal(isClientOnlyPath(path), true, path);
   }
-  for (const path of ['/', '/about', '/policies', '/login', '/bookings']) {
+});
+
+test('admin redirected: auth, api, admin and login pages are left alone', () => {
+  for (const path of ['/login', '/signup', '/admin/login', '/admin', '/admin/receipt/1', '/auth/confirm',
+    '/auth/deactivated', '/api/paymongo/webhook', '/reset-password', '/forgot-password', '/bookings', '/aboutus']) {
     assert.equal(isClientOnlyPath(path), false, path);
   }
+});
+
+test('Google: the button mode is "signup" only when it says so', () => {
+  assert.equal(readGoogleMode('signup'), 'signup');
+  for (const value of ['login', '', null, undefined, 'SIGNUP', 'admin']) {
+    assert.equal(readGoogleMode(value), 'login', String(value));
+  }
+});
+
+test('Google on /login: only a brand-new, empty, just-made account is removed', () => {
+  const now = Date.parse('2026-11-15T10:00:00Z');
+  const fresh = { createdAt: '2026-11-15T09:59:30Z', providers: ['google'], hasMobile: false, hasBirthday: false };
+  assert.equal(isBrandNewGoogleAccount(fresh, now), true);
+  // Has a password account with the same email: existing
+  assert.equal(isBrandNewGoogleAccount({ ...fresh, providers: ['email', 'google'] }, now), false);
+  // Finished their profile (or signed up with the form): existing
+  assert.equal(isBrandNewGoogleAccount({ ...fresh, hasMobile: true }, now), false);
+  assert.equal(isBrandNewGoogleAccount({ ...fresh, hasBirthday: true }, now), false);
+  // Made earlier (a Google sign-up from before): existing
+  assert.equal(isBrandNewGoogleAccount({ ...fresh, createdAt: '2026-11-15T09:50:00Z' }, now), false);
+  // Unknown creation time: never removed
+  assert.equal(isBrandNewGoogleAccount({ ...fresh, createdAt: undefined }, now), false);
 });
 
 test('guests are sent to the right login page', () => {

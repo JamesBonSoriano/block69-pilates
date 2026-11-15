@@ -15,6 +15,8 @@
 //                           it shows the same "Incorrect email or password."
 //                           as a wrong password, with no hint about staff
 //   ?error=account-deleted  (not an error) the person just deleted their account
+//   ?error=google-no-account "Continue with Google" was used by a Google
+//                           account that has no account here (Version 1.6)
 // Clients who log in (with no "next") go to the Home page. ADMIN accounts
 // can't log in here: they get "Incorrect email or password." like a wrong
 // password (src/lib/auth/actions.ts), with no mention of staff.
@@ -51,6 +53,11 @@ const NOTICES = {
   "google-failed": {
     tone: "error",
     text: "Google sign-in didn't finish, so you're not logged in. Please try again, or log in with your email and password.",
+  },
+  // Version 1.6: the /login Google button only logs in existing accounts
+  "google-no-account": {
+    tone: "error",
+    text: "No account found for this Google account. Tap 'New here? Create an account' to sign up.",
   },
   // Version 1.5 (C1): the Google provider is switched off in Supabase
   "google-off": {

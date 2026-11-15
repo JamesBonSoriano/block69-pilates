@@ -110,5 +110,24 @@ export function notificationText(n: MyNotification): NotificationText {
         tone: "error",
         ...bookings,
       };
+    // Version 1.6: the cafe cancelled the class while the seat was only held
+    // (not paid yet). The hold was released by the database.
+    case "class_cancelled_hold_released":
+      return {
+        title: "Class cancelled by the cafe",
+        body: `The cafe cancelled the class on ${when}. Your seat hold was released and you were not charged.`,
+        tone: "error",
+        href: "/book",
+        linkLabel: "Book another class",
+      };
+    // Version 1.6: the cafe cancelled the class while it was still checking
+    // the client's GCash / BPI screenshot
+    case "class_cancelled_checking":
+      return {
+        title: "Class cancelled by the cafe",
+        body: `The cafe cancelled the class on ${when}. The cafe is still checking your payment. Once approved, you can move to another class for free.`,
+        tone: "error",
+        ...bookings,
+      };
   }
 }

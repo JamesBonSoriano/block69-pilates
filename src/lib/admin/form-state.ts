@@ -50,3 +50,18 @@ export type BookingChangeState = {
 
 // The starting state of the Cancel booking box.
 export const emptyBookingChangeState: BookingChangeState = {};
+
+// What rescheduleBooking() answers (the "Re-schedule" box on the admin
+// manage page, Version 1.6).
+export type RescheduleState = {
+  error?: string;
+  done?: {
+    message: string; // e.g. "Re-scheduled to Sat, Nov 21 · 10:15 AM."
+    newBookingId: string; // the new booking (the page opens it after)
+    emailNote: string; // whether the client's email went out
+    emailSent: boolean;
+  };
+};
+
+// The starting state of the Re-schedule box.
+export const emptyRescheduleState: RescheduleState = {};

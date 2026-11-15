@@ -1,62 +1,45 @@
-// Admin Payments ("Manage Billings"): /admin/payments
-// Where it's used: the admin menu ("Payments"), and the Dashboard's
-// "Needs action" list (screenshots to check, late payments).
-// Layout follows docs/designs/AdminPayments.html: number cards (Step 12:
-// today, this week, this month, the mat rental donations and needs action,
-// all from admin_billing_summary), earnings by week + by payment method,
-// then the payments list with filters.
+// Admin Earnings (view only): /admin/earnings
+// (Version 1.6 renamed "Payments" to "Earnings"; /admin/payments redirects
+// here, see next.config.ts.)
+// Where it's used: the admin menu ("Earnings") and the Dashboard's Earnings card.
+// Layout follows docs/designs/AdminPayments.html: number cards (today, this
+// week, this month and the mat rental donations, from
+// admin_billing_summary), earnings by week + by payment method, then the
+// payments table with filters (search, method, status, dates).
 //
-// Three tabs (in the address: ?view=all / review / late):
-//   all     every payment, with filters (search, method, status, dates)
-//   review  manual GCash / BPI transfers waiting for a check: the uploaded
-//           screenshot (a 10-minute private link; only admins can open the
-//           private bucket) with Approve / Reject -> admin_review_manual_payment
-//   late    "Paid, needs action": the money arrived but the seat couldn't be
-//           confirmed (late and the class full, class cancelled / closed /
-//           started, or the wrong amount). A box explains what to do, and
-//           each row links to its booking, where the admin can move it to
-//           another class or cancel it
-// Clients upload the screenshot on the pay page (Step 12, ManualTransfer.tsx)
-// into their own folder of the private bucket.
+// Version 1.6: VIEW ONLY. The "Needs review" and "Paid, needs action" tabs,
+// the Needs action card and the Approve / Reject buttons are gone. Checking a
+// GCash / BPI screenshot now happens in Appointments (the Pending chip, then
+// the pencil on the booking). Each payment row links to its appointment.
 //
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
 // database's own admin checks (admin_list_payments, admin_earnings).
 
-import { ExternalLink, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AdminCard, AdminLoadError, AdminLoading, AdminPage, AdminPageHeader, StatCard } from "@/components/admin/AdminUi";
-import { ConfirmActionButton } from "@/components/admin/ConfirmActionButton";
 import { EarningsByMethod, EarningsByWeek, type MethodEarnings, type WeekEarnings } from "@/components/admin/EarningsChart";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { reviewPayment } from "@/lib/admin/setup-actions";
 import { firstParam } from "@/lib/auth/safe-next";
 import { requireAdmin } from "@/lib/auth/user";
-import { adminBookingStatusBadge, bookingReference, paymentMethodName } from "@/lib/booking-rules";
+import { paymentMethodName } from "@/lib/booking-rules";
 import { cn } from "@/lib/cn";
-import { getAdminPayments, getBillingSummary, getEarnings, getScreenshotLinks } from "@/lib/data/admin-setup";
+import { getAdminPayments, getBillingSummary, getEarnings } from "@/lib/data/admin-setup";
 import { addDays, formatClassDate, formatManilaDateTime, formatPeso, formatTime, manilaDateString } from "@/lib/format";
 import { nowForThisVisit } from "@/lib/server-clock";
 import type { AdminBillingSummary, AdminEarningRow, AdminPayment, PaymentStatus } from "@/types/app";
 
-export const metadata: Metadata = { title: "Payments · Admin" };
+export const metadata: Metadata = { title: "Earnings · Admin" };
 
 // How many weeks the earnings bars show.
 const WEEKS_SHOWN = 8;
-
-// The tabs.
-const VIEWS = [
-  { key: "all", label: "All payments" },
-  { key: "review", label: "Needs review" },
-  { key: "late", label: "Paid, needs action" },
-] as const;
-type ViewKey = (typeof VIEWS)[number]["key"];
 
 // The filter choices (the database refuses anything else).
 const METHOD_OPTIONS = [
@@ -76,29 +59,29 @@ const STATUS_OPTIONS = [
 ];
 
 // The filters as they are in the address.
-type PaymentFilterValues = { view: ViewKey; q: string; method: string; status: string; from: string; to: string };
+type PaymentFilterValues = { q: string; method: string; status: string; from: string; to: string };
 
-// The Payments page.
-// Takes: searchParams (the tab and filters).
+// The Earnings page.
+// Takes: searchParams (the filters).
 // Gives back: the heading, then the live part in <Suspense>.
-export default function AdminPaymentsPage({ searchParams }: PageProps<"/admin/payments">) {
+export default function AdminEarningsPage({ searchParams }: PageProps<"/admin/earnings">) {
   return (
     <AdminPage>
       <AdminPageHeader
         overline="Mat Pilates admin"
-        title="Payments"
-        intro="Payments from PayMongo, manual transfers and walk-ins, plus earnings."
+        title="Earnings"
+        intro="Money received from PayMongo, manual transfers and walk-ins. View only: payments are checked in Appointments."
       />
-      <Suspense fallback={<AdminLoading label="the payments" blocks={4} />}>
-        <PaymentsBody searchParams={searchParams} />
+      <Suspense fallback={<AdminLoading label="the earnings" blocks={4} />}>
+        <EarningsBody searchParams={searchParams} />
       </Suspense>
     </AdminPage>
   );
 }
 
-// The live part: numbers, bars, tabs and the list.
+// The live part: numbers, bars and the payments table.
 // Takes: the searchParams promise. Gives back: the cards and the list.
-async function PaymentsBody({ searchParams }: { searchParams: PageProps<"/admin/payments">["searchParams"] }) {
+async function EarningsBody({ searchParams }: { searchParams: PageProps<"/admin/earnings">["searchParams"] }) {
   await requireAdmin();
   const values = readFilters(await searchParams);
 
@@ -117,7 +100,7 @@ async function PaymentsBody({ searchParams }: { searchParams: PageProps<"/admin/
       getBillingSummary(),
       getEarnings(earningsFrom, today),
       getAdminPayments({
-        view: values.view,
+        view: "all",
         search: values.q,
         method: values.method,
         status: values.status,
@@ -128,7 +111,7 @@ async function PaymentsBody({ searchParams }: { searchParams: PageProps<"/admin/
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
-    return <AdminLoadError what="the payments" />;
+    return <AdminLoadError what="the earnings" />;
   }
 
   const weeks = earningsByWeek(earnings, firstMonday, WEEKS_SHOWN);
@@ -138,18 +121,11 @@ async function PaymentsBody({ searchParams }: { searchParams: PageProps<"/admin/
     month: "long",
     year: "numeric",
   });
-  const needsAction = summary.awaiting_verification + summary.paid_needs_action;
-
-  // Private links to the screenshots shown on the Needs review tab
-  const screenshots =
-    values.view === "review"
-      ? await getScreenshotLinks(list.rows.flatMap((row) => (row.screenshot_path ? [row.screenshot_path] : [])))
-      : {};
 
   return (
     <>
       {/* ---- Number cards (paid money only, Philippine time) ---- */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatCard
           label="Today"
           value={formatPeso(Number(summary.paid_today))}
@@ -163,14 +139,6 @@ async function PaymentsBody({ searchParams }: { searchParams: PageProps<"/admin/
           value={formatPeso(Number(summary.mats_this_month))}
           note={`Mat rental this month · ${formatPeso(Number(summary.mats_all_time))} all time`}
         />
-        <div className="col-span-2 lg:col-span-1">
-          <StatCard
-            label="Needs action"
-            value={String(needsAction)}
-            tone={needsAction > 0 ? "alert" : "normal"}
-            note={`${summary.awaiting_verification} to verify · ${summary.paid_needs_action} paid, not confirmed`}
-          />
-        </div>
       </div>
 
       {/* ---- Earnings ---- */}
@@ -179,42 +147,8 @@ async function PaymentsBody({ searchParams }: { searchParams: PageProps<"/admin/
         <EarningsByMethod methods={methods} note={monthName} />
       </div>
 
-      {/* ---- Tabs ---- */}
-      <nav aria-label="Payment lists">
-        <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
-          {VIEWS.map((view) => {
-            const count =
-              view.key === "review" ? summary.awaiting_verification : view.key === "late" ? summary.paid_needs_action : null;
-            const active = view.key === values.view;
-            return (
-              <li key={view.key} className="shrink-0">
-                <Link
-                  href={view.key === "all" ? "/admin/payments" : `/admin/payments?view=${view.key}`}
-                  scroll={false}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-full border px-4 text-[13px] transition-colors",
-                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown",
-                    active
-                      ? "border-brown bg-brown font-semibold text-card"
-                      : "border-admin-active bg-white text-brown hover:bg-admin-bg",
-                  )}
-                >
-                  {view.label}
-                  {count !== null && count > 0 && (
-                    <span className={cn("rounded-full px-1.5 text-[11px] font-semibold", active ? "bg-white text-brown" : "bg-error-bg text-error")}>
-                      {count}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {values.view === "all" && <PaymentFilters values={values} />}
-      {values.view === "late" && <LatePaymentHelp />}
+      {/* ---- The payments table, with filters ---- */}
+      <PaymentFilters values={values} />
 
       <p role="status" className="text-xs text-muted">
         {list.totalMatches > list.rows.length
@@ -222,66 +156,21 @@ async function PaymentsBody({ searchParams }: { searchParams: PageProps<"/admin/
           : `${list.totalMatches} payment${list.totalMatches === 1 ? "" : "s"}`}
       </p>
 
-      {/* ---- The list for this tab ---- */}
       {list.rows.length === 0 ? (
-        <AdminCard className="text-sm text-muted">
-          {values.view === "review"
-            ? "No transfers waiting for a check."
-            : values.view === "late"
-              ? "No late payments. Nothing to sort out."
-              : "No payments match these filters."}
-        </AdminCard>
-      ) : values.view === "review" ? (
-        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {list.rows.map((payment) => (
-            <ReviewCard
-              key={payment.payment_id}
-              payment={payment}
-              screenshotUrl={payment.screenshot_path ? screenshots[payment.screenshot_path] : undefined}
-            />
-          ))}
-        </ul>
+        <AdminCard className="text-sm text-muted">No payments match these filters.</AdminCard>
       ) : (
-        <PaymentList payments={list.rows} late={values.view === "late"} />
+        <PaymentList payments={list.rows} />
       )}
     </>
   );
 }
 
-// What to do with a "Paid, needs action" booking (the Late tab).
-// Takes: nothing. Gives back: a short how-to card.
-function LatePaymentHelp() {
-  return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-warning/30 bg-warning-bg p-4 text-sm leading-relaxed lg:p-6">
-      <p className="font-semibold text-ink">What to do with these</p>
-      <p className="text-muted">
-        The client paid, but the seat couldn&apos;t be confirmed: the payment came after the seat hold ended and the
-        class had filled up, the class was cancelled, closed or had already started, or the amount was different
-        from the booking total. Their money is recorded as paid.
-      </p>
-      <ol className="list-decimal space-y-1 pl-5 text-ink">
-        <li>
-          <span className="font-semibold">Usually nothing:</span> the client can move to any open class for free
-          from My Bookings (&quot;Move to another class&quot;), as long as the payment covers the total. Remind them
-          if they haven&apos;t.
-        </li>
-        <li>
-          <span className="font-semibold">Or refund them:</span> refund the money outside the website (PayMongo
-          dashboard → the payment → Refund, or by GCash / cash), then cancel the booking with no credit and write
-          &quot;refunded&quot; as the reason.
-        </li>
-        <li>Message the client either way (emails come later).</li>
-      </ol>
-    </div>
-  );
-}
-
-// The search + filter form (All payments tab). A normal GET form, so the
-// filters live in the address.
+// The search + filter form. A normal GET form, so the filters live in the
+// address.
 // Takes: the current filters. Gives back: the form.
 function PaymentFilters({ values }: { values: PaymentFilterValues }) {
   return (
-    <Form action="/admin/payments" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_auto] lg:items-end">
+    <Form action="/admin/earnings" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_auto] lg:items-end">
       <Input
         label="Search"
         name="q"
@@ -302,7 +191,7 @@ function PaymentFilters({ values }: { values: PaymentFilterValues }) {
           Search
         </Button>
         <Link
-          href="/admin/payments"
+          href="/admin/earnings"
           className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-brown underline underline-offset-2 hover:bg-admin-bg"
         >
           Clear
@@ -312,12 +201,11 @@ function PaymentFilters({ values }: { values: PaymentFilterValues }) {
   );
 }
 
-// The payments list (All payments and Paid needs action tabs):
-// a table on laptops, cards on phones.
-// Takes: the payments, and late = true on the "Paid, needs action" tab
-// (then each row offers "Move or cancel").
+// The payments list: a table on laptops, cards on phones. Each row opens its
+// appointment (view only here; changes are made in Appointments).
+// Takes: the payments.
 // Gives back: the table and the cards (one is shown at a time).
-function PaymentList({ payments, late }: { payments: AdminPayment[]; late: boolean }) {
+function PaymentList({ payments }: { payments: AdminPayment[] }) {
   return (
     <>
       {/* ===== Laptop: table ===== */}
@@ -334,7 +222,7 @@ function PaymentList({ payments, late }: { payments: AdminPayment[]; late: boole
               <th scope="col" className="px-4 py-3 font-semibold">Status</th>
               <th scope="col" className="px-4 py-3 font-semibold">Reference</th>
               <th scope="col" className="px-4 py-3 text-right font-semibold">
-                <span className="sr-only">Actions</span>
+                <span className="sr-only">Appointment</span>
               </th>
             </tr>
           </thead>
@@ -363,10 +251,10 @@ function PaymentList({ payments, late }: { payments: AdminPayment[]; late: boole
                   <td className="px-4 py-3 text-muted">{referenceLine(payment)}</td>
                   <td className="px-4 py-3 text-right">
                     <Link
-                      href={`/admin/bookings/${payment.booking_id}`}
+                      href={`/admin/appointments/${payment.booking_id}`}
                       className="inline-flex min-h-11 items-center rounded-full px-3 text-xs font-semibold text-brown hover:bg-admin-bg"
                     >
-                      {late ? "Move or cancel" : "View booking"}
+                      View appointment
                       <span className="sr-only"> for {payment.guest_name}</span>
                     </Link>
                   </td>
@@ -384,7 +272,7 @@ function PaymentList({ payments, late }: { payments: AdminPayment[]; late: boole
           return (
             <li key={payment.payment_id}>
               <Link
-                href={`/admin/bookings/${payment.booking_id}`}
+                href={`/admin/appointments/${payment.booking_id}`}
                 className="flex flex-col gap-1.5 rounded-2xl border border-admin-line bg-white p-3.5 focus-visible:outline-2 focus-visible:outline-brown active:bg-admin-bg"
               >
                 <span className="flex items-start justify-between gap-2.5">
@@ -402,102 +290,12 @@ function PaymentList({ payments, late }: { payments: AdminPayment[]; late: boole
                     {formatPeso(Number(payment.amount))} · {paymentMethodName(payment.method, payment.provider)}
                   </span>
                 </span>
-                {late && <span className="text-xs font-semibold text-brown">Move or cancel this booking →</span>}
               </Link>
             </li>
           );
         })}
       </ul>
     </>
-  );
-}
-
-// One manual transfer to check: who, which class, how much, the screenshot,
-// and the Approve / Reject buttons.
-// Takes: the payment and the private link to its screenshot (if it exists).
-// Gives back: an <li> card.
-function ReviewCard({ payment, screenshotUrl }: { payment: AdminPayment; screenshotUrl?: string }) {
-  const status = adminBookingStatusBadge(payment.booking_status);
-  return (
-    <li>
-      <AdminCard className="flex h-full flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="break-words text-sm font-semibold">{payment.guest_name}</p>
-            <p className="text-xs text-muted">
-              {bookingReference(payment.booking_id)} · {classLine(payment)}
-            </p>
-          </div>
-          <Badge variant={status.variant}>{status.label}</Badge>
-        </div>
-        <p className="text-sm">
-          <span className="font-heading text-lg font-semibold text-brown">{formatPeso(Number(payment.amount))}</span> by{" "}
-          {paymentMethodName(payment.method, payment.provider)} · sent {formatManilaDateTime(payment.created_at)}
-        </p>
-        <p className="text-xs text-muted">
-          Check that this amount arrived in the cafe&apos;s {payment.method === "bpi" ? "BPI account" : "GCash"} before
-          approving. The seat stays held until you decide.
-        </p>
-
-        {/* The screenshot (a private 10-minute link) */}
-        {screenshotUrl ? (
-          <a
-            href={screenshotUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative block overflow-hidden rounded-xl border border-admin-line bg-admin-bg"
-          >
-            {/* A plain <img>: next/image only loads the PUBLIC site-images
-                bucket, and this link is private and only works for 10 minutes */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={screenshotUrl}
-              alt={`Payment screenshot from ${payment.guest_name}`}
-              className="max-h-80 w-full object-contain"
-            />
-            <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-brown">
-              <ExternalLink aria-hidden="true" className="size-3" /> Open full size
-            </span>
-          </a>
-        ) : (
-          <p className="rounded-xl bg-warning-bg px-3.5 py-3 text-xs text-warning">
-            {payment.screenshot_path
-              ? "The screenshot file couldn't be found. Ask the client to send it by message."
-              : "No screenshot was uploaded with this payment."}
-          </p>
-        )}
-
-        <div className="mt-auto flex flex-wrap gap-2">
-          <ConfirmActionButton
-            action={reviewPayment}
-            fields={{ payment_id: payment.payment_id, decision: "approve" }}
-            label="Approve"
-            srLabel={` ${payment.guest_name}'s payment`}
-            variant="primary"
-            confirm={{
-              title: "Approve this payment?",
-              body: `${formatPeso(Number(payment.amount))} from ${payment.guest_name}. Their booking becomes confirmed.`,
-              confirmLabel: "Yes, approve",
-            }}
-          />
-          <ConfirmActionButton
-            action={reviewPayment}
-            fields={{ payment_id: payment.payment_id, decision: "reject" }}
-            label="Reject"
-            srLabel={` ${payment.guest_name}'s payment`}
-            variant="danger"
-            confirm={{
-              title: "Reject this payment?",
-              body: "The booking ends and the seat is freed for someone else. Please message the client to say why (emails come later).",
-              confirmLabel: "Yes, reject",
-            }}
-          />
-          <ButtonLink href={`/admin/bookings/${payment.booking_id}`} variant="secondary">
-            See the booking
-          </ButtonLink>
-        </div>
-      </AdminCard>
-    </li>
   );
 }
 
@@ -541,17 +339,15 @@ function paymentBadge(payment: AdminPayment): { label: string; variant: BadgeVar
   return badges[payment.status];
 }
 
-// Reads the tab and filters from the address, ignoring anything not valid.
+// Reads the filters from the address, ignoring anything not valid.
 // Takes: the page's searchParams. Gives back: clean values.
 function readFilters(params: Record<string, string | string[] | undefined>): PaymentFilterValues {
-  const view = firstParam(params.view);
   const method = firstParam(params.method) ?? "";
   const status = firstParam(params.status) ?? "";
   const from = firstParam(params.from) ?? "";
   const to = firstParam(params.to) ?? "";
   const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
   return {
-    view: VIEWS.some((item) => item.key === view) ? (view as ViewKey) : "all",
     q: (firstParam(params.q) ?? "").trim().slice(0, 100),
     method: METHOD_OPTIONS.some((option) => option.value === method) ? method : "",
     status: STATUS_OPTIONS.some((option) => option.value === status) ? status : "",

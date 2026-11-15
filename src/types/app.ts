@@ -350,11 +350,15 @@ export type AdminChangeRule = ChangeRule | "late_payment";
 // moved it, or cancelled it with or without a 50% code.
 export type AdminActionKind = "transfer" | "cancel_voucher" | "cancel_no_credit";
 
+// Version 1.6 (migration 24): the log also has re-schedules and rejected
+// payments (each with the admin's reason).
+export type AdminLoggedAction = AdminActionKind | "reschedule" | "reject_payment";
+
 // One saved admin change, inside admin_booking_change_info's "actions" list.
 export type AdminBookingAction = {
   id: string;
-  action: AdminActionKind;
-  normal_rule: AdminChangeRule;
+  action: AdminLoggedAction;
+  normal_rule: AdminChangeRule | "payment_check"; // "payment_check" for a rejected payment
   overridden: boolean; // true = different from the normal rule (has a reason)
   note: string | null; // the admin's reason
   admin_name: string | null;

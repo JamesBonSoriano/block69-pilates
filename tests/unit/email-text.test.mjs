@@ -7,10 +7,11 @@
 //   - the confirmation has the booking details (and "Choose at the cafe"
 //     when no drink was picked)
 //   - the email-changed alert names the new email and how to reach the cafe
+//   - (Version 1.6) the re-schedule email has the old and new class and the reason
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adminMessageEmail, confirmationEmail, emailChangedAlert, emailSignOff } from '../../src/lib/email-text.ts';
+import { adminMessageEmail, confirmationEmail, emailChangedAlert, emailSignOff, rescheduleEmail } from '../../src/lib/email-text.ts';
 
 const cafe = { name: 'Block 69 Cafe', address: '444 Kamagong St., Comembo, Taguig City', email: 'block69cafe@gmail.com' };
 
@@ -48,4 +49,19 @@ test('email changed alert: new email and who to contact', () => {
   assert.equal(email.subject, 'Your Block 69 Cafe email was changed');
   assert.ok(email.text.includes('changed to ana.new@gmail.com'));
   assert.ok(email.text.includes('contact us right away at block69cafe@gmail.com'));
+});
+
+test('re-schedule email: old class, new class and the reason', () => {
+  const email = rescheduleEmail({
+    name: 'Ana',
+    reference: 'B69-77AB01CD',
+    fromClass: 'Thursday, November 19 · 9:00 – 9:50 AM',
+    toClass: 'Saturday, November 21 · 10:15 – 11:05 AM',
+    reason: '  Instructor is sick  ',
+  }, cafe);
+  assert.equal(email.subject, 'Your Mat Pilates class was re-scheduled: Saturday, November 21 · 10:15 – 11:05 AM');
+  for (const part of ['Hi Ana,', 'From: Thursday, November 19', 'To: Saturday, November 21', 'Booking: B69-77AB01CD', 'Reason: Instructor is sick' + String.fromCharCode(10), 'nothing more to pay']) {
+    assert.ok(email.text.includes(part), `missing "${part}"`);
+  }
+  assert.ok(email.text.endsWith('block69cafe@gmail.com'));
 });

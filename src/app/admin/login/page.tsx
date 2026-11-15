@@ -19,7 +19,7 @@
 // so it has no admin menu and no admin check.
 //
 // The address can carry:
-//   ?next=/admin/bookings   the admin page to open after logging in
+//   ?next=/admin/appointments   the admin page to open after logging in
 //   ?error=deactivated      the account was deactivated and has been logged out
 
 import type { Metadata, Viewport } from "next";

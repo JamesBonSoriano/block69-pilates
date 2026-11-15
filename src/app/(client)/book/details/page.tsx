@@ -17,14 +17,20 @@
 //   3. Already holding a seat in this class?
 //        unpaid hold still running  ->  straight to its pay page (no error)
 //        confirmed / attended       ->  a "you're already booked" message
+//        awaiting_verification      ->  "Awaiting verification" with an
+//                                       hourglass (Version 1.6; the check
+//                                       icon only shows once confirmed)
 //   4. The class must still be bookable (open, a seat free, before the
 //      cutoff). If not, a plain-English message and "Pick another class".
 //   5. Coming from "Change details" on the pay page (?from=<old booking>)?
 //      Fill the form with that released booking's choices (own bookings only).
 //   6. Otherwise: the form (BookingDetailsForm.tsx). Confirm calls holdSeat()
 //      (src/lib/booking/actions.ts), which calls book_seat() in the database.
+//      Version 1.6: if their last booking for this class had its transfer
+//      REJECTED, a "Payment rejected" note above the form says why, and the
+//      form itself is the way to book and pay again.
 
-import { CalendarX2, CircleCheck } from "lucide-react";
+import { CalendarX2, CircleAlert, CircleCheck, Hourglass } from "lucide-react";
 import type { Metadata } from "next";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
@@ -42,6 +48,7 @@ import { getPageContent } from "@/lib/data/content";
 import {
   checkMyVoucher,
   getMyBooking,
+  getMyRejectedSessionBooking,
   getMySessionBooking,
   getSessionForBooking,
   type MySessionBooking,
@@ -119,13 +126,15 @@ async function DetailsStep({ searchParams }: Pick<PageProps<"/book/details">, "s
   let session;
   let settings;
   let content;
+  let rejectedId: string | null;
   try {
     // Load everything at the same time
-    [mine, session, settings, content] = await Promise.all([
+    [mine, session, settings, content, rejectedId] = await Promise.all([
       getMySessionBooking(sessionId),
       getSessionForBooking(sessionId),
       getPublicSettings(),
       getPageContent("booking"),
+      getMyRejectedSessionBooking(sessionId),
     ]);
   } catch (error) {
     unstable_rethrow(error); // pass on Next.js's own signals
@@ -181,8 +190,22 @@ async function DetailsStep({ searchParams }: Pick<PageProps<"/book/details">, "s
   const whatToBring = content.what_to_bring;
 
   return (
-    <BookingDetailsForm
-      session={{
+    <>
+      {/* Version 1.6: their last transfer for this class was rejected */}
+      {rejectedId && (
+        <Card className="flex max-w-xl items-start gap-3 border-error-bg bg-error-bg text-error">
+          <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+          <div className="flex flex-col gap-1">
+            <h2 className="font-heading text-base font-semibold">Payment rejected</h2>
+            <p className="text-sm">
+              The cafe couldn&apos;t approve your last payment for this class, so the seat was let go. You can book
+              and pay again below.
+            </p>
+          </div>
+        </Card>
+      )}
+      <BookingDetailsForm
+        session={{
         id: session.session_id,
         dateLabel: date.full,
         timeLabel: formatTimeRange(session.start_time, session.end_time),
@@ -220,7 +243,8 @@ async function DetailsStep({ searchParams }: Pick<PageProps<"/book/details">, "s
           </Card>
         ) : null
       }
-    />
+      />
+    </>
   );
 }
 
@@ -258,20 +282,32 @@ async function loadKeptChoices(fromId: string | undefined, sessionId: string): P
 // Shown when the person already has a paid seat (or a transfer being
 // checked) in this class.
 // Takes: their booking for the class.
-// Gives back: a card with a link to the booking.
+// Gives back: a card with a link to the booking. Version 1.6: a transfer
+// still being checked says "Awaiting verification" with a pending
+// (hourglass) icon; the green check is only for a confirmed seat.
 function AlreadyBooked({ booking }: { booking: MySessionBooking }) {
   const isChecking = booking.status === "awaiting_verification";
   return (
     <Card className="flex max-w-xl flex-col items-start gap-4">
-      <CircleCheck aria-hidden="true" className="size-8 text-success" />
-      <h2 className="text-xl font-semibold">You&apos;re already booked in this class</h2>
+      {isChecking ? (
+        <Hourglass aria-hidden="true" className="size-8 text-info" />
+      ) : (
+        <CircleCheck aria-hidden="true" className="size-8 text-success" />
+      )}
+      <h2 className="text-xl font-semibold">
+        {isChecking ? "Awaiting verification" : "You're already booked in this class"}
+      </h2>
       <p className="text-sm leading-relaxed text-muted">
         {isChecking
-          ? "We're still checking your payment for this class. We'll confirm your seat as soon as it's checked."
+          ? "We're checking your payment. Your seat is held until then."
           : "You already have a seat in this class, so there's nothing more to do. Each person books their own seat, so a friend can book with their own account."}
       </p>
       <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-        {!isChecking && <ButtonLink href={`/book/done/${booking.bookingId}`}>See my booking</ButtonLink>}
+        {isChecking ? (
+          <ButtonLink href="/account/bookings">See my bookings</ButtonLink>
+        ) : (
+          <ButtonLink href={`/book/done/${booking.bookingId}`}>See my booking</ButtonLink>
+        )}
         <ButtonLink href="/book" variant="secondary">
           Book another class
         </ButtonLink>

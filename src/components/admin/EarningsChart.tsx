@@ -1,9 +1,9 @@
-// The two earnings pictures on the admin Payments page
+// The two earnings pictures on the admin Earnings page (was "Payments")
 // (docs/designs/AdminPayments.html):
 //   EarningsByWeek   one bar per week: class fees (brown) with the mat rental
 //                    part (caramel, all donated to the strays) on top
 //   EarningsByMethod one meter per payment method (GCash, Maya, card, ...)
-// Where it's used: src/app/admin/payments/page.tsx.
+// Where it's used: src/app/admin/(panel)/earnings/page.tsx.
 //
 // Plain HTML + CSS bars (no chart library, no JavaScript). So colour is never
 // the only clue: there is a legend, the amount is written above every bar,

@@ -224,7 +224,7 @@ async function SettingsBody() {
                     <span className="block font-semibold">Manual transfer backup</span>
                     <span className="block text-xs text-muted">
                       Shows the GCash / BPI details below and a screenshot upload on the pay page. You check each one
-                      in Payments.
+                      in Appointments (Pending).
                     </span>
                   </>
                 }

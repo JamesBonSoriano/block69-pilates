@@ -14,9 +14,11 @@
 //                     /admin/login itself is open to guests.
 //      - a deactivated account is sent to /auth/deactivated, which logs it
 //        out and explains why
-//   3. Keeps admins out of the client-only pages: a logged-in admin opening
-//      /book... or /account... goes to /admin (Revisions part 1, item 1).
-//      Public pages (Home, About Us, Policies) still open for admins.
+//   3. Keeps admins out of the client pages: a logged-in admin opening Home
+//      (/), /about, /policies, /book... or /account... goes to /admin
+//      (Revisions part 1, item 1; Version 1.6 added the public pages, see
+//      isClientOnlyPath() in src/lib/auth/login-portal.ts). /auth/*,
+//      /admin/login, /reset-password and the PayMongo webhook are untouched.
 //   4. Sends people who are already logged in away from the login pages
 //      (/login, /signup, /admin/login) to where their account belongs.
 //

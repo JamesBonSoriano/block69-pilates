@@ -70,18 +70,78 @@ export function isValidBirthday(value: string): boolean {
   return value >= "1900-01-01" && date.getTime() <= Date.now();
 }
 
-// Turns a birthday typed as MM/DD/YYYY into the database's "YYYY-MM-DD"
-// (Change 17: the birthday box is typed, not a date picker, because the
-// picker let years like 275760 through).
+// The youngest age allowed to have an account and book (Version 1.6).
+export const MIN_AGE = 18;
+
+// Today's date in the Philippines, as "YYYY-MM-DD" (class dates, birthdays
+// and the 18+ rule all use Philippine time, whatever the computer's clock zone).
+// Takes: "now" in milliseconds (default: the clock right now).
+// Gives back: e.g. "2026-11-15".
+export function manilaToday(nowMs: number = Date.now()): string {
+  // "en-CA" writes dates as YYYY-MM-DD
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(nowMs));
+}
+
+// Checks that someone born on this date is at least 18 today (Philippine date).
+// Takes: the birthday as "YYYY-MM-DD", and "now" in milliseconds.
+// Gives back: true from their 18th birthday on; false before it, and for a
+// birthday in the future. Someone born on 29 February turns 18 on 1 March
+// in a year with no 29 February. (The database trigger check_birthday_age,
+// migration 23, uses the same rule.)
+export function isAtLeast18(value: string, nowMs: number = Date.now()): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  // Their 18th birthday as text, e.g. "2016-03-12". Plain text comparison
+  // works for "YYYY-MM-DD" dates.
+  const eighteenth = `${Number(match[1]) + MIN_AGE}-${match[2]}-${match[3]}`;
+  return eighteenth <= manilaToday(nowMs);
+}
+
+// The message for a birthday under 18 (or in the future).
+export const AGE_ERROR = "You must be at least 18 years old to book a class.";
+
+// Reads a birthday typed as MM/DD/YYYY as a real calendar date.
 // Takes: what was typed, e.g. "03/12/1998".
 // Gives back: "1998-03-12", or null unless it is exactly MM/DD/YYYY with a
-// 4-digit year, a real calendar date (no 02/30), from 1900, and not in the future.
-export function parseBirthdayInput(text: string): string | null {
+// 4-digit year, a real calendar date (no 02/30) and from 1900. (The age
+// is checked separately, so a future date still comes back here.)
+function readBirthdayDate(text: string): string | null {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text.trim());
   if (!match) return null;
   const [, month, day, year] = match;
   const value = `${year}-${month}-${day}`;
-  return isValidBirthday(value) ? value : null;
+  const date = new Date(`${value}T00:00:00Z`);
+  // "2026-02-31" becomes 3 March, so check the date didn't change
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return null;
+  return value >= "1900-01-01" ? value : null;
+}
+
+// Says what is wrong with a typed birthday, if anything.
+// Takes: what was typed (MM/DD/YYYY), and "now" in milliseconds.
+// Gives back: null if it's fine; BIRTHDAY_ERROR if it isn't a real date
+// typed as MM/DD/YYYY; AGE_ERROR if the person is under 18 or the date is
+// in the future (Version 1.6, PDF item 5).
+export function birthdayInputProblem(text: string, nowMs: number = Date.now()): string | null {
+  const value = readBirthdayDate(text);
+  if (!value) return BIRTHDAY_ERROR;
+  if (!isAtLeast18(value, nowMs)) return AGE_ERROR;
+  return null;
+}
+
+// Turns a birthday typed as MM/DD/YYYY into the database's "YYYY-MM-DD"
+// (Change 17: the birthday box is typed, not a date picker, because the
+// picker let years like 275760 through).
+// Takes: what was typed, e.g. "03/12/1998", and "now" in milliseconds.
+// Gives back: "1998-03-12", or null unless it passes birthdayInputProblem():
+// exactly MM/DD/YYYY with a 4-digit year, a real calendar date (no 02/30),
+// from 1900, and the person is at least 18 today (so never in the future).
+export function parseBirthdayInput(text: string, nowMs: number = Date.now()): string | null {
+  return birthdayInputProblem(text, nowMs) ? null : readBirthdayDate(text);
 }
 
 // Shows a saved birthday in the MM/DD/YYYY box.
@@ -148,7 +208,9 @@ export function checkSignupFields(fields: SignupFields): Partial<Record<keyof Si
   if (!name) errors.full_name = "Please enter your full name.";
   else if (name.length > 120) errors.full_name = "Please use 120 characters or fewer.";
   if (!isValidPhMobile(fields.mobile)) errors.mobile = PH_MOBILE_ERROR;
-  if (!parseBirthdayInput(fields.birthday)) errors.birthday = BIRTHDAY_ERROR;
+  // A real MM/DD/YYYY date, and at least 18 years old (Version 1.6)
+  const birthdayProblem = birthdayInputProblem(fields.birthday);
+  if (birthdayProblem) errors.birthday = birthdayProblem;
   if (!isValidEmail(fields.email)) errors.email = "Please enter a valid email address.";
   else if (!isAllowedEmailDomain(fields.email)) errors.email = EMAIL_DOMAIN_ERROR;
   if (fields.password.length < MIN_PASSWORD) errors.password = `Please use at least ${MIN_PASSWORD} characters.`;

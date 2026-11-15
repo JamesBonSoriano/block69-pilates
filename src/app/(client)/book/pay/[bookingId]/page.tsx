@@ -19,14 +19,14 @@
 //   pending_payment after the hold, or expired -> "Your seat was released"
 //                                          (the Payment expired page)
 //   confirmed / attended / paid_needs_action -> sent on to /book/done/<id>
-//   awaiting_verification               -> "We're checking your payment"
+//   awaiting_verification               -> "Awaiting verification" (hourglass)
 //                                          (a manual transfer screenshot)
 //   anything else (cancelled, transferred, ...) -> "This booking is closed"
 // ?payment=cancelled = PayMongo's "back" link (cancel_url): a note that
 // nothing was paid and the seat is still held. ?payment=sent = the manual
 // transfer was just sent.
 
-import { Clock, Info } from "lucide-react";
+import { Hourglass, Info } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
@@ -155,13 +155,14 @@ async function PayStep({
     );
   }
 
-  // A manual transfer screenshot is being checked (Step 12)
+  // A manual transfer screenshot is being checked (Step 12). Version 1.6:
+  // "Awaiting verification" with a pending (hourglass) icon, like My Bookings
   if (booking.status === "awaiting_verification") {
     return (
       <StatusCard
-        icon={<Clock aria-hidden="true" className="size-7" />}
-        title="We're checking your payment"
-        text={`${payment === "sent" ? "Thanks, your screenshot was sent! " : ""}The cafe will check that your transfer of ${formatPeso(Number(booking.total))} arrived. Your seat stays held while they do. Once it's approved, the booking shows as confirmed in My Bookings. If there's a problem, the cafe will message you.`}
+        icon={<Hourglass aria-hidden="true" className="size-7" />}
+        title="Awaiting verification"
+        text={`${payment === "sent" ? "Thanks, your screenshot was sent! " : ""}We're checking your payment. Your seat is held until then. The cafe will check that your transfer of ${formatPeso(Number(booking.total))} arrived. Your seat stays held while they do. Once it's approved, the booking shows as confirmed in My Bookings. If there's a problem, the cafe will message you.`}
         booking={booking}
       />
     );

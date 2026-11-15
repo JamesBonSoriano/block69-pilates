@@ -48,6 +48,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   BIRTHDAY_ERROR,
+  birthdayInputProblem,
   EMAIL_DOMAIN_ERROR,
   MIN_PASSWORD,
   PH_MOBILE_ERROR,
@@ -216,8 +217,9 @@ export async function updateProfileField(_previous: AccountFormState, formData: 
     // Change 17: 11 digits starting with 09, the same rule as sign-up
     if (!isValidPhMobile(value)) problem = PH_MOBILE_ERROR;
   } else if (field === "birthday") {
-    // Change 17: a real past date typed MM/DD/YYYY (the database checks too)
-    if (!parseBirthdayInput(value)) problem = BIRTHDAY_ERROR;
+    // Change 17: a real date typed MM/DD/YYYY; Version 1.6: at least 18
+    // years old (the database trigger checks both too)
+    problem = birthdayInputProblem(value);
   } else if (value && !isValidInstagram(value)) {
     problem = "Please enter just your Instagram name, for example @yourname.";
   }
@@ -614,8 +616,10 @@ export async function finishProfile(_previous: AccountFormState, formData: FormD
     else change.mobile = normalizePhMobile(mobile);
   }
   if (!profile.birthday) {
+    // A real MM/DD/YYYY date, and at least 18 years old (Version 1.6)
+    const problem = birthdayInputProblem(birthdayText);
     const birthday = parseBirthdayInput(birthdayText);
-    if (!birthday) fieldErrors.birthday = BIRTHDAY_ERROR;
+    if (problem || !birthday) fieldErrors.birthday = problem ?? BIRTHDAY_ERROR;
     else change.birthday = birthday;
   }
   if (Object.keys(fieldErrors).length > 0) {

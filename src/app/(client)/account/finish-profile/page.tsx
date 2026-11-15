@@ -9,12 +9,15 @@
 // It asks ONLY for what is missing (and the name, in the rare case it's
 // empty). After saving they go on to the page they were opening ("next").
 // Someone with nothing missing is sent straight on.
+// Version 1.6: a "Log out" button under the form, so nobody is stuck here
+// (for example someone who doesn't want to give a mobile number yet).
 
 import { UserRoundCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AccountHeading, AccountLoading } from "@/components/account/AccountHeading";
 import { FinishProfileForm } from "@/components/account/ProfileForms";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Card } from "@/components/ui/Card";
 import { firstParam, safeNextPath } from "@/lib/auth/safe-next";
 import { FINISH_PROFILE_PATH, needsFinishProfile, requireClient } from "@/lib/auth/user";
@@ -70,6 +73,11 @@ async function FinishProfileContent({ searchParams }: Pick<PageProps<"/account/f
           birthday: !user.birthday,
         }}
       />
+      {/* A way out: logs out and goes to the Home page */}
+      <div className="flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted">Not ready yet? You can finish this later.</p>
+        <LogoutButton formClassName="max-sm:w-full" className="max-sm:w-full" />
+      </div>
     </Card>
   );
 }

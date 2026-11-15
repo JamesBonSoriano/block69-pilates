@@ -6,7 +6,8 @@
 //
 // The rules (Change 17) are checkSignupFields() in src/lib/validation.ts:
 //   phone    exactly 11 digits starting with 09 (the box takes digits only, 11 at most)
-//   birthday MM/DD/YYYY, a real calendar date with a 4-digit year, in the past
+//   birthday MM/DD/YYYY, a real calendar date with a 4-digit year, and at
+//   least 18 years old (Version 1.6)
 //   email    @gmail.com or @yahoo.com only (this version)
 //   password at least 8 characters (with a show / hide button)
 // They run HERE when the person presses "Create account" (so every problem
@@ -146,6 +147,8 @@ export function SignupForm({ next }: { next: string | null }) {
       {/* A separate small form: Google needs none of the fields above */}
       <form action={signInWithGoogle}>
         {next && <input type="hidden" name="next" value={next} />}
+        {/* The SIGN-UP button: a new Google user gets an account (Version 1.6) */}
+        <input type="hidden" name="google_mode" value="signup" />
         <GoogleButton label="Sign up with Google" />
       </form>
 

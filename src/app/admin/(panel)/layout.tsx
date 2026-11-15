@@ -1,14 +1,14 @@
 // The frame shared by every admin page (/admin/...).
 // Where it's used: Next.js wraps each page in src/app/admin/(panel)/ with it.
 // "(panel)" in brackets is a route group: it adds nothing to the web address
-// (/admin/bookings stays /admin/bookings). It exists so the admin LOGIN page
+// (/admin/appointments stays /admin/appointments). It exists so the admin LOGIN page
 // (src/app/admin/login/) sits outside this frame and its menus.
 // Layout follows docs/designs/AdminBookings.html (laptop) and
 // PhoneAdminDashboard.html (phone):
 //   - laptop (1024px+): a 280px brown side menu on the left, the page on the
 //     admin background (admin-bg) on the right
 //   - phone: a 64px brown top bar with a menu button, the page, and a white
-//     tab bar stuck to the bottom (Home, Bookings, Payments, Schedule)
+//     tab bar stuck to the bottom (Home, Appointments, Earnings, Schedule)
 // The menus and bars are left out when a page is printed (print:hidden), so
 // a booking receipt prints on its own.
 //

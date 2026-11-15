@@ -938,6 +938,18 @@ export type Database = {
         }[]
       }
       admin_normal_action: { Args: { p_rule: string }; Returns: string }
+      admin_reject_payment: {
+        Args: { p_payment_id: string; p_reason: string }
+        Returns: Database["public"]["Enums"]["booking_status"]
+      }
+      admin_reschedule_booking: {
+        Args: {
+          p_booking_id: string
+          p_new_session_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
       admin_review_manual_payment: {
         Args: { p_approve: boolean; p_payment_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]
@@ -1242,6 +1254,7 @@ export type Database = {
           moved_to_start_time: string
           paid_amount: number
           paid_method: Database["public"]["Enums"]["payment_method"]
+          payment_rejected: boolean
           session_id: string
           session_status: Database["public"]["Enums"]["session_status"]
           start_time: string
@@ -1290,6 +1303,10 @@ export type Database = {
           total: number
           voucher_code: string
         }[]
+      }
+      get_my_rejected_session_booking: {
+        Args: { p_session_id: string }
+        Returns: string
       }
       get_my_session_booking: {
         Args: { p_session_id: string }
@@ -1429,6 +1446,8 @@ export type Database = {
         | "cancelled_with_voucher"
         | "booking_forfeited"
         | "class_cancelled"
+        | "class_cancelled_hold_released"
+        | "class_cancelled_checking"
       payment_method: "gcash" | "maya" | "card" | "bpi" | "cash"
       payment_provider: "paymongo" | "manual" | "cash"
       payment_status:
@@ -1601,6 +1620,8 @@ export const Constants = {
         "cancelled_with_voucher",
         "booking_forfeited",
         "class_cancelled",
+        "class_cancelled_hold_released",
+        "class_cancelled_checking",
       ],
       payment_method: ["gcash", "maya", "card", "bpi", "cash"],
       payment_provider: ["paymongo", "manual", "cash"],

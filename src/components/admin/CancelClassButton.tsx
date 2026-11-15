@@ -1,7 +1,7 @@
 "use client";
 // The "Cancel class" button and the confirm box it opens.
-// Where it's used: the class cards on the admin Dashboard
-// (ClassCard.tsx) and the admin booking details page.
+// Where it's used: the admin Schedule page only (Version 1.6 took it off the
+// Dashboard class cards and the booking details page).
 //
 // Nothing is cancelled straight away. The box first explains what happens:
 // the class becomes "cancelled", nobody can book it, and the clients who are

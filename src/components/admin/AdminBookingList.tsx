@@ -1,24 +1,28 @@
-// The list of bookings on the admin Bookings page:
+// The list of appointments on the admin Appointments page:
 //   - laptop: a table (docs/designs/AdminBookings.html)
-//   - phone:  one card per booking (docs/designs/PhoneAdminBookings.html)
-// Each booking opens its details page (/admin/bookings/<id>).
-// Where it's used: src/app/admin/bookings/page.tsx.
+//   - phone:  one card per appointment (docs/designs/PhoneAdminBookings.html)
+// Version 1.6: the Status column shows one of the five simple words
+// (Pending, Confirmed, Done, Cancelled, Re-scheduled), and the "Action"
+// column has two icon buttons: eye = view (+ PDF), pencil = manage. The
+// phone cards have the same two buttons.
+// Where it's used: src/app/admin/(panel)/appointments/page.tsx.
 
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
-import { adminBookingStatusBadge, bookingReference, paymentMethodName } from "@/lib/booking-rules";
+import { appointmentStatus } from "@/lib/admin/display";
+import { bookingReference, paymentMethodName } from "@/lib/booking-rules";
 import { formatClassDate, formatPeso, formatTime, initialsOf } from "@/lib/format";
 import type { AdminBookingListItem } from "@/types/app";
 import { AdminCard } from "./AdminUi";
+import { AppointmentActionLinks } from "./AppointmentActionLinks";
 
-// The booking list.
-// Takes: the bookings to show (already filtered by the database).
+// The appointment list.
+// Takes: the appointments to show (already filtered by the database).
 // Gives back: the table (laptop) and the cards (phone). Only one of them is
 // visible at a time; screen readers also only get the visible one.
 export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[] }) {
   if (bookings.length === 0) {
-    return <AdminCard className="text-sm text-muted">No bookings match these filters.</AdminCard>;
+    return <AdminCard className="text-sm text-muted">No appointments match these filters.</AdminCard>;
   }
 
   return (
@@ -26,7 +30,7 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
       {/* ===== Laptop: table ===== */}
       <AdminCard className="hidden overflow-x-auto p-0 lg:block">
         <table className="w-full border-collapse text-[13px]">
-          <caption className="sr-only">Bookings</caption>
+          <caption className="sr-only">Appointments</caption>
           <thead>
             <tr className="border-b border-admin-line text-left text-[11px] uppercase tracking-[0.06em] text-muted">
               <th scope="col" className="px-4 py-3 font-semibold">Client</th>
@@ -35,15 +39,12 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
               <th scope="col" className="px-4 py-3 font-semibold">Mat</th>
               <th scope="col" className="px-4 py-3 font-semibold">Payment</th>
               <th scope="col" className="px-4 py-3 font-semibold">Status</th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">
-                <span className="sr-only">Details</span>
-              </th>
+              <th scope="col" className="px-4 py-3 font-semibold">Action</th>
             </tr>
           </thead>
           <tbody>
             {bookings.map((booking) => {
-              // (Version 1.5: "Pending Attendance Verification" after the class)
-              const badge = adminBookingStatusBadge(booking.status, booking.hold_seconds_left, booking.attendance_due);
+              const status = appointmentStatus(booking.status);
               return (
                 <tr key={booking.booking_id} className="border-b border-admin-bg last:border-b-0 hover:bg-admin-bg/60">
                   <td className="px-4 py-3">
@@ -56,7 +57,7 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
                       </span>
                       <div className="min-w-0">
                         <Link
-                          href={`/admin/bookings/${booking.booking_id}`}
+                          href={`/admin/appointments/${booking.booking_id}`}
                           className="font-semibold text-ink underline-offset-2 hover:underline"
                         >
                           {booking.guest_name}
@@ -73,17 +74,10 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
                   <td className="px-4 py-3">{booking.mat_rental ? "Yes" : "No"}</td>
                   <td className="px-4 py-3">{paymentLine(booking)}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                    <Badge variant={status.variant}>{status.label}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/admin/bookings/${booking.booking_id}`}
-                      className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-semibold text-brown hover:bg-admin-bg"
-                    >
-                      View
-                      <span className="sr-only"> {booking.guest_name}&apos;s booking</span>
-                      <ChevronRight aria-hidden="true" className="size-4" />
-                    </Link>
+                  <td className="px-4 py-3">
+                    <AppointmentActionLinks bookingId={booking.booking_id} guestName={booking.guest_name} />
                   </td>
                 </tr>
               );
@@ -95,26 +89,33 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
       {/* ===== Phone: cards ===== */}
       <ul className="flex flex-col gap-2.5 lg:hidden">
         {bookings.map((booking) => {
-          const badge = adminBookingStatusBadge(booking.status, booking.hold_seconds_left, booking.attendance_due);
+          const status = appointmentStatus(booking.status);
           return (
-            <li key={booking.booking_id}>
-              <Link
-                href={`/admin/bookings/${booking.booking_id}`}
-                className="flex flex-col gap-1.5 rounded-2xl border border-admin-line bg-white p-3.5 focus-visible:outline-2 focus-visible:outline-brown active:bg-admin-bg"
-              >
-                <span className="flex items-start justify-between gap-2.5">
-                  <span className="min-w-0 break-words text-sm font-semibold text-ink">{booking.guest_name}</span>
-                  <Badge variant={badge.variant}>{badge.label}</Badge>
-                </span>
-                <span className="text-xs text-muted">
-                  {formatClassDate(booking.class_date).short} · {formatTime(booking.start_time)} ·{" "}
-                  {booking.drink_choice ?? "Drink at cafe"} · {booking.mat_rental ? "Mat" : "Own mat"}
-                </span>
-                <span className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-muted">{refLine(booking)}</span>
-                  <span className="shrink-0 font-semibold text-ink">{paymentLine(booking)}</span>
-                </span>
-              </Link>
+            <li
+              key={booking.booking_id}
+              className="flex flex-col gap-1.5 rounded-2xl border border-admin-line bg-white p-3.5"
+            >
+              <span className="flex items-start justify-between gap-2.5">
+                <Link
+                  href={`/admin/appointments/${booking.booking_id}`}
+                  className="min-w-0 break-words text-sm font-semibold text-ink underline-offset-2 hover:underline"
+                >
+                  {booking.guest_name}
+                </Link>
+                <Badge variant={status.variant}>{status.label}</Badge>
+              </span>
+              <span className="text-xs text-muted">
+                {formatClassDate(booking.class_date).short} · {formatTime(booking.start_time)} ·{" "}
+                {booking.drink_choice ?? "Drink at cafe"} · {booking.mat_rental ? "Mat" : "Own mat"}
+              </span>
+              <span className="flex items-center justify-between gap-2 text-xs">
+                <span className="min-w-0 text-muted">{refLine(booking)}</span>
+                <span className="shrink-0 font-semibold text-ink">{paymentLine(booking)}</span>
+              </span>
+              {/* The same two buttons as the table's Action column */}
+              <div className="flex justify-end border-t border-admin-bg pt-2">
+                <AppointmentActionLinks bookingId={booking.booking_id} guestName={booking.guest_name} />
+              </div>
             </li>
           );
         })}

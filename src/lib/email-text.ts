@@ -1,7 +1,8 @@
 // The words of the emails the website sends (plain text).
 // Where it's used: src/lib/admin/user-actions.ts (admin messages and resent
-// confirmations) and src/lib/account/actions.ts (the "your email was
-// changed" alert). The unit tests (tests/unit/email-text.test.mjs) load this
+// confirmations), src/lib/account/actions.ts (the "your email was
+// changed" alert) and src/lib/admin/actions.ts (Version 1.6: "your class was
+// re-scheduled"). The unit tests (tests/unit/email-text.test.mjs) load this
 // file directly with Node, so it must not import anything.
 
 // The cafe details every email ends with.
@@ -59,6 +60,39 @@ export function confirmationEmail(details: ConfirmationDetails, cafe: EmailCafe)
   ];
   return {
     subject: `Your Mat Pilates booking at ${cafe.name}: ${details.classDate}`,
+    text: `${lines.join("\n")}\n${emailSignOff(cafe)}`,
+  };
+}
+
+// What the "your class was re-scheduled" email needs (Version 1.6, already
+// turned into words).
+export type RescheduleDetails = {
+  name: string | null; // the client's name (null = "Hi,")
+  reference: string; // the NEW booking's code, e.g. "B69-3F9A1C2D"
+  fromClass: string; // e.g. "Thursday, November 19 · 9:00 – 9:50 AM"
+  toClass: string; // e.g. "Saturday, November 21 · 10:15 – 11:05 AM"
+  reason: string; // the admin's reason, as typed
+};
+
+// The email sent when the cafe moves a client's booking to another class.
+// Takes: the details above and the cafe details.
+// Gives back: the subject and text.
+export function rescheduleEmail(details: RescheduleDetails, cafe: EmailCafe): EmailText {
+  const lines = [
+    details.name ? `Hi ${details.name},` : "Hi,",
+    "",
+    `${cafe.name} moved your Mindful Mat Pilates booking to another class.`,
+    "",
+    `From: ${details.fromClass}`,
+    `To: ${details.toClass}`,
+    `Booking: ${details.reference}`,
+    `Reason: ${details.reason.trim()}`,
+    "",
+    "Your payment, drink and mat rental carry over to the new class. There is nothing more to pay.",
+    "You can see this booking in My Account > My Bookings. If the new time doesn't work for you, please reply to this email.",
+  ];
+  return {
+    subject: `Your Mat Pilates class was re-scheduled: ${details.toClass}`,
     text: `${lines.join("\n")}\n${emailSignOff(cafe)}`,
   };
 }

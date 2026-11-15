@@ -1,8 +1,8 @@
 "use client";
 // The "Cancel booking" button on the admin booking details page, and the
 // box it opens.
-// Where it's used: src/app/admin/bookings/[bookingId]/page.tsx (only for
-// confirmed bookings and late payments).
+// Where it's used: src/app/admin/(panel)/appointments/[bookingId]/manage/page.tsx
+// (only for confirmed bookings and late payments).
 //
 // The box first says what the cancellation rules give for this booking right
 // now (the database's admin_change_rule, migration 10), then lets the admin

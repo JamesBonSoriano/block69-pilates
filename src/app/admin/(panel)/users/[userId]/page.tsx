@@ -21,7 +21,7 @@ import { AdminBackLink, AdminCard, AdminLoadError, AdminLoading, AdminOverline, 
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { requireAdmin } from "@/lib/auth/user";
-import { adminBookingStatusBadge } from "@/lib/booking-rules";
+import { appointmentStatus } from "@/lib/admin/display";
 import { getAdminUserBookings, getAdminUserDetails } from "@/lib/data/admin-users";
 import { formatBirthdayLong, formatClassDate, formatManilaDate, formatPeso, formatTime, initialsOf } from "@/lib/format";
 import type { AdminUserBooking, AdminUserDetails } from "@/types/app";
@@ -162,12 +162,13 @@ async function UserBody({ params }: { params: PageProps<"/admin/users/[userId]">
           ) : (
             <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {bookings.map((booking) => {
-                const badge = adminBookingStatusBadge(booking.status);
+                // The simple word (Version 1.6): Pending, Confirmed, Done, ...
+                const badge = appointmentStatus(booking.status);
                 const paid = Number(booking.paid_amount);
                 return (
                   <li key={booking.booking_id}>
                     <Link
-                      href={`/admin/bookings/${booking.booking_id}`}
+                      href={`/admin/appointments/${booking.booking_id}`}
                       className="flex flex-col gap-1.5 rounded-xl border border-admin-line px-3.5 py-3 hover:bg-admin-bg/50 focus-visible:outline-2 focus-visible:outline-brown"
                     >
                       <span className="text-[13px] font-semibold">
@@ -186,7 +187,7 @@ async function UserBody({ params }: { params: PageProps<"/admin/users/[userId]">
           )}
           {user.email && user.sessions_booked > RECENT && (
             <Link
-              href={`/admin/bookings?q=${encodeURIComponent(user.email)}`}
+              href={`/admin/appointments?q=${encodeURIComponent(user.email)}`}
               className="inline-flex min-h-11 items-center self-start text-sm font-semibold text-brown underline underline-offset-2"
             >
               See all bookings

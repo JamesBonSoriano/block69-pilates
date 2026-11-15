@@ -9,11 +9,18 @@
 //   - email: only @gmail.com or @yahoo.com
 //   - password: at least 8 characters
 //   - checkSignupFields() reports every problem at once
+//   - Version 1.6: under 18 (Philippine date) or a future birthday is
+//     refused with "You must be at least 18 years old to book a class."
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  AGE_ERROR,
+  BIRTHDAY_ERROR,
+  birthdayInputProblem,
   checkSignupFields,
+  isAtLeast18,
+  manilaToday,
   formatBirthdayInput,
   isAllowedEmailDomain,
   isValidPhMobile,
@@ -55,6 +62,34 @@ test('birthday: the screenshot year 275760 and other bad dates fail', () => {
   ]) {
     assert.equal(parseBirthdayInput(bad), null, bad);
   }
+});
+
+test('under-18 refused: age 18+ in Philippine time (Version 1.6)', () => {
+  // 15 Nov 2026, 5:00 PM UTC = 16 Nov 2026, 1:00 AM in Manila
+  const now = Date.parse('2026-11-15T17:00:00Z');
+  assert.equal(manilaToday(now), '2026-11-16');
+  assert.equal(isAtLeast18('2008-11-16', now), true); // 18 today (Manila date)
+  assert.equal(isAtLeast18('2008-11-17', now), false); // 18 tomorrow
+  assert.equal(isAtLeast18('1990-01-01', now), true);
+  assert.equal(isAtLeast18('2030-01-01', now), false); // future
+  // Born 29 Feb: 18 on 1 March in a year with no 29 Feb
+  assert.equal(isAtLeast18('2008-02-29', Date.parse('2026-02-28T04:00:00Z')), false);
+  assert.equal(isAtLeast18('2008-02-29', Date.parse('2026-03-01T04:00:00Z')), true);
+
+  assert.equal(birthdayInputProblem('11/17/2008', now), AGE_ERROR);
+  assert.equal(birthdayInputProblem('01/01/2999', now), AGE_ERROR);
+  assert.equal(birthdayInputProblem('11/16/2008', now), null);
+  assert.equal(birthdayInputProblem('02/30/2000', now), BIRTHDAY_ERROR);
+  assert.equal(parseBirthdayInput('11/17/2008', now), null);
+  assert.equal(parseBirthdayInput('11/16/2008', now), '2008-11-16');
+  assert.equal(AGE_ERROR, 'You must be at least 18 years old to book a class.');
+});
+
+test('the sign-up form refuses an under-18 birthday', () => {
+  const tooYoung = checkSignupFields({
+    full_name: 'Juan', mobile: '09171234567', birthday: '01/01/2015', email: 'juan@gmail.com', password: 'longenough',
+  });
+  assert.equal(tooYoung.birthday, AGE_ERROR);
 });
 
 test('birthday: a saved date shows as MM/DD/YYYY', () => {

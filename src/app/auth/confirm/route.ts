@@ -29,6 +29,13 @@
 //     checked first, so a deactivated admin looks the same.
 //   - a deactivated account is logged straight back out (?error=deactivated),
 //     except a client who turned it off themselves: they go to /reactivate
+//   - Version 1.6: the /login button (?mode=login) only logs in EXISTING
+//     accounts. If Google just made a BRAND-NEW account there
+//     (isBrandNewGoogleAccount in src/lib/auth/login-portal.ts), that new
+//     login is deleted again on the server (secret key), they are logged
+//     out, and /login?error=google-no-account says "No account found for
+//     this Google account." The /signup button (?mode=signup) still makes
+//     new accounts.
 //   - a client with no mobile number or birthday yet (always true for a new
 //     Google account) goes to "Finish your profile" first, then to "next"
 //   - if Google or Supabase said no (they pressed Cancel, or Google sign-in
@@ -37,9 +44,11 @@
 import { isAuthPKCECodeVerifierMissingError, type EmailOtpType } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
+import { isBrandNewGoogleAccount, readGoogleMode, type GoogleMode } from "@/lib/auth/login-portal";
 import { safeNextPath } from "@/lib/auth/safe-next";
 import { FINISH_PROFILE_PATH, reactivatePath } from "@/lib/auth/user";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // Why a link didn't work (decides which message the person sees).
 type LinkProblem = "link-expired" | "other-browser";
@@ -57,8 +66,9 @@ export async function GET(request: NextRequest) {
   const flowId = params.get("sb_flow_id");
   // Only ever a path on our own site (stops "open redirect" tricks)
   const next = safeNextPath(params.get("next"));
-  // Coming back from Google sign-in?
+  // Coming back from Google sign-in? And from which button (login / signup)?
   const isGoogle = params.get("flow") === "google";
+  const googleMode = readGoogleMode(params.get("mode"));
 
   // Is this a password reset link? (token links say type=recovery; default
   // code links carry next=/reset-password, set by requestPasswordReset)
@@ -93,7 +103,7 @@ export async function GET(request: NextRequest) {
   if (isGoogle) {
     // Google: its own messages and checks (see the top of this file)
     if (problem) redirect("/login?error=google-failed");
-    redirect(await afterGoogleLogin(supabase, next));
+    redirect(await afterGoogleLogin(supabase, next, googleMode));
   }
 
   if (problem) {
@@ -107,16 +117,22 @@ export async function GET(request: NextRequest) {
 }
 
 // The checks after a Google login worked (the person is logged in now).
-// Takes: the logged-in Supabase client, and the safe "next" path (or null).
+// Takes: the logged-in Supabase client, the safe "next" path (or null), and
+// which Google button was used ("login" or "signup").
 // Gives back: where to send them. Admin and deactivated accounts are logged
-// out first (only this browser).
+// out first (only this browser), and a brand-new account made from the
+// LOGIN button is removed again.
 async function afterGoogleLogin(
   supabase: Awaited<ReturnType<typeof createClient>>,
   next: string | null,
+  mode: GoogleMode,
 ): Promise<string> {
-  const { data: claims } = await supabase.auth.getClaims();
-  const userId = claims?.claims?.sub;
-  if (!userId) return "/login?error=google-failed";
+  // getUser() asks Supabase itself, and gives the account's creation time
+  // and login methods (needed for the brand-new check below)
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  const userId = user?.id;
+  if (!user || !userId) return "/login?error=google-failed";
 
   // Their profile (Row Level Security: only their own row). A brand-new
   // Google account's row was just made by the sign-up trigger.
@@ -139,6 +155,24 @@ async function afterGoogleLogin(
     await supabase.auth.signOut({ scope: "local" });
     return "/login?error=login-failed";
   }
+  // Version 1.6: the LOGIN button must not make accounts. If this Google
+  // login just made a brand-new one, remove it again and say so.
+  if (
+    mode === "login" &&
+    isBrandNewGoogleAccount(
+      {
+        createdAt: user.created_at,
+        providers: (user.identities ?? []).map((identity) => identity.provider),
+        hasMobile: Boolean(profile?.mobile?.trim()),
+        hasBirthday: Boolean(profile?.birthday),
+      },
+      Date.now(),
+    )
+  ) {
+    await supabase.auth.signOut({ scope: "local" });
+    await deleteNewGoogleAccount(userId);
+    return "/login?error=google-no-account";
+  }
   if (!profile?.is_active) {
     // They turned it off themselves (Version 1.4): stay logged in and ask
     // "Welcome back! Reactivate your account?"
@@ -152,4 +186,22 @@ async function afterGoogleLogin(
     return `${FINISH_PROFILE_PATH}?next=${encodeURIComponent(goTo)}`;
   }
   return goTo;
+}
+
+// Deletes the auth account a Google login just made from the /login button
+// (Version 1.6). Its profile row goes with it (profiles.id "on delete
+// cascade", migration 1); a brand-new account has no bookings or payments.
+// Takes: the new account's id.
+// Gives back: nothing. It never throws: if the secret key is missing or
+// Supabase says no, it only logs the problem for us (the person is already
+// logged out and still sees "No account found").
+async function deleteNewGoogleAccount(userId: string): Promise<void> {
+  try {
+    // The secret key is needed to delete a login (server only)
+    const service = createServiceClient();
+    const { error } = await service.auth.admin.deleteUser(userId);
+    if (error) console.error("Could not remove the new Google account:", error.code ?? error.status);
+  } catch (error) {
+    console.error("Could not remove the new Google account:", error instanceof Error ? error.message : error);
+  }
 }

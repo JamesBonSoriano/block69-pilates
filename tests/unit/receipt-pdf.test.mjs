@@ -7,11 +7,13 @@
 //     (the peso sign, emoji) don't break it
 //   - amounts are written "PHP 550.00" (minus for a voucher)
 //   - the file name is Block69-Receipt-<receipt no>.pdf, with only safe letters
+//   - (Version 1.6) the appointment details PDF: one page, same width, its
+//     own title and file name, and odd letters don't break it
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PDFDocument } from 'pdf-lib';
-import { buildReceiptPdf, peso, receiptFileName } from '../../src/lib/receipt-pdf.ts';
+import { bookingPdfFileName, buildBookingPdf, buildReceiptPdf, peso, receiptFileName } from '../../src/lib/receipt-pdf.ts';
 
 // A receipt with everything in it.
 const receipt = {
@@ -51,4 +53,25 @@ test('pesos as PHP with two decimals', () => {
 test('file name', () => {
   assert.equal(receiptFileName('R69-3F9A1C2D'), 'Block69-Receipt-R69-3F9A1C2D.pdf');
   assert.equal(receiptFileName('R69-"x/../y'), 'Block69-Receipt-R69-xy.pdf');
+});
+
+test('appointment details PDF (Version 1.6): one page, 80 mm wide', async () => {
+  const bytes = await buildBookingPdf({
+    cafe: receipt.cafe,
+    bookingNo: 'B69-77AB01CD',
+    status: 'Cancelled · No-show',
+    sections: [
+      { heading: 'Class', rows: [{ label: 'Date', value: 'Thursday, October 29' }, { label: 'Time', value: '9:00 – 9:50 AM' }] },
+      { heading: 'Client', rows: [{ label: 'Name', value: 'Ana Cruz 🌿' }, { label: 'Health notes', value: 'Bad knee '.repeat(20) }] },
+      { heading: 'Payments', rows: [{ label: 'GCash', value: '₱550 · paid · cs_test_aVeryLongReferenceWithNoSpaces1234567890' }] },
+    ],
+    total: 550,
+    footer: 'Downloaded Nov 15, 2026, 3:00 PM',
+  });
+  const pdf = await PDFDocument.load(bytes);
+  assert.equal(pdf.getPageCount(), 1);
+  assert.ok(Math.abs(pdf.getPage(0).getSize().width - 226.77) < 0.1);
+  assert.equal(pdf.getTitle(), 'Block 69 Cafe appointment B69-77AB01CD');
+  assert.equal(bookingPdfFileName('B69-77AB01CD'), 'Block69-Appointment-B69-77AB01CD.pdf');
+  assert.equal(bookingPdfFileName('B69-"x/../y'), 'Block69-Appointment-B69-xy.pdf');
 });

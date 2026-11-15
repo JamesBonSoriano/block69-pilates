@@ -79,6 +79,9 @@ export function LoginForm({ portal, next, notice }: LoginFormProps) {
       {portal === "client" && (
         <>
           <OrDivider />
+          {/* Tells signInWithGoogle() this is the LOGIN button, so it only
+              logs in existing accounts (Version 1.6). logIn() ignores it. */}
+          <input type="hidden" name="google_mode" value="login" />
           <GoogleButton label="Continue with Google" formAction={signInWithGoogle} formNoValidate />
         </>
       )}

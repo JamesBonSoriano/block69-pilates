@@ -8,13 +8,13 @@
 //   - number cards: today's seats taken / capacity, needs action, money paid
 //     this week (and month), mat rental for the strays this month
 //   - today's classes and the next classes (at most 2 cards each, with a
-//     "View all" link to Schedule), each with who is booked, what to
-//     prepare, and a Cancel class button
+//     "View all" link to Schedule), each with who is booked and what to
+//     prepare (Version 1.6: no Cancel class button; that is on Schedule only)
 //   - "Needs action": payments to check, late payments, and classes whose
-//     attendance hasn't been marked
+//     attendance hasn't been marked (each opens the appointment's manage page)
 //   - an overview grid (Version 1.4): one small card per admin page
-//     (Bookings, Payments, Schedule, Users, Content) with its key numbers
-//     and a "View full" link
+//     (Appointments, Earnings, Schedule, Users, Content) with its key
+//     numbers and a "View full" link (Version 1.6 names)
 //
 // Protection: src/proxy.ts turns away guests and clients first, and
 // requireAdmin() checks AGAIN on the server (the database's is_admin()).
@@ -29,7 +29,7 @@ import { AdminCard, AdminLoadError, AdminLoading, AdminPage, AdminPageHeader, St
 import { ClassCard } from "@/components/admin/ClassCard";
 import { Badge } from "@/components/ui/Badge";
 import { requireAdmin } from "@/lib/auth/user";
-import { adminBookingStatusBadge } from "@/lib/booking-rules";
+import { appointmentStatus } from "@/lib/admin/display";
 import {
   getAdminSessions,
   getClassRosters,
@@ -211,11 +211,12 @@ async function Dashboard() {
 
           <ul className="flex flex-col gap-2">
             {needsAction.map((booking) => {
-              const badge = adminBookingStatusBadge(booking.status);
+              // The simple word ("Pending") and what exactly is pending
+              const badge = appointmentStatus(booking.status);
               return (
                 <li key={booking.booking_id}>
                   <Link
-                    href={`/admin/bookings/${booking.booking_id}`}
+                    href={`/admin/appointments/${booking.booking_id}/manage`}
                     className="flex flex-col gap-1.5 rounded-xl border border-admin-line px-3.5 py-3 text-sm hover:bg-admin-bg sm:flex-row sm:items-center sm:gap-3"
                   >
                     <Badge variant={badge.variant} className="self-start sm:self-auto">
@@ -225,24 +226,22 @@ async function Dashboard() {
                       <b className="font-semibold">{booking.guest_name}</b>
                       <span className="text-muted">
                         {" "}
-                        · {formatClassDate(booking.class_date).short} · {formatTime(booking.start_time)} ·{" "}
+                        · {badge.reason} · {formatClassDate(booking.class_date).short} · {formatTime(booking.start_time)} ·{" "}
                         {formatPeso(Number(booking.total))}
                       </span>
                     </span>
-                    <span className="text-xs font-semibold text-brown underline underline-offset-2">View</span>
+                    <span className="text-xs font-semibold text-brown underline underline-offset-2">Manage</span>
                   </Link>
                 </li>
               );
             })}
             {toMark.map((session) => (
               <li key={session.session_id}>
-                {/* Attendance is marked on each booking's page (Version 1.4
-                    removed the Attendance list), so open that class's
-                    bookings, every status (Version 1.5: once the class has
-                    ended they show as "Pending Attendance Verification";
-                    while it's still running they're "Confirmed") */}
+                {/* Attendance is marked on each appointment's manage page
+                    (Version 1.4 removed the Attendance list), so open that
+                    class's confirmed appointments (Version 1.6 chip) */}
                 <Link
-                  href={`/admin/bookings?date=${session.date}&time=${session.start_time}`}
+                  href={`/admin/appointments?status=confirmed&date=${session.date}&time=${session.start_time}`}
                   className="flex flex-col gap-1.5 rounded-xl border border-admin-line px-3.5 py-3 text-sm hover:bg-admin-bg sm:flex-row sm:items-center sm:gap-3"
                 >
                   <Badge variant="neutral" className="self-start sm:self-auto">
@@ -257,7 +256,7 @@ async function Dashboard() {
                       · {session.to_mark} guest{session.to_mark === 1 ? "" : "s"} not marked yet
                     </span>
                   </span>
-                  <span className="text-xs font-semibold text-brown underline underline-offset-2">Open bookings</span>
+                  <span className="text-xs font-semibold text-brown underline underline-offset-2">Open appointments</span>
                 </Link>
               </li>
             ))}
@@ -266,10 +265,10 @@ async function Dashboard() {
           {needsCount > 0 && (
             <p className="text-xs text-muted">
               Check GCash / BPI screenshots in{" "}
-              <Link href="/admin/payments?view=review" className="font-semibold text-brown underline underline-offset-2">
-                Payments → Needs review
-              </Link>
-              . For a late payment, open the booking and follow the steps there.
+              <Link href="/admin/appointments?status=pending" className="font-semibold text-brown underline underline-offset-2">
+                Appointments → Pending
+              </Link>{" "}
+              (the pencil on each one). For a late payment, open it and follow the steps there.
             </p>
           )}
           {summary.live_holds > 0 && (
@@ -289,25 +288,25 @@ async function Dashboard() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <ModuleCard
             icon={ClipboardList}
-            title="Bookings"
-            href="/admin/bookings"
+            title="Appointments"
+            href="/admin/appointments"
             stats={[
               { value: String(upcoming.totalMatches), label: "upcoming confirmed" },
-              { value: String(needsCount), label: "need action" },
+              { value: String(summary.awaiting_verification), label: "transfers to check" },
             ]}
             items={upcoming.rows.map((booking) => ({
               key: booking.booking_id,
               text: `${booking.guest_name} · ${formatClassDate(booking.class_date).short}, ${formatTime(booking.start_time)}`,
             }))}
-            empty="No upcoming confirmed bookings."
+            empty="No upcoming confirmed appointments."
           />
           <ModuleCard
             icon={Receipt}
-            title="Payments"
-            href="/admin/payments"
+            title="Earnings"
+            href="/admin/earnings"
             stats={[
               { value: formatPeso(Number(summary.paid_this_month)), label: "paid this month" },
-              { value: String(summary.awaiting_verification), label: "transfers to check" },
+              { value: formatPeso(Number(summary.mats_this_month)), label: "for the strays this month" },
             ]}
           />
           <ModuleCard

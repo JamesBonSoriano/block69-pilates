@@ -5,6 +5,9 @@
 //   /admin/receipt/<booking id>/pdf      (admins)
 // and the on-screen receipt (src/components/receipt/ReceiptSheet.tsx) shows
 // the SAME ReceiptData, so the page, the printout and the PDF match.
+// Version 1.6: buildBookingPdf() makes the admin's "Download PDF" of one
+// appointment's details (/admin/appointments/<booking id>/pdf) with the same
+// strip style and drawing code.
 //
 // Library: pdf-lib (small, plain JavaScript, works on the server without a
 // browser). Its built-in fonts (Helvetica) only know Western letters, so the
@@ -57,38 +60,10 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   pdf.setAuthor(data.cafe.name);
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-
-  // Cleans text so the font can draw every letter (see the top of the file).
-  const clean = cleaner(regular);
-  const lines: Line[] = [];
-  const center = (text: string, font = regular, size = 8, color = INK) => {
-    for (const part of wrap(clean(text), font, size, CONTENT_WIDTH)) lines.push({ kind: "center", text: part, font, size, color });
-  };
-  const left = (text: string, font = regular, size = 8, color = INK) => {
-    for (const part of wrap(clean(text), font, size, CONTENT_WIDTH)) lines.push({ kind: "left", text: part, font, size, color });
-  };
-  // A label on the left and a value on the right (the value wraps under itself)
-  const pair = (label: string, value: string, font = regular, size = 8, color = INK) => {
-    const labelText = clean(label);
-    const room = CONTENT_WIDTH - font.widthOfTextAtSize(labelText, size) - 8;
-    wrap(clean(value), font, size, room).forEach((part, n) =>
-      lines.push({ kind: "pair", left: n === 0 ? labelText : "", right: part, font, size, color }),
-    );
-  };
-  const gap = (height: number) => lines.push({ kind: "gap", height });
-  const dash = () => {
-    gap(3);
-    lines.push({ kind: "dash" });
-    gap(5);
-  };
+  const { lines, clean, center, left, pair, gap, dash } = lineKit(regular);
 
   // ---- Top: the cafe ----
-  center(data.cafe.name, bold, 14, BROWN);
-  center("MAT PILATES + CAFE", regular, 6.5, MUTED);
-  gap(3);
-  if (data.cafe.address) center(data.cafe.address, regular, 7.5, MUTED);
-  if (data.cafe.email) center(data.cafe.email, regular, 7.5, MUTED);
-  dash();
+  cafeTop(data.cafe, { center, gap, dash }, regular, bold);
 
   // ---- Numbers, date, client, class ----
   center("OFFICIAL RECEIPT", bold, 9, BROWN);
@@ -132,7 +107,124 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   center(`See you on the mat at ${data.cafe.name}.`, regular, 7, MUTED);
   center("Card and bank details are never stored.", regular, 6.5, MUTED);
 
-  // The page is exactly as tall as the lines (plus the margins)
+  drawStrip(pdf, lines);
+  return pdf.save();
+}
+
+// Everything the admin's appointment PDF shows, already in words
+// (Version 1.6, "Download PDF" on /admin/appointments/<id>).
+export type BookingPdfData = {
+  cafe: ReceiptData["cafe"];
+  bookingNo: string; // e.g. "B69-77AB01CD"
+  status: string; // e.g. "Cancelled · No-show"
+  // Groups of label + value rows, e.g. { heading: "Client", rows: [...] }
+  sections: { heading: string; rows: { label: string; value: string }[] }[];
+  total: number; // the booking total in pesos
+  footer: string; // e.g. "Downloaded Nov 15, 2026, 3:00 PM"
+};
+
+// Makes the appointment details PDF: the cafe at the top, the booking number
+// and status, each section, the total, and when it was downloaded.
+// Takes: the data above.
+// Gives back: the PDF file's bytes.
+export async function buildBookingPdf(data: BookingPdfData): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  pdf.setTitle(`${data.cafe.name} appointment ${data.bookingNo}`);
+  pdf.setAuthor(data.cafe.name);
+  const regular = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const { lines, center, left, pair, gap, dash } = lineKit(regular);
+
+  // ---- Top: the cafe ----
+  cafeTop(data.cafe, { center, gap, dash }, regular, bold);
+
+  // ---- Booking number and status ----
+  center("APPOINTMENT DETAILS", bold, 9, BROWN);
+  gap(3);
+  pair("Booking no.", data.bookingNo);
+  pair("Status", data.status, bold, 8, BROWN);
+
+  // ---- Each section (Class, Client, Order, Payments...) ----
+  for (const section of data.sections) {
+    dash();
+    left(section.heading.toUpperCase(), bold, 8, BROWN);
+    gap(2);
+    for (const row of section.rows) pair(row.label, row.value);
+  }
+  dash();
+
+  // ---- Total and footer ----
+  pair("TOTAL", peso(data.total), bold, 11, BROWN);
+  dash();
+  center(data.footer, regular, 6.5, MUTED);
+  center("Card and bank details are never stored.", regular, 6.5, MUTED);
+
+  drawStrip(pdf, lines);
+  return pdf.save();
+}
+
+// The appointment PDF's file name.
+// Takes: the booking number, e.g. "B69-77AB01CD".
+// Gives back: e.g. "Block69-Appointment-B69-77AB01CD.pdf" (only safe letters).
+export function bookingPdfFileName(bookingNo: string): string {
+  return `Block69-Appointment-${bookingNo.replace(/[^A-Za-z0-9-]/g, "")}.pdf`;
+}
+
+// The small helpers both PDFs use to build their list of lines.
+// Takes: the regular font (the default font, also used to clean the text).
+// Gives back: the lines list and functions that add to it:
+//   center / left (wrapped text), pair (label on the left, value on the
+//   right), gap (empty space), dash (a dashed line with space around it),
+//   and clean (makes text drawable, see cleaner()).
+function lineKit(regular: PDFFont) {
+  // Cleans text so the font can draw every letter (see the top of the file).
+  const clean = cleaner(regular);
+  const lines: Line[] = [];
+  const center = (text: string, font = regular, size = 8, color = INK) => {
+    for (const part of wrap(clean(text), font, size, CONTENT_WIDTH)) lines.push({ kind: "center", text: part, font, size, color });
+  };
+  const left = (text: string, font = regular, size = 8, color = INK) => {
+    for (const part of wrap(clean(text), font, size, CONTENT_WIDTH)) lines.push({ kind: "left", text: part, font, size, color });
+  };
+  // A label on the left and a value on the right (the value wraps under itself)
+  const pair = (label: string, value: string, font = regular, size = 8, color = INK) => {
+    const labelText = clean(label);
+    const room = CONTENT_WIDTH - font.widthOfTextAtSize(labelText, size) - 8;
+    wrap(clean(value), font, size, room).forEach((part, n) =>
+      lines.push({ kind: "pair", left: n === 0 ? labelText : "", right: part, font, size, color }),
+    );
+  };
+  const gap = (height: number) => lines.push({ kind: "gap", height });
+  const dash = () => {
+    gap(3);
+    lines.push({ kind: "dash" });
+    gap(5);
+  };
+  return { lines, clean, center, left, pair, gap, dash };
+}
+
+// The cafe's name, "MAT PILATES + CAFE", address and email at the top of
+// both PDFs, then a dashed line.
+// Takes: the cafe, the center / gap / dash helpers from lineKit(), and the
+// two fonts. Gives back: nothing (it adds lines).
+function cafeTop(
+  cafe: ReceiptData["cafe"],
+  kit: Pick<ReturnType<typeof lineKit>, "center" | "gap" | "dash">,
+  regular: PDFFont,
+  bold: PDFFont,
+): void {
+  kit.center(cafe.name, bold, 14, BROWN);
+  kit.center("MAT PILATES + CAFE", regular, 6.5, MUTED);
+  kit.gap(3);
+  if (cafe.address) kit.center(cafe.address, regular, 7.5, MUTED);
+  if (cafe.email) kit.center(cafe.email, regular, 7.5, MUTED);
+  kit.dash();
+}
+
+// Adds one page exactly as tall as the lines (plus the margins) and draws
+// them, top to bottom.
+// Takes: the PDF and the lines. Gives back: nothing.
+function drawStrip(pdf: PDFDocument, lines: Line[]): void {
   const height = lines.reduce((sum, line) => sum + lineHeight(line), 0) + MARGIN * 2;
   const page = pdf.addPage([PAGE_WIDTH, height]);
   let y = height - MARGIN;
@@ -140,7 +232,6 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
     y -= lineHeight(line);
     drawLine(page, line, y);
   }
-  return pdf.save();
 }
 
 // The download's file name.

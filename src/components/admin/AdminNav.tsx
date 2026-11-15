@@ -30,8 +30,8 @@ import { cn } from "@/lib/cn";
 // A simple line icon for each admin page (CLAUDE.md section 7: no emoji).
 const icons: Record<string, LucideIcon> = {
   "/admin": LayoutDashboard,
-  "/admin/bookings": ClipboardList,
-  "/admin/payments": Receipt,
+  "/admin/appointments": ClipboardList,
+  "/admin/earnings": Receipt,
   "/admin/schedule": CalendarDays,
   "/admin/pricing": Tag,
   "/admin/content": FileText,

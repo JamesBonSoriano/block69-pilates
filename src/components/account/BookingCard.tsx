@@ -4,7 +4,13 @@
 // Where it's used: src/app/(client)/account/bookings/page.tsx.
 //
 // Which buttons show (the database checks everything again when clicked):
-//   unpaid hold            -> "Pay now" (back to its pay page)
+//   unpaid hold            -> "Pay now" (back to its pay page), but never in
+//                             a class the cafe cancelled (Version 1.6; the
+//                             database releases those holds anyway)
+//   transfer being checked -> "Awaiting verification" with an hourglass;
+//                             in a cancelled class it says the free move
+//                             comes once the payment is approved (Version 1.6)
+//   payment rejected       -> "Payment rejected" + "Book again" (Version 1.6)
 //   confirmed, cafe cancelled the class -> a highlighted "free transfer" box
 //                                          with "Move by Nov 30" (Version 1.5)
 //   confirmed, cafe cancelled, window over -> a short note, no buttons (Past)
@@ -16,7 +22,7 @@
 //   paid late (paid_needs_action)       -> a short line + "Move to another
 //                                          class" (free, any time; migration 19)
 
-import { ArrowRightLeft, CircleAlert, Clock } from "lucide-react";
+import { ArrowRightLeft, CircleAlert, Clock, Hourglass } from "lucide-react";
 import Link from "next/link";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
@@ -49,9 +55,15 @@ export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; no
   // their own box below, so "late_payment" is left out here)
   const rule = booking.status === "confirmed" && booking.change_rule !== "late_payment" ? booking.change_rule : null;
   // The status badge. Version 1.5: once the time to move a cafe-cancelled
-  // class is over, it says "Class cancelled" (not a green "Confirmed")
-  const badge: { label: string; variant: BadgeVariant } =
-    rule === "move_window_ended" ? { label: "Class cancelled", variant: "neutral" } : bookingStatusBadge(booking.status);
+  // class is over, it says "Class cancelled" (not a green "Confirmed").
+  // Version 1.6: a rejected transfer says "Payment rejected" (not "Expired").
+  const badge: { label: string; variant: BadgeVariant } = booking.payment_rejected
+    ? { label: "Payment rejected", variant: "error" }
+    : rule === "move_window_ended"
+      ? { label: "Class cancelled", variant: "neutral" }
+      : bookingStatusBadge(booking.status);
+  // Version 1.6: the pending (hourglass) icon while the cafe checks a transfer
+  const checking = booking.status === "awaiting_verification";
 
   return (
     <li>
@@ -62,7 +74,10 @@ export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; no
             <h3 className="font-heading text-base font-semibold text-brown">{date.short}</h3>
             <p className="text-sm">{timeRange}</p>
           </div>
-          <Badge variant={badge.variant}>{badge.label}</Badge>
+          <Badge variant={badge.variant}>
+            {checking && <Hourglass aria-hidden="true" className="size-3" />}
+            {badge.label}
+          </Badge>
         </div>
 
         <p className="text-sm text-muted">{details}</p>
@@ -167,8 +182,41 @@ function StatusPart({
     );
   }
 
+  // Version 1.6: the cafe rejected the GCash / BPI screenshot. The seat was
+  // let go; they can book (and pay) again while the class is still ahead.
+  if (booking.payment_rejected) {
+    return (
+      <div className="flex flex-col gap-3 rounded-2xl bg-error-bg p-4 text-error">
+        <p className="flex items-start gap-2 text-sm font-semibold">
+          <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          The cafe couldn&apos;t approve your payment, so this seat was let go.
+          {booking.is_upcoming ? " You can book and pay again." : ""}
+        </p>
+        {booking.is_upcoming && (
+          <ButtonLink
+            // Step 2 again for the same class (with the same mat choice). If it
+            // can't be booked any more, that page says so and offers others.
+            href={`/book/details?session=${booking.session_id}${booking.mat_rental ? "&mat=yes" : ""}`}
+            className="sm:self-start"
+          >
+            Book again
+          </ButtonLink>
+        )}
+      </div>
+    );
+  }
+
   switch (booking.status) {
     case "pending_payment": {
+      // Version 1.6: never "Pay now" for a class the cafe cancelled (the
+      // database releases these holds when the class is cancelled)
+      if (booking.session_status === "cancelled") {
+        return (
+          <p className="text-sm text-muted">
+            The cafe cancelled this class. Your seat hold was released and you were not charged.
+          </p>
+        );
+      }
       // Whole minutes left on the hold, rounded up ("1 minute" at 0:30)
       const minutes = Math.ceil(booking.hold_seconds_left / 60);
       return (
@@ -182,7 +230,20 @@ function StatusPart({
       );
     }
     case "awaiting_verification":
-      return <p className="text-sm text-info">We&apos;re checking your payment. Your seat is held meanwhile.</p>;
+      // Version 1.6: the seat stays held while the cafe checks. If the cafe
+      // cancelled the class meanwhile, the free move comes after approval.
+      return booking.session_status === "cancelled" ? (
+        <p className="flex items-start gap-2 text-sm text-info">
+          <Hourglass aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          Class cancelled – the cafe is still checking your payment. Once approved, you can move to another class
+          for free.
+        </p>
+      ) : (
+        <p className="flex items-start gap-2 text-sm text-info">
+          <Hourglass aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          We&apos;re checking your payment. Your seat is held until then.
+        </p>
+      );
     case "paid_needs_action":
       // Paid after the seat hold ended: they move themselves, for free
       return (

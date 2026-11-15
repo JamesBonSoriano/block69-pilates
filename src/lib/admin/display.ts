@@ -1,10 +1,12 @@
 // Small helpers for SHOWING things on the admin pages: what the barista has
-// to prepare for a class, and the status filter chips on Bookings.
-// Where it's used: the admin Dashboard and Bookings pages and their
+// to prepare for a class, and (Version 1.6) the five simple appointment
+// statuses with their filter chips.
+// Where it's used: the admin Dashboard and Appointments pages and their
 // components (src/components/admin/).
 // Nothing here decides a rule: the database does that (migration 9 and the
 // admin_* functions from migration 3).
 
+import type { BadgeVariant } from "@/components/ui/Badge";
 import type { AdminRosterItem, BookingStatus } from "@/types/app";
 
 // Bookings that count as "coming to class" on the attendance list.
@@ -64,38 +66,114 @@ export function prepLine(summary: PrepSummary): string {
   return parts.join(" · ");
 }
 
-// What the Bookings list can filter on: a real booking status, or (Version
-// 1.5) "pending_attendance" = still confirmed after the class ended
+// What the Appointments list can filter on: a real booking status, or
+// (Version 1.5) "pending_attendance" = still confirmed after the class ended
 // (admin_search_bookings, migration 22, works that out; it isn't saved).
 export type BookingFilterWord = BookingStatus | "pending_attendance";
 
-// The status chips on the admin Bookings page (docs/designs/AdminBookings.html).
+// ---------------------------------------------------------------------------
+// Version 1.6: five simple appointment statuses
+// ---------------------------------------------------------------------------
+// The admin sees only five words. The database statuses stay as they are;
+// each one belongs to exactly one group:
+//   Pending       pending_payment, awaiting_verification, paid_needs_action
+//   Confirmed     confirmed
+//   Done          attended
+//   Cancelled     cancelled_with_voucher, forfeited, expired, no_show
+//   Re-scheduled  transferred
+// (There is no plain "cancelled" booking status: a class can be cancelled,
+// a booking is cancelled WITH a code, forfeited, expired or a no-show.)
+export type AppointmentGroup = "pending" | "confirmed" | "done" | "cancelled" | "rescheduled";
+
+// Each group's word and badge colour.
+export const APPOINTMENT_GROUPS: Record<AppointmentGroup, { label: string; variant: BadgeVariant }> = {
+  pending: { label: "Pending", variant: "warning" },
+  confirmed: { label: "Confirmed", variant: "success" },
+  done: { label: "Done", variant: "info" },
+  cancelled: { label: "Cancelled", variant: "error" },
+  rescheduled: { label: "Re-scheduled", variant: "neutral" },
+};
+
+// Which group each database status belongs to.
+export const GROUP_OF_STATUS: Record<BookingStatus, AppointmentGroup> = {
+  pending_payment: "pending",
+  awaiting_verification: "pending",
+  paid_needs_action: "pending",
+  confirmed: "confirmed",
+  attended: "done",
+  cancelled_with_voucher: "cancelled",
+  forfeited: "cancelled",
+  expired: "cancelled",
+  no_show: "cancelled",
+  transferred: "rescheduled",
+};
+
+// The database statuses of one group.
+// Takes: the group. Gives back: its statuses, in the order of GROUP_OF_STATUS.
+function statusesOf(group: AppointmentGroup): BookingStatus[] {
+  return (Object.keys(GROUP_OF_STATUS) as BookingStatus[]).filter((status) => GROUP_OF_STATUS[status] === group);
+}
+
+// The status filter chips on the admin Appointments page (Version 1.6: only
+// these six).
 // key      what goes in the address (?status=...)
 // label    the chip's text
 // statuses what admin_search_bookings filters on (empty = every status
 //          except expired, the default "All")
-// Version 1.5:
-//   - "Needs action" also lists bookings pending attendance verification
-//     (confirmed, class over, Attended / No-show not marked yet), and
-//     "Confirmed" no longer does
-//   - "Attended" and "No-show" chips are back (the Attendance menu was
-//     removed in 1.4), so "Forfeited" is only real forfeits again
-//     (cancelled less than 12 hours before class)
-export const STATUS_CHIPS: { key: string; label: string; statuses: BookingFilterWord[] }[] = [
+// "Confirmed" also asks for "pending_attendance" (confirmed bookings whose
+// class has ended), because the database lists those separately.
+export const STATUS_CHIPS: { key: "all" | AppointmentGroup; label: string; statuses: BookingFilterWord[] }[] = [
   { key: "all", label: "All", statuses: [] },
-  {
-    key: "needs_action",
-    label: "Needs action",
-    statuses: ["awaiting_verification", "paid_needs_action", "pending_attendance"],
-  },
-  { key: "confirmed", label: "Confirmed", statuses: ["confirmed"] },
-  { key: "pending_payment", label: "Pending payment", statuses: ["pending_payment"] },
-  { key: "awaiting_verification", label: "Awaiting verification", statuses: ["awaiting_verification"] },
-  { key: "paid_needs_action", label: "Paid, needs action", statuses: ["paid_needs_action"] },
-  { key: "attended", label: "Attended", statuses: ["attended"] },
-  { key: "no_show", label: "No-show", statuses: ["no_show"] },
-  { key: "transferred", label: "Transferred", statuses: ["transferred"] },
-  { key: "cancelled_with_voucher", label: "Cancelled with voucher", statuses: ["cancelled_with_voucher"] },
-  { key: "forfeited", label: "Forfeited", statuses: ["forfeited"] },
-  { key: "expired", label: "Expired", statuses: ["expired"] },
+  { key: "pending", label: "Pending", statuses: statusesOf("pending") },
+  { key: "confirmed", label: "Confirmed", statuses: ["confirmed", "pending_attendance"] },
+  { key: "done", label: "Done", statuses: statusesOf("done") },
+  { key: "cancelled", label: "Cancelled", statuses: statusesOf("cancelled") },
+  { key: "rescheduled", label: "Re-scheduled", statuses: statusesOf("rescheduled") },
 ];
+
+// Extra facts that change the exact reason shown on the details page.
+export type AppointmentFacts = {
+  holdSecondsLeft?: number; // seconds left on an unpaid hold
+  attendanceDue?: boolean; // confirmed and the class has ended
+  sessionCancelled?: boolean; // the cafe cancelled the class
+  paymentRejected?: boolean; // a GCash / BPI screenshot was rejected
+};
+
+// One appointment's status for the admin: the simple group, and the exact
+// reason (shown under it on the details page, e.g. "Cancelled · No-show").
+// Takes: the status the admin should see (admin_search_bookings /
+// admin_get_booking "shown_status": an ended unpaid hold is "expired") and
+// the extra facts above.
+// Gives back: { group, label, variant, reason } (reason null = nothing more
+// to say, e.g. a plain confirmed booking).
+export function appointmentStatus(
+  status: BookingStatus,
+  facts: AppointmentFacts = {},
+): { group: AppointmentGroup; label: string; variant: BadgeVariant; reason: string | null } {
+  const group = GROUP_OF_STATUS[status];
+  const { label, variant } = APPOINTMENT_GROUPS[group];
+  const inCancelledClass = facts.sessionCancelled ? " · class cancelled by the cafe" : "";
+  const seconds = facts.holdSecondsLeft ?? 0;
+  const reasons: Record<BookingStatus, string | null> = {
+    // Round the minutes UP, so "0 min" never shows while seconds are left
+    pending_payment: seconds > 0 ? `Waiting for payment (${Math.ceil(seconds / 60)} min left)` : "Waiting for payment",
+    awaiting_verification: `Awaiting payment verification${inCancelledClass}`,
+    paid_needs_action: `Paid, needs action${inCancelledClass}`,
+    confirmed: facts.attendanceDue
+      ? "Pending attendance verification"
+      : facts.sessionCancelled
+        ? "Class cancelled by the cafe (free re-schedule)"
+        : null,
+    attended: "Attended",
+    cancelled_with_voucher: "50% code given",
+    forfeited: "Forfeited (no credit)",
+    expired: facts.paymentRejected
+      ? "Payment rejected"
+      : facts.sessionCancelled
+        ? "Class cancelled by the cafe (seat hold released, not charged)"
+        : "Payment time ran out",
+    no_show: "No-show",
+    transferred: "Moved to another class",
+  };
+  return { group, label, variant, reason: reasons[status] };
+}

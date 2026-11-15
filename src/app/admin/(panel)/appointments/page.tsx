@@ -1,16 +1,21 @@
-// The admin Bookings list: /admin/bookings
-// Where it's used: the admin menu and tab bar, the Dashboard's Bookings card.
+// The admin Appointments list: /admin/appointments
+// (Version 1.6 renamed "Bookings" to "Appointments"; /admin/bookings
+// redirects here, see next.config.ts.)
+// Where it's used: the admin menu and tab bar, the Dashboard's Appointments card.
 // Version 1.4: no Attendance list / Walk-in buttons.
 // Version 1.5: "Needs action" also lists bookings still confirmed after their
 // class ended ("Pending Attendance Verification"), Attended and No-show have
 // their own chips (Forfeited is only real forfeits), and the list has pages
 // of 10.
+// Version 1.6: only six status chips (All, Pending, Confirmed, Done,
+// Cancelled, Re-scheduled; STATUS_CHIPS in src/lib/admin/display.ts), with a
+// count on Pending, and an "Action" column (eye = view, pencil = manage).
 // Layout follows docs/designs/AdminBookings.html and PhoneAdminBookings.html.
 //
 // Filters live in the address, e.g.
-//   /admin/bookings?status=needs_action
-//   /admin/bookings?q=ana&when=past&page=2
-//   /admin/bookings?date=2026-10-24&time=09:00:00
+//   /admin/appointments?status=pending
+//   /admin/appointments?q=ana&when=past&page=2
+//   /admin/appointments?date=2026-10-24&time=09:00:00
 // The database does the filtering, searching and paging
 // (admin_search_bookings, migrations 9 and 22). Without a status filter,
 // abandoned unpaid holds ("Expired") are hidden, because "Change details" and
@@ -35,23 +40,26 @@ import { getWeeklySchedule } from "@/lib/data/schedule";
 import { formatTime } from "@/lib/format";
 import type { AdminBookingListItem } from "@/types/app";
 
-export const metadata: Metadata = { title: "Bookings · Admin" };
+export const metadata: Metadata = { title: "Appointments · Admin" };
 
-// Bookings per page (Version 1.5, the same as the other admin tables).
+// Appointments per page (Version 1.5, the same as the other admin tables).
 const PER_PAGE = 10;
 
-// The Bookings page.
+// The statuses counted on the "Pending" chip (the same as the chip filters on).
+const PENDING_STATUSES = STATUS_CHIPS.find((chip) => chip.key === "pending")?.statuses ?? [];
+
+// The Appointments page.
 // Takes: searchParams (the filters).
 // Gives back: the heading, then the filters and list inside <Suspense>.
-export default function AdminBookingsPage({ searchParams }: PageProps<"/admin/bookings">) {
+export default function AdminAppointmentsPage({ searchParams }: PageProps<"/admin/appointments">) {
   return (
     <AdminPage>
       <AdminPageHeader
         overline="Mat Pilates admin"
-        title="Bookings"
-        intro="One row per seat. PayMongo payments confirm on their own."
+        title="Appointments"
+        intro="One row per seat. PayMongo payments confirm on their own; GCash / BPI transfers wait under Pending."
       />
-      <Suspense fallback={<AdminLoading label="the bookings" />}>
+      <Suspense fallback={<AdminLoading label="the appointments" />}>
         <BookingsResults searchParams={searchParams} />
       </Suspense>
     </AdminPage>
@@ -60,8 +68,8 @@ export default function AdminBookingsPage({ searchParams }: PageProps<"/admin/bo
 
 // The live part: filters + list.
 // Takes: the searchParams promise.
-// Gives back: the filter area and the matching bookings.
-async function BookingsResults({ searchParams }: { searchParams: PageProps<"/admin/bookings">["searchParams"] }) {
+// Gives back: the filter area and the matching appointments.
+async function BookingsResults({ searchParams }: { searchParams: PageProps<"/admin/appointments">["searchParams"] }) {
   await requireAdmin();
   const params = await searchParams;
   const values = readFilters(params);
@@ -81,11 +89,15 @@ async function BookingsResults({ searchParams }: { searchParams: PageProps<"/adm
 
   let result: { rows: AdminBookingListItem[]; totalMatches: number };
   let schedule;
+  let pending: { totalMatches: number };
   try {
-    [result, schedule] = await Promise.all([
-      // Only this page's bookings are loaded (the database skips the rest)
+    [result, schedule, pending] = await Promise.all([
+      // Only this page's appointments are loaded (the database skips the rest)
       searchAdminBookings({ ...filters, limit: PER_PAGE, offset: (page - 1) * PER_PAGE }),
       getWeeklySchedule(),
+      // The count on the "Pending" chip: every pending appointment, any date
+      // (only the total is needed, so ask for 1 row)
+      searchAdminBookings({ statuses: PENDING_STATUSES, when: "all", limit: 1 }),
     ]);
     // A page past the end (e.g. after marking the last one): get the real
     // count, so the page numbers still show and "Go to page 1" works
@@ -95,7 +107,7 @@ async function BookingsResults({ searchParams }: { searchParams: PageProps<"/adm
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
-    return <AdminLoadError what="the bookings" />;
+    return <AdminLoadError what="the appointments" />;
   }
 
   // The class times to offer: every start time in the weekly schedule (and
@@ -105,10 +117,10 @@ async function BookingsResults({ searchParams }: { searchParams: PageProps<"/adm
   const timeOptions = [...times].sort().map((time) => ({ value: time, label: formatTime(time) }));
 
   const { rows, totalMatches } = result;
-  const summary = `${totalMatches} booking${totalMatches === 1 ? "" : "s"}`;
+  const summary = `${totalMatches} appointment${totalMatches === 1 ? "" : "s"}`;
 
   // The address of another page, keeping the search, chip and filters.
-  // Takes: the page number. Gives back: e.g. "/admin/bookings?status=attended&page=2".
+  // Takes: the page number. Gives back: e.g. "/admin/appointments?status=done&page=2".
   const hrefFor = (n: number) => {
     const base = bookingsHref(values);
     if (n <= 1) return base;
@@ -117,7 +129,7 @@ async function BookingsResults({ searchParams }: { searchParams: PageProps<"/adm
 
   return (
     <>
-      <BookingFilters values={values} timeOptions={timeOptions} summary={summary} />
+      <BookingFilters values={values} timeOptions={timeOptions} summary={summary} pendingCount={pending.totalMatches} />
       {rows.length === 0 && totalMatches > 0 ? (
         // Past the last page
         <AdminCard className="text-sm text-muted">
@@ -129,15 +141,15 @@ async function BookingsResults({ searchParams }: { searchParams: PageProps<"/adm
       ) : (
         <AdminBookingList bookings={rows} />
       )}
-      {/* Page numbers (Version 1.5): "Showing 11–20 of 34 bookings" */}
+      {/* Page numbers (Version 1.5): "Showing 11–20 of 34 appointments" */}
       {totalMatches > 0 && (
         <AdminCard className="p-0 lg:p-0">
           <AdminPagination
             page={page}
             perPage={PER_PAGE}
             total={totalMatches}
-            noun={totalMatches === 1 ? "booking" : "bookings"}
-            label="Bookings pages"
+            noun={totalMatches === 1 ? "appointment" : "appointments"}
+            label="Appointments pages"
             hrefFor={hrefFor}
           />
         </AdminCard>

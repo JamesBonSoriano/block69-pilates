@@ -148,6 +148,25 @@ export async function getMySessionBooking(sessionId: string): Promise<MySessionB
   return findMySessionBooking(await createClient(), sessionId);
 }
 
+// Checks if the logged-in client's latest booking for one class had its
+// GCash / BPI transfer rejected by the cafe (Version 1.6, booking step 2).
+// Takes: the class id.
+// Gives back: that booking's id, or null. Never throws: if the check fails,
+// step 2 simply shows no "Payment rejected" note (it's only extra help).
+export async function getMyRejectedSessionBooking(sessionId: string): Promise<string | null> {
+  await io();
+  if (!isUuid(sessionId)) return null;
+  const supabase = await createClient();
+  // get_my_rejected_session_booking() (migration 23) only looks at the
+  // caller's own bookings
+  const { data, error } = await supabase.rpc("get_my_rejected_session_booking", { p_session_id: sessionId });
+  if (error) {
+    console.error("Could not check for a rejected payment:", error.code);
+    return null;
+  }
+  return data ?? null;
+}
+
 // Same check, with a Supabase client the caller already made (used by the
 // booking action, which doesn't need io()).
 // Takes: a logged-in Supabase client and the class id.

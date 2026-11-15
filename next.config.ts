@@ -18,6 +18,20 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // Old admin addresses (Version 1.6 renamed the pages) send the browser to
+  // the new ones, keeping the rest of the address and the ?filters:
+  //   /admin/bookings/...  -> /admin/appointments/...
+  //   /admin/payments      -> /admin/earnings
+  // permanent: false = a temporary (307) redirect, so browsers don't
+  // remember it forever. They run before src/proxy.ts, which then checks the
+  // admin login on the new address as usual.
+  async redirects() {
+    return [
+      { source: "/admin/bookings", destination: "/admin/appointments", permanent: false },
+      { source: "/admin/bookings/:path*", destination: "/admin/appointments/:path*", permanent: false },
+      { source: "/admin/payments", destination: "/admin/earnings", permanent: false },
+    ];
+  },
   images: {
     // next/image only loads photos from other websites that are listed here.
     // We allow ONLY the public "site-images" bucket of a Supabase project

@@ -134,7 +134,8 @@ export function paymentMethodLabel(method: PaymentMethod): string {
 export function bookingStatusBadge(status: BookingStatus): { label: string; variant: BadgeVariant } {
   const badges: Record<BookingStatus, { label: string; variant: BadgeVariant }> = {
     pending_payment: { label: "Waiting for payment", variant: "warning" },
-    awaiting_verification: { label: "Checking your payment", variant: "info" },
+    // Version 1.6: the same words as the admin side
+    awaiting_verification: { label: "Awaiting verification", variant: "info" },
     confirmed: { label: "Confirmed", variant: "success" },
     paid_needs_action: { label: "Paid late, pick a class", variant: "warning" },
     expired: { label: "Expired", variant: "error" },
@@ -334,40 +335,8 @@ export function receiptNumber(paymentId: string): string {
 // Admin pages
 // ---------------------------------------------------------------------------
 
-// Picks the status badge for one booking on the ADMIN pages. The words are
-// the admin's (e.g. "Awaiting verification"), not the client's ("Checking
-// your payment").
-// Takes: the booking's status, for an unpaid hold the seconds left, and
-// (Version 1.5) whether attendance is due: confirmed, the class has ended,
-// and Attended / No-show isn't marked yet.
-// Gives back: the badge text and color, e.g. "Pending payment · 9 min", or
-// "Pending Attendance Verification" (amber) when attendance is due.
-export function adminBookingStatusBadge(
-  status: BookingStatus,
-  holdSecondsLeft = 0,
-  attendanceDue = false,
-): { label: string; variant: BadgeVariant } {
-  if (status === "confirmed" && attendanceDue) {
-    return { label: "Pending Attendance Verification", variant: "warning" };
-  }
-  const badges: Record<BookingStatus, { label: string; variant: BadgeVariant }> = {
-    pending_payment: {
-      // Round UP, so "0 min" never shows while a few seconds are left
-      label: holdSecondsLeft > 0 ? `Pending payment · ${Math.ceil(holdSecondsLeft / 60)} min` : "Pending payment",
-      variant: "warning",
-    },
-    awaiting_verification: { label: "Awaiting verification", variant: "info" },
-    confirmed: { label: "Confirmed", variant: "success" },
-    paid_needs_action: { label: "Paid, needs action", variant: "error" },
-    expired: { label: "Expired", variant: "error" },
-    transferred: { label: "Transferred", variant: "neutral" },
-    cancelled_with_voucher: { label: "Cancelled with voucher", variant: "neutral" },
-    forfeited: { label: "Forfeited", variant: "error" },
-    no_show: { label: "No-show", variant: "error" },
-    attended: { label: "Attended", variant: "success" },
-  };
-  return badges[status];
-}
+// (Version 1.6: the admin's booking status words are the five simple ones,
+// appointmentStatus() in src/lib/admin/display.ts.)
 
 // Picks the "seats taken" badge for a class on the admin pages.
 // Takes: seats taken, the capacity and the class status.

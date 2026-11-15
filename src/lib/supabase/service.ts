@@ -1,7 +1,10 @@
 // The Supabase client that uses the SECRET key (the "service role").
-// Where it's used: ONLY the PayMongo webhook (src/app/api/paymongo/webhook/
-// route.ts) and the PayMongo return route (src/app/(client)/book/pay/
-// [bookingId]/return/route.ts). Never in a page, a component or browser code.
+// Where it's used: ONLY server code: the PayMongo webhook (src/app/api/
+// paymongo/webhook/route.ts), the PayMongo return route (src/app/(client)/
+// book/pay/[bookingId]/return/route.ts), Delete account (src/lib/account/
+// actions.ts) and the Google return route (src/app/auth/confirm/route.ts,
+// removes a brand-new account made from the /login button, Version 1.6).
+// Never in a page, a component or browser code.
 //
 // Why it's needed: confirm_online_payment() (migration 11) marks a booking
 // as paid, so the database lets ONLY the secret key call it. Nobody can mark

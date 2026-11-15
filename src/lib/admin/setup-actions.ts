@@ -4,7 +4,7 @@
 // other forms in src/components/admin/):
 //   Settings + Pricing pages: saveSettings()
 //   Pricing & Vouchers:       createPromo(), setPromoEnabled()
-//   Payments (Needs review):  reviewPayment()
+//   Appointments (manage page, Version 1.6): reviewPayment() (Confirm)
 //   Schedule:                 saveTemplate(), addTemplate(), openNextWeeks(), updateClass()
 //   Content:                  saveContent(), saveSiteImage(), removeSiteImage()
 //   (Users moved to src/lib/admin/user-actions.ts in Version 1.4: no more

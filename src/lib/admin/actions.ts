@@ -4,8 +4,11 @@
 //   Attendance buttons (src/components/admin/AttendanceButtons.tsx): setAttendance()
 //   Cancel class box   (src/components/admin/CancelClassButton.tsx): cancelClass()
 //   Cancel booking box (src/components/admin/BookingChangeBox.tsx):  changeOneBooking()
+//   Re-schedule box    (src/components/admin/RescheduleBox.tsx):     rescheduleBooking()
+//   Reject payment box (src/components/admin/RejectPaymentButton.tsx): rejectPayment()
 // (Version 1.4 removed the Walk-in booking page and the admin transfer;
-// their database functions stay.)
+// their database functions stay. Version 1.6 added the admin re-schedule,
+// with its own database function, and a reason when rejecting a payment.)
 //
 // "use server" = these run ONLY on our server; the browser just sends the
 // form here. Each one:
@@ -17,11 +20,22 @@
 // The website never writes to the tables directly.
 
 import { refresh } from "next/cache";
-import { NOT_ADMIN, isAdmin, readText } from "@/lib/admin/action-helpers";
-import type { AttendanceState, BookingChangeState, CancelClassState } from "@/lib/admin/form-state";
+import { NOT_ADMIN, isAdmin, readText, type ServerClient } from "@/lib/admin/action-helpers";
+import type {
+  AdminSaveState,
+  AttendanceState,
+  BookingChangeState,
+  CancelClassState,
+  RescheduleState,
+} from "@/lib/admin/form-state";
+import { cafeDetails, sendLogged } from "@/lib/admin/logged-email";
+import { bookingReference } from "@/lib/booking-rules";
 import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
+import { rescheduleEmail } from "@/lib/email-text";
+import { formatClassDate, formatTime, formatTimeRange } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/validation";
+import type { AdminBookingDetails } from "@/types/app";
 
 // ---------------------------------------------------------------------------
 // ATTENDANCE: mark a guest Attended or No-show
@@ -141,5 +155,146 @@ export async function changeOneBooking(_previous: BookingChangeState, formData: 
       voucherCode: result.voucher_code ?? undefined,
       overridden: result.overridden,
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// RE-SCHEDULE ONE BOOKING (manage page, Version 1.6)
+// ---------------------------------------------------------------------------
+
+// Moves ONE booking to another open class, for free, with a reason.
+// Takes: the previous state, and the form: booking_id, session_id (the new
+// class) and reason (required, up to 500 characters).
+// Gives back: { done } with the new booking's id and whether the client's
+// email went out, or { error }.
+// The database decides everything (admin_reschedule_booking, migration 24):
+// only confirmed bookings or bookings in a class the cafe cancelled, and the
+// new class must be open, not started, before the 8:00 AM cutoff and have a
+// free seat (both classes locked). The client gets "Booking moved" in their
+// bell from the database, and an email from here (logged in their
+// Communications history). A failed email never undoes the re-schedule.
+export async function rescheduleBooking(_previous: RescheduleState, formData: FormData): Promise<RescheduleState> {
+  const bookingId = readText(formData, "booking_id");
+  const sessionId = readText(formData, "session_id");
+  const reason = readText(formData, "reason");
+
+  if (!isUuid(bookingId)) return { error: "Sorry, we couldn't find that booking." };
+  if (!isUuid(sessionId)) return { error: "Please pick the class to move to." };
+  if (!reason) return { error: "Please write a reason for the re-schedule." };
+  if (reason.length > MAX_NOTE) return { error: `Please keep the reason to ${MAX_NOTE} characters or less.` };
+
+  const supabase = await createClient();
+  // Security: check the admin role again on the server
+  if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
+
+  // The move itself: one locked step in the database
+  const { data: newBookingId, error } = await supabase.rpc("admin_reschedule_booking", {
+    p_booking_id: bookingId,
+    p_new_session_id: sessionId,
+    p_reason: reason,
+  });
+  if (error || !newBookingId) {
+    return { error: error ? friendlyDatabaseError(error) : GENERIC_ERROR };
+  }
+
+  // Both bookings, for the message and the email (old class -> new class)
+  const [oldBooking, newBooking] = await Promise.all([
+    loadBooking(supabase, bookingId),
+    loadBooking(supabase, newBookingId),
+  ]);
+  const newClass = newBooking
+    ? `${formatClassDate(newBooking.class_date).short} · ${formatTime(newBooking.start_time)}`
+    : "the new class";
+  const email = await sendRescheduleEmail(supabase, oldBooking, newBooking, reason);
+
+  refresh();
+  return {
+    done: {
+      message: `Re-scheduled to ${newClass}. The client was notified in their account.`,
+      newBookingId,
+      emailNote: email.note,
+      emailSent: email.sent,
+    },
+  };
+}
+
+// Emails the client that their booking was moved (only for clients with an
+// account and an email; walk-ins have none).
+// Takes: the Supabase client, the old and new booking, and the reason.
+// Gives back: { sent, note } where note says what happened, in plain words.
+async function sendRescheduleEmail(
+  supabase: ServerClient,
+  oldBooking: AdminBookingDetails | null,
+  newBooking: AdminBookingDetails | null,
+  reason: string,
+): Promise<{ sent: boolean; note: string }> {
+  if (!oldBooking || !newBooking) return { sent: false, note: "The email wasn't sent (the booking couldn't be loaded)." };
+  if (!newBooking.user_id || !newBooking.guest_email) {
+    return { sent: false, note: "No email was sent: this is a walk-in without an account. Please tell them yourself." };
+  }
+  const cafe = await cafeDetails();
+  if (!cafe) return { sent: false, note: "The email wasn't sent (the cafe details couldn't be loaded)." };
+
+  const result = await sendLogged(supabase, {
+    userId: newBooking.user_id,
+    kind: "message",
+    bookingId: newBooking.booking_id,
+    email: rescheduleEmail(
+      {
+        name: newBooking.guest_name || null,
+        reference: bookingReference(newBooking.booking_id),
+        fromClass: `${formatClassDate(oldBooking.class_date).full} · ${formatTimeRange(oldBooking.start_time, oldBooking.end_time)}`,
+        toClass: `${formatClassDate(newBooking.class_date).full} · ${formatTimeRange(newBooking.start_time, newBooking.end_time)}`,
+        reason,
+      },
+      cafe,
+    ),
+    replyTo: cafe.email,
+  });
+  return result.saved
+    ? { sent: true, note: `Email sent to ${newBooking.guest_email}.` }
+    : { sent: false, note: `${result.error ?? "The email wasn't sent."} Please message the client yourself.` };
+}
+
+// Loads one booking for the email (admin_get_booking, admins only).
+// Takes: the Supabase client and the booking id.
+// Gives back: the booking, or null if it couldn't be loaded.
+async function loadBooking(supabase: ServerClient, bookingId: string): Promise<AdminBookingDetails | null> {
+  const { data, error } = await supabase.rpc("admin_get_booking", { p_booking_id: bookingId });
+  if (error) {
+    console.error("Could not load the booking for the email:", error.message);
+    return null;
+  }
+  // "payments" arrives as a JSON list; AdminBookingDetails describes it
+  return (data[0] as unknown as AdminBookingDetails | undefined) ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// REJECT A GCASH / BPI SCREENSHOT, WITH A REASON (manage page, Version 1.6)
+// ---------------------------------------------------------------------------
+
+// Rejects one manual transfer after looking at its screenshot.
+// Takes: the previous state, and the form: payment_id and reason (required).
+// Gives back: { saved } or { error }.
+// admin_reject_payment (migration 24): payment 'rejected', booking 'expired'
+// (the seat is freed), the client gets "Payment not approved" in their bell,
+// and the reason is saved for admins (booking_admin_actions).
+export async function rejectPayment(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
+  const paymentId = readText(formData, "payment_id");
+  const reason = readText(formData, "reason");
+  if (!isUuid(paymentId)) return { error: "Sorry, we couldn't find that payment." };
+  if (!reason) return { error: "Please write why the payment is rejected." };
+  if (reason.length > MAX_NOTE) return { error: `Please keep the reason to ${MAX_NOTE} characters or less.` };
+
+  const supabase = await createClient();
+  // Security: check the admin role again on the server
+  if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
+
+  const { error } = await supabase.rpc("admin_reject_payment", { p_payment_id: paymentId, p_reason: reason });
+  if (error) return { error: friendlyDatabaseError(error) };
+
+  return {
+    saved: "Rejected. The seat is free again and the client sees “Payment not approved”. Please message them with the reason.",
+    savedAt: Date.now(),
   };
 }

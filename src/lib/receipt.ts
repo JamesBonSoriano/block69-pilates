@@ -3,13 +3,22 @@
 // (src/components/receipt/ReceiptSheet.tsx) and the PDF
 // (src/lib/receipt-pdf.ts) both draw this, so they always match.
 // Where it's used: /account/payments/[paymentId] (+ /pdf) and
-// /admin/receipt/[bookingId] (+ /pdf).
+// /admin/receipt/[bookingId] (+ /pdf). Version 1.6: also the appointment
+// details PDF, /admin/appointments/[bookingId]/pdf (adminBookingPdfData).
 // Money: only the amounts SAVED on the booking and payments; nothing is
 // recalculated. No card or bank numbers are ever stored, so none can show.
 
 import { bookingReference, paymentMethodName, paymentStatusBadge, receiptNumber } from "@/lib/booking-rules";
 import { formatClassDate, formatManilaDateTime, formatTimeRange } from "@/lib/format";
-import { buildReceiptPdf, receiptFileName, type ReceiptData } from "@/lib/receipt-pdf";
+import {
+  bookingPdfFileName,
+  buildBookingPdf,
+  buildReceiptPdf,
+  peso,
+  receiptFileName,
+  type BookingPdfData,
+  type ReceiptData,
+} from "@/lib/receipt-pdf";
 import type { AdminBookingDetails, MyPayment } from "@/types/app";
 
 // The cafe details at the top of every receipt (from Settings).
@@ -146,6 +155,100 @@ export async function receiptPdfResponse(data: ReceiptData): Promise<Response> {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${receiptFileName(data.receiptNo)}"`,
+      "Cache-Control": "private, no-store",
+    },
+  });
+}
+
+// Version 1.6: the admin's appointment details PDF ("Download PDF" on the
+// eye view, /admin/appointments/<id>).
+// Takes: the booking (admin_get_booking), the cafe, the status text shown on
+// the page (e.g. "Cancelled · No-show") and when it is downloaded ("now" in
+// milliseconds).
+// Gives back: the data for buildBookingPdf(). Health notes are included (the
+// barista and instructor need them); admin-only reasons are not.
+export function adminBookingPdfData(
+  booking: AdminBookingDetails,
+  cafe: ReceiptCafe,
+  statusText: string,
+  nowMs: number,
+): BookingPdfData {
+  // The fees, mat and voucher lines, the same as on the receipt
+  const order = receiptItems(booking).map((item) => ({ label: item.label, value: peso(item.amount) }));
+  return {
+    cafe,
+    bookingNo: bookingReference(booking.booking_id),
+    status: statusText,
+    sections: [
+      {
+        heading: "Class",
+        rows: [
+          { label: "Class", value: "Mindful Mat Pilates" },
+          { label: "Date", value: formatClassDate(booking.class_date).full },
+          { label: "Time", value: formatTimeRange(booking.start_time, booking.end_time) },
+          ...(booking.session_status === "cancelled" ? [{ label: "Note", value: "Cancelled by the cafe" }] : []),
+        ],
+      },
+      {
+        heading: "Client",
+        rows: [
+          { label: "Name", value: booking.guest_name },
+          { label: "Booking", value: booking.is_walkin ? "Walk-in" : "Online" },
+          ...(booking.guest_contact ? [{ label: "Mobile", value: booking.guest_contact }] : []),
+          ...(booking.guest_email ? [{ label: "Email", value: booking.guest_email }] : []),
+          ...(booking.guest_instagram ? [{ label: "Instagram", value: `@${booking.guest_instagram}` }] : []),
+          { label: "Health notes", value: booking.health_notes?.trim() || "None" },
+          { label: "Agreement", value: booking.agreed_at ? `Agreed ${formatManilaDateTime(booking.agreed_at)}` : "Not agreed" },
+          { label: "Booked", value: formatManilaDateTime(booking.created_at) },
+        ],
+      },
+      {
+        heading: "Order",
+        rows: [
+          { label: "Drink", value: booking.drink_choice ?? "Decide at the cafe" },
+          { label: "Mat", value: booking.mat_rental ? "Rented" : "Own mat" },
+          ...order,
+        ],
+      },
+      {
+        heading: "Payments",
+        rows:
+          booking.payments.length === 0
+            ? [{ label: "Payment", value: "No payment yet" }]
+            : booking.payments.map((pay) => ({
+                label: paymentMethodName(pay.method, pay.provider),
+                value: `${peso(Number(pay.amount))} · ${paymentStatusWord(pay.status)}${pay.paymongo_ref ? ` · ${pay.paymongo_ref}` : ""}`,
+              })),
+      },
+    ],
+    total: Number(booking.total),
+    footer: `Downloaded ${formatManilaDateTime(new Date(nowMs).toISOString())}`,
+  };
+}
+
+// One payment status in plain words for the PDF.
+// Takes: the payment status. Gives back: e.g. "paid", "being checked".
+function paymentStatusWord(status: AdminBookingDetails["payments"][number]["status"]): string {
+  const words: Record<typeof status, string> = {
+    paid: "paid",
+    pending: "pending",
+    failed: "failed",
+    expired: "expired",
+    rejected: "rejected",
+    refunded: "refunded",
+  };
+  return words[status];
+}
+
+// Makes the appointment PDF and wraps it as a file download.
+// Takes: the data. Gives back: a Response named
+// Block69-Appointment-<booking no>.pdf ("private, no-store": personal details).
+export async function bookingPdfResponse(data: BookingPdfData): Promise<Response> {
+  const bytes = await buildBookingPdf(data);
+  return new Response(bytes as Uint8Array<ArrayBuffer>, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${bookingPdfFileName(data.bookingNo)}"`,
       "Cache-Control": "private, no-store",
     },
   });

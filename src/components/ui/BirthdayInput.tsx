@@ -6,11 +6,12 @@
 // Why not the browser's date picker: it accepted years like 275760. This is a
 // plain text box with a number keyboard on phones. The slashes are added
 // while typing ("03121998" -> "03/12/1998"). When the person leaves the box,
-// it checks the date at once (parseBirthdayInput: a real calendar date, 4-digit
-// year, 1900 to today). The server checks again with the same function.
+// it checks the date at once (birthdayInputProblem: a real calendar date,
+// 4-digit year, from 1900, and at least 18 years old, Version 1.6). The
+// server checks again with the same function.
 
 import { useState, type ComponentProps } from "react";
-import { BIRTHDAY_ERROR, parseBirthdayInput } from "@/lib/validation";
+import { birthdayInputProblem } from "@/lib/validation";
 import { Input } from "./Input";
 
 type BirthdayInputProps = Omit<ComponentProps<"input">, "type" | "defaultValue" | "value" | "onChange"> & {
@@ -56,8 +57,9 @@ export function BirthdayInput({ label = "Birthday", name, defaultValue = "", hin
         setLocalError(null); // typing again clears the old message
       }}
       onBlur={() => {
-        // Only check a box that has something in it (empty = "required" handles it)
-        if (value && !parseBirthdayInput(value)) setLocalError(BIRTHDAY_ERROR);
+        // Only check a box that has something in it (empty = "required" handles it).
+        // The message says what's wrong: not a real date, or under 18.
+        if (value) setLocalError(birthdayInputProblem(value));
       }}
       // No example under the box (Version 1.4): the placeholder shows the
       // format, and the error message explains it

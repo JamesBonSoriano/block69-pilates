@@ -1,6 +1,8 @@
-// The filters on the admin Bookings page: status chips, search box, class
-// date, class time and "show upcoming / past / all".
-// Where it's used: src/app/admin/bookings/page.tsx.
+// The filters on the admin Appointments page: status chips, search box,
+// class date, class time and "show upcoming / past / all".
+// Where it's used: src/app/admin/(panel)/appointments/page.tsx.
+// Version 1.6: only six chips (All, Pending, Confirmed, Done, Cancelled,
+// Re-scheduled); "Pending" shows how many appointments are pending.
 // Layout follows docs/designs/AdminBookings.html (chips, then the search row)
 // and PhoneAdminBookings.html (chips you can swipe sideways).
 //
@@ -20,14 +22,14 @@ import { cn } from "@/lib/cn";
 // The filters as they are in the address right now.
 export type BookingFilterValues = {
   q: string; // search text ("" = none)
-  status: string; // a STATUS_CHIPS key, e.g. "all" or "needs_action"
+  status: string; // a STATUS_CHIPS key, e.g. "all" or "pending"
   date: string; // "YYYY-MM-DD" or ""
   time: string; // "09:00:00" or ""
   when: "upcoming" | "past" | "all";
 };
 
-// Builds the Bookings address for a set of filters, leaving out empty ones
-// and the defaults, e.g. "/admin/bookings?status=confirmed&q=ana".
+// Builds the Appointments address for a set of filters, leaving out empty
+// ones and the defaults, e.g. "/admin/appointments?status=confirmed&q=ana".
 // Takes: the filters. Gives back: the address.
 export function bookingsHref(values: BookingFilterValues): string {
   const params = new URLSearchParams();
@@ -38,21 +40,24 @@ export function bookingsHref(values: BookingFilterValues): string {
   // "upcoming" is the default without a search; "all" is the default with one
   if (values.when !== (values.q ? "all" : "upcoming")) params.set("when", values.when);
   const query = params.toString();
-  return query ? `/admin/bookings?${query}` : "/admin/bookings";
+  return query ? `/admin/appointments?${query}` : "/admin/appointments";
 }
 
 // The filter area.
 // Takes: the current filters, the class start times to offer (from the
-// weekly schedule), and the number of matching bookings (with the limit).
+// weekly schedule), the number of matching appointments, and how many are
+// pending (all dates) for the badge on the "Pending" chip.
 // Gives back: the chips, the form and a count line.
 export function BookingFilters({
   values,
   timeOptions,
   summary,
+  pendingCount,
 }: {
   values: BookingFilterValues;
   timeOptions: SelectOption[];
-  summary: string; // e.g. "12 bookings"
+  summary: string; // e.g. "12 appointments"
+  pendingCount: number;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -69,7 +74,7 @@ export function BookingFilters({
                   scroll={false}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "inline-flex min-h-11 items-center whitespace-nowrap rounded-full border px-4 text-[13px] transition-colors",
+                    "inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-full border px-4 text-[13px] transition-colors",
                     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown",
                     active
                       ? "border-brown bg-brown font-semibold text-card"
@@ -77,6 +82,18 @@ export function BookingFilters({
                   )}
                 >
                   {chip.label}
+                  {/* The count badge on "Pending" (hidden when 0) */}
+                  {chip.key === "pending" && pendingCount > 0 && (
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 text-[11px] font-semibold",
+                        active ? "bg-white text-brown" : "bg-error-bg text-error",
+                      )}
+                    >
+                      {pendingCount}
+                      <span className="sr-only"> pending</span>
+                    </span>
+                  )}
                 </Link>
               </li>
             );
@@ -85,7 +102,7 @@ export function BookingFilters({
       </nav>
 
       {/* Search + date + time + when. action = this same page. */}
-      <Form action="/admin/bookings" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto] lg:items-end">
+      <Form action="/admin/appointments" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto] lg:items-end">
         {/* Keep the chosen status chip when searching */}
         {values.status !== "all" && <input type="hidden" name="status" value={values.status} />}
         <Input
@@ -124,7 +141,7 @@ export function BookingFilters({
             Search
           </Button>
           <Link
-            href="/admin/bookings"
+            href="/admin/appointments"
             className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-brown underline underline-offset-2 hover:bg-admin-bg"
           >
             Clear

@@ -48,8 +48,9 @@ export type AdminNavLink = NavLink & { tab?: boolean; tabLabel?: string };
 
 export const adminNavLinks: AdminNavLink[] = [
   { href: "/admin", label: "Dashboard", tab: true, tabLabel: "Home" },
-  { href: "/admin/bookings", label: "Bookings", tab: true },
-  { href: "/admin/payments", label: "Payments", tab: true },
+  // Version 1.6: "Bookings" is "Appointments", "Payments" is "Earnings"
+  { href: "/admin/appointments", label: "Appointments", tab: true },
+  { href: "/admin/earnings", label: "Earnings", tab: true },
   { href: "/admin/schedule", label: "Schedule", tab: true },
   { href: "/admin/pricing", label: "Pricing & Vouchers" },
   { href: "/admin/content", label: "Content" },
@@ -60,8 +61,8 @@ export const adminNavLinks: AdminNavLink[] = [
 // Checks if an admin menu link points at the page being shown.
 // Takes: the link's href and the current path (null = not known yet).
 // Gives back: true for the current page. "/admin" (Dashboard) only matches
-// itself; the others also match their sub-pages (/admin/bookings/<id>
-// highlights "Bookings").
+// itself; the others also match their sub-pages (/admin/appointments/<id>
+// highlights "Appointments").
 export function isActiveAdminLink(href: string, pathname: string | null): boolean {
   if (pathname === null) return false;
   if (href === "/admin") return pathname === "/admin";

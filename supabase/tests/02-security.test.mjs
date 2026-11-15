@@ -148,7 +148,8 @@ export default async function run(t) {
     // admin_start_message, admin_update_user and admin_user_bookings
     'admin_billing_summary', 'admin_booking_change_info', 'admin_cancel_booking', 'admin_cancel_session', 'admin_class_rosters', 'admin_create_promo', 'admin_dashboard_summary',
     'admin_earnings', 'admin_finish_message', 'admin_get_booking', 'admin_get_user', 'admin_list_payments', 'admin_list_sessions', 'admin_list_users',
-    'admin_list_vouchers', 'admin_review_manual_payment', 'admin_search_bookings', 'admin_set_attendance',
+    // migration 24 (Version 1.6 admin) adds admin_reject_payment and admin_reschedule_booking
+    'admin_list_vouchers', 'admin_reject_payment', 'admin_reschedule_booking', 'admin_review_manual_payment', 'admin_search_bookings', 'admin_set_attendance',
     'admin_set_promo_enabled', 'admin_set_user_active', 'admin_set_user_role', 'admin_start_message', 'admin_transfer_booking', 'admin_update_session',
     'admin_update_settings', 'admin_update_user', 'admin_user_bookings', 'admin_walkin_booking',
     // migration 16 (Change 17) adds close_my_account and my_account_deletion_blockers
@@ -158,7 +159,9 @@ export default async function run(t) {
     // migration 8 (My Account) adds get_my_bookings, get_my_payments, get_my_vouchers
     // migration 12 (client revisions) adds get_my_notifications, mark_my_notifications_read
     // and my_unread_notification_count (each only touches the caller's own rows)
-    'get_my_booking', 'get_my_bookings', 'get_my_notifications', 'get_my_payments', 'get_my_session_booking', 'get_my_vouchers',
+    // migration 23 (Version 1.6) adds get_my_rejected_session_booking (the caller's own bookings only)
+    'get_my_booking', 'get_my_bookings', 'get_my_notifications', 'get_my_payments', 'get_my_rejected_session_booking',
+    'get_my_session_booking', 'get_my_vouchers',
     'get_open_sessions', 'is_admin', 'mark_my_notifications_read', 'my_account_deletion_blockers', 'my_unread_notification_count',
     // migration 7 (pay page "Change details"): checks the owner inside
     // migration 17 (Version 1.4) adds reactivate_my_account (the caller's own account only)

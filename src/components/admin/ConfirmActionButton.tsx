@@ -2,8 +2,9 @@
 // One button that runs one admin Server Action, optionally after an
 // "Are you sure?" box. Used for small actions on a list row:
 //   Pricing:  Turn off / Turn on a promo code
-//   Payments: Approve / Reject a manual transfer
-// Where it's used: the pages in src/app/admin/ (Pricing, Payments).
+//   Appointments (manage page): Confirm a manual transfer (Version 1.6;
+//   Reject has its own box with a reason, RejectPaymentButton.tsx)
+// Where it's used: the pages in src/app/admin/ (Pricing, Appointments).
 //
 // The values the action needs (e.g. voucher_id) are sent as hidden fields.
 // The database checks everything again, so this button is never the only

@@ -27,6 +27,7 @@ import {
   INCORRECT_LOGIN_MESSAGE,
   isWrongPortal,
   landingPath,
+  readGoogleMode,
   type LoginPortal,
 } from "@/lib/auth/login-portal";
 import { safeNextPath } from "@/lib/auth/safe-next";
@@ -142,21 +143,28 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
 
 // Starts a REAL Google sign-in through Supabase (the "Google" button on
 // /login and /signup).
-// Takes: the form: an optional "next".
+// Takes: the form: an optional "next", and "google_mode" = "login" (the
+// /login page's button) or "signup" (the /signup page's button).
 // Gives back: nothing; it sends the browser to Google. After the person
 // agrees, Google sends them to Supabase, and Supabase sends them to our
-// /auth/confirm?flow=google&next=... with a one-time code, which logs them
-// in (src/app/auth/confirm/route.ts also refuses admin accounts with
-// "Incorrect email or password." and deactivated accounts, and sends
-// self-deactivated clients to "Welcome back!"). A first-time Google user gets a new client account; the
-// sign-up trigger saves their Google name, and "Finish your profile" asks for
-// the mobile number and birthday Google doesn't give us.
+// /auth/confirm?flow=google&mode=...&next=... with a one-time code, which
+// logs them in (src/app/auth/confirm/route.ts also refuses admin accounts
+// with "Incorrect email or password." and deactivated accounts, and sends
+// self-deactivated clients to "Welcome back!").
+// Version 1.6: only the SIGN-UP button makes new accounts. A first-time
+// Google user there gets a new client account; the sign-up trigger saves
+// their Google name, and "Finish your profile" asks for the mobile number
+// and birthday Google doesn't give us. On the LOGIN button, a Google account
+// with no account here is removed again and sent back to /login with "No
+// account found for this Google account."
 // Any Google account is accepted (you approved this: Google has already
 // checked the address). The gmail/yahoo rule is only for email sign-up and
 // email changes.
 export async function signInWithGoogle(formData: FormData): Promise<void> {
   const next = safeNextPath(formData.get("next"));
-  const back = new URLSearchParams({ flow: "google" });
+  // Which button: missing or anything odd counts as "login" (never makes accounts)
+  const mode = readGoogleMode(formData.get("google_mode"));
+  const back = new URLSearchParams({ flow: "google", mode });
   if (next) back.set("next", next);
 
   // Version 1.5 (C1): if Google is switched OFF in Supabase, say so plainly

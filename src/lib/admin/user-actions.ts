@@ -19,17 +19,17 @@
 // the history shows "Failed" with the reason.
 
 import { refresh } from "next/cache";
-import { NOT_ADMIN, isAdmin, readText, type ServerClient } from "@/lib/admin/action-helpers";
+import { NOT_ADMIN, isAdmin, readText } from "@/lib/admin/action-helpers";
 import type { AdminSaveState } from "@/lib/admin/form-state";
+import { CAFE_DETAILS_ERROR, cafeDetails, sendLogged } from "@/lib/admin/logged-email";
 import { bookingReference } from "@/lib/booking-rules";
 import { friendlyDatabaseError } from "@/lib/database-errors";
-import { getPublicSettings } from "@/lib/data/settings";
-import { EMAIL_NOT_SET_UP, emailIsSetUp, sendEmail } from "@/lib/email";
-import { adminMessageEmail, confirmationEmail, type EmailCafe, type EmailText } from "@/lib/email-text";
+import { adminMessageEmail, confirmationEmail } from "@/lib/email-text";
 import { formatClassDate, formatPeso, formatTimeRange } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import {
   BIRTHDAY_ERROR,
+  birthdayInputProblem,
   PH_MOBILE_ERROR,
   isUuid,
   isValidInstagram,
@@ -66,7 +66,10 @@ export async function updateUser(_previous: AdminSaveState, formData: FormData):
   if (instagram && !isValidInstagram(instagram)) {
     return { error: "Please enter just the Instagram name, for example @yourname." };
   }
-  // Empty = no birthday; anything typed must be a real past MM/DD/YYYY date
+  // Empty = no birthday; anything typed must be a real MM/DD/YYYY date of
+  // someone at least 18 years old (Version 1.6; the database checks again)
+  const birthdayProblem = birthdayText ? birthdayInputProblem(birthdayText) : null;
+  if (birthdayProblem) return { error: birthdayProblem };
   const birthday = birthdayText ? parseBirthdayInput(birthdayText) : null;
   if (birthdayText && !birthday) return { error: BIRTHDAY_ERROR };
 
@@ -158,76 +161,6 @@ export async function resendConfirmation(_previous: AdminSaveState, formData: Fo
     cafe,
   );
   return sendLogged(supabase, { userId, kind: "confirmation", bookingId, email, replyTo: cafe.email });
-}
-
-// ---------------------------------------------------------------------------
-// Helpers (not exported: only the actions above may use them)
-// ---------------------------------------------------------------------------
-
-// Shown when the cafe's settings couldn't be loaded for the sign-off.
-const CAFE_DETAILS_ERROR = "We couldn't load the cafe details for the email. Please try again in a moment.";
-
-// Loads the cafe details every email ends with (from Settings).
-// Takes: nothing. Gives back: the details, or null if they couldn't load.
-async function cafeDetails(): Promise<EmailCafe | null> {
-  try {
-    const settings = await getPublicSettings();
-    return { name: settings.cafeName, address: settings.cafeAddress, email: settings.cafeEmail };
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-}
-
-// Logs, sends and finishes one email (the three steps at the top of the file).
-// Takes: the Supabase client and { userId, kind, bookingId, email, replyTo }.
-// Gives back: { saved } if it went out, otherwise { error }.
-async function sendLogged(
-  supabase: ServerClient,
-  message: {
-    userId: string;
-    kind: "message" | "confirmation";
-    bookingId: string | null;
-    email: EmailText;
-    replyTo: string;
-  },
-): Promise<AdminSaveState> {
-  // No SMTP keys yet: say so, and don't fill the history with failed tries
-  if (!emailIsSetUp()) return { error: EMAIL_NOT_SET_UP };
-
-  // 1. Check and log it; the database gives back the address
-  const { data, error } = await supabase.rpc("admin_start_message", {
-    p_user_id: message.userId,
-    p_kind: message.kind,
-    p_subject: message.email.subject,
-    p_body: message.email.text,
-    p_booking_id: message.bookingId ?? undefined,
-  });
-  const started = data?.[0];
-  if (error || !started) return { error: error ? friendlyDatabaseError(error) : "The message could not be saved." };
-
-  // 2. Send it (never throws)
-  const result = await sendEmail({
-    to: started.to_email,
-    subject: message.email.subject,
-    text: message.email.text,
-    replyTo: message.replyTo,
-  });
-
-  // 3. Mark it sent or failed (if this fails, the row just stays "Sending")
-  const { error: finishError } = await supabase.rpc("admin_finish_message", {
-    p_message_id: started.message_id,
-    p_sent: result.ok,
-    p_error: result.ok ? undefined : result.error,
-  });
-  if (finishError) console.error("Could not finish the message log:", finishError.message);
-
-  refresh();
-  if (!result.ok) {
-    return { error: `The email wasn't sent: ${result.error} It shows as "Failed" in the history.` };
-  }
-  const what = message.kind === "confirmation" ? "Confirmation" : "Message";
-  return done(`${what} sent to ${started.to_email}.`);
 }
 
 // A success answer.

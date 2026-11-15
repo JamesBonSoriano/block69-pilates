@@ -88,7 +88,7 @@ async function Receipt({ params }: { params: PageProps<"/admin/receipt/[bookingI
 
   const backLink = (
     <Link
-      href={`/admin/bookings/${booking.booking_id}`}
+      href={`/admin/appointments/${booking.booking_id}`}
       className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-full text-sm font-semibold text-brown hover:underline print:hidden"
     >
       <ArrowLeft aria-hidden="true" className="size-4" />
