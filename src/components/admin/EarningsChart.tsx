@@ -2,7 +2,7 @@
 // (docs/designs/AdminPayments.html):
 //   EarningsByWeek   one bar per week: class fees (brown) with the mat rental
 //                    part (caramel, all donated to the strays) on top
-//   EarningsByMethod one meter per payment method (GCash, Maya, card, ...)
+//   (Version 1.7 removed the "By payment method" card, EarningsByMethod.)
 // Where it's used: src/app/admin/(panel)/earnings/page.tsx.
 //
 // Plain HTML + CSS bars (no chart library, no JavaScript). So colour is never
@@ -22,9 +22,6 @@ export type WeekEarnings = {
   mats: number; // pesos of mat rental
   payments: number; // how many paid payments
 };
-
-// One payment method's money.
-export type MethodEarnings = { label: string; amount: number };
 
 // The "Earnings by week" card.
 // Takes: the weeks (oldest first) and a line under the title.
@@ -129,46 +126,6 @@ export function EarningsByWeek({ weeks, note }: { weeks: WeekEarnings[]; note: R
           ))}
         </ul>
       </details>
-    </AdminCard>
-  );
-}
-
-// The "By payment method" card.
-// Takes: the methods (biggest first) and a line under the title.
-// Gives back: one labelled meter per method (a real <meter>-like bar with
-// the amount and share written out).
-export function EarningsByMethod({ methods, note }: { methods: MethodEarnings[]; note: ReactNode }) {
-  const total = methods.reduce((sum, method) => sum + method.amount, 0);
-
-  return (
-    <AdminCard className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-base font-semibold">By payment method</h2>
-        <p className="text-xs text-muted">{note}</p>
-      </div>
-      {total === 0 ? (
-        <p className="text-sm text-muted">No paid payments yet.</p>
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {methods.map((method) => {
-            const share = Math.round((method.amount / total) * 100);
-            return (
-              <li key={method.label} className="flex flex-col gap-1.5">
-                <span className="flex justify-between gap-2 text-[13px]">
-                  <span>{method.label}</span>
-                  <span className="font-semibold">
-                    {formatPeso(method.amount)} · {share}%
-                  </span>
-                </span>
-                <span aria-hidden="true" className="h-2 rounded-full bg-admin-bg">
-                  <span className="block h-2 rounded-full bg-brown" style={{ width: `${Math.max(share, 2)}%` }} />
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <p className="text-[11px] text-muted">Card numbers are never stored. Only PayMongo&apos;s reference is kept.</p>
     </AdminCard>
   );
 }

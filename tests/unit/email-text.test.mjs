@@ -8,10 +8,13 @@
 //     when no drink was picked)
 //   - the email-changed alert names the new email and how to reach the cafe
 //   - (Version 1.6) the re-schedule email has the old and new class and the reason
+//   - (Version 1.7) the "cafe cancelled your booking" email says what the
+//     client got (100% / 50% code with its last day, no credit, refunded)
+//     and never shows the admin's reason
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adminMessageEmail, confirmationEmail, emailChangedAlert, emailSignOff, rescheduleEmail } from '../../src/lib/email-text.ts';
+import { adminMessageEmail, cafeCancelEmail, confirmationEmail, emailChangedAlert, emailSignOff, rescheduleEmail } from '../../src/lib/email-text.ts';
 
 const cafe = { name: 'Block 69 Cafe', address: '444 Kamagong St., Comembo, Taguig City', email: 'block69cafe@gmail.com' };
 
@@ -64,4 +67,24 @@ test('re-schedule email: old class, new class and the reason', () => {
     assert.ok(email.text.includes(part), `missing "${part}"`);
   }
   assert.ok(email.text.endsWith('block69cafe@gmail.com'));
+});
+
+// Version 1.7: the email after an admin cancels one booking
+test('cafe cancel email: what the client got, for each choice', () => {
+  const base = { name: 'Ana', reference: 'B69-77AB01CD', classLabel: 'Thursday, November 19 · 9:00 – 9:50 AM' };
+  const free = cafeCancelEmail({ ...base, outcome: 'free_code', code: 'FREE-1A2B3C', codeExpires: 'January 18, 2027' }, cafe);
+  assert.equal(free.subject, 'Your Mat Pilates booking was cancelled: Thursday, November 19 · 9:00 – 9:50 AM');
+  for (const part of ['Hi Ana,', 'Booking: B69-77AB01CD', 'FREE-1A2B3C', 'one class for free', 'until January 18, 2027', 'My Vouchers']) {
+    assert.ok(free.text.includes(part), `missing "${part}"`);
+  }
+  const half = cafeCancelEmail({ ...base, outcome: 'half_code', code: 'HALF-1A2B3C', codeExpires: 'January 18, 2027' }, cafe);
+  assert.ok(half.text.includes('HALF-1A2B3C gives you 50% off'));
+  const none = cafeCancelEmail({ ...base, outcome: 'no_credit', code: null, codeExpires: null }, cafe);
+  assert.ok(none.text.includes('no credit'));
+  assert.ok(!none.text.includes('My Vouchers'));
+  const refunded = cafeCancelEmail({ ...base, name: null, outcome: 'refunded', code: null, codeExpires: null }, cafe);
+  assert.ok(refunded.text.startsWith('Hi,'));
+  assert.ok(refunded.text.includes('refunded your payment'));
+  assert.ok(!refunded.text.includes('Reason'), 'the admin reason is never in the email');
+  assert.ok(refunded.text.endsWith('block69cafe@gmail.com'));
 });

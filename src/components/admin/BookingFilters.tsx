@@ -37,8 +37,8 @@ export function bookingsHref(values: BookingFilterValues): string {
   if (values.status !== "all") params.set("status", values.status);
   if (values.date) params.set("date", values.date);
   if (values.time) params.set("time", values.time);
-  // "upcoming" is the default without a search; "all" is the default with one
-  if (values.when !== (values.q ? "all" : "upcoming")) params.set("when", values.when);
+  // Version 1.7: "all" (all dates) is the default, so only other choices go in the address
+  if (values.when !== "all") params.set("when", values.when);
   const query = params.toString();
   return query ? `/admin/appointments?${query}` : "/admin/appointments";
 }
@@ -129,10 +129,11 @@ export function BookingFilters({
           name="when"
           defaultValue={values.when}
           hint={values.date ? "Ignored when a date is picked" : undefined}
+          // Version 1.7: "All dates" first (it is the default)
           options={[
+            { value: "all", label: "All dates" },
             { value: "upcoming", label: "Today and later" },
             { value: "past", label: "Past classes" },
-            { value: "all", label: "All dates" },
           ]}
         />
         <div className="flex gap-2 sm:col-span-2 lg:col-span-1">

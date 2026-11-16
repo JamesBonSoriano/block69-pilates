@@ -74,7 +74,7 @@ export function CancelClassButton({ sessionId, classLabel, bookedCount, classNam
               {state.done.bookedCount === 0
                 ? "Nobody was booked in it. It no longer shows as open for booking."
                 : `${state.done.bookedCount} booking${state.done.bookedCount === 1 ? " was" : "s were"} holding a seat. ` +
-                  "Those clients keep their bookings and will see a free transfer in My Bookings, with the last day to use it."}
+                  "Those clients keep their bookings and will see a free re-schedule in My Bookings, with the last day to use it."}
             </p>
             {state.done.bookedCount > 0 && (
               <FormMessage tone="info">

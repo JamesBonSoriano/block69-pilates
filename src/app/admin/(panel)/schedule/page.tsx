@@ -5,16 +5,18 @@
 // On phones each row is a small stacked card instead, so nothing makes the
 // page wider than the screen; tablets and laptops get the tables.
 //
-// Three parts:
+// Two parts:
 //   1. The WEEKLY PATTERN (schedule_templates): Day, Starts, Ends, Seats,
-//      On/Off and Edit. "Add class time" adds a row. Saved straight into the
+//      On/Off and Edit. "Add class" adds a row. Saved straight into the
 //      table (RLS: admins only) by saveTemplate() / addTemplate() in
 //      src/lib/admin/setup-actions.ts.
-//   2. "Open classes for booking": one button, openNextWeeks(), always makes
-//      the dated classes 9 weeks ahead (this month and next month) from the
-//      pattern and says how many new ones were made. Classes that already
-//      exist are NOT changed.
-//   3. The UPCOMING DATED CLASSES, 10 per page (?page=2): date, time, seats
+//      Version 1.7: classes open by themselves. Saving the pattern makes the
+//      dated classes for the next 9 weeks at once, and a nightly job (00:05
+//      Manila) keeps 9 weeks open (migration 28). Changing a row's day or
+//      time, or turning it Off, removes its future classes that nobody has
+//      booked. A class is never made twice, and a cancelled class is never
+//      brought back. (The old "Open classes for booking" card was removed.)
+//   2. The UPCOMING DATED CLASSES, 10 per page (?page=2): date, time, seats
 //      taken / capacity and status. Edit changes one class's seats or opens /
 //      closes it (admin_update_session, never below the seats already
 //      taken); Cancel class cancels it (clients get a free transfer).
@@ -36,7 +38,7 @@ import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { addTemplate, openNextWeeks, saveTemplate, updateClass } from "@/lib/admin/setup-actions";
+import { addTemplate, saveTemplate, updateClass } from "@/lib/admin/setup-actions";
 import { firstParam } from "@/lib/auth/safe-next";
 import { requireAdmin } from "@/lib/auth/user";
 import { cn } from "@/lib/cn";
@@ -85,7 +87,7 @@ export default function AdminSchedulePage({ searchParams }: PageProps<"/admin/sc
   );
 }
 
-// The live part: the pattern, the "Open classes for booking" card and the dated classes.
+// The live part: the weekly pattern and the dated classes.
 // Takes: the searchParams promise. Gives back: the cards.
 async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/admin/schedule">["searchParams"] }) {
   await requireAdmin();
@@ -113,27 +115,32 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/admin/
 
   return (
     <>
-      {/* grid-cols-1 on phones: the one column may shrink, so the page never gets wider than the screen */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
+      {/* grid-cols-1: the one column may shrink, so the page never gets wider than the screen.
+          (Version 1.7: one column on laptops too, since the "Open classes" card is gone) */}
+      <div className="grid grid-cols-1 gap-5">
         {/* ---- 1. The weekly pattern ---- */}
         <AdminCard className="flex flex-col p-0 lg:p-0">
           <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between lg:p-6">
             <div>
               <h2 className="text-base font-semibold">Weekly pattern</h2>
+              {/* Version 1.7: classes open by themselves from this pattern */}
               <p className="text-xs text-muted">
-                Changes here only affect classes made from now on. Classes that already have a date keep their time
-                and seats (change those under Upcoming classes).
+                Classes open by themselves: saving here opens the next 9 weeks, and every night the website keeps 9
+                weeks open. A new day or time (or turning a row Off) removes its future classes that nobody booked;
+                booked classes stay. Seat changes apply to new classes only (change existing ones under Upcoming
+                classes). A class you cancel is never brought back.
               </p>
             </div>
-            <AdminDialogButton label="Add class time" title="Add a class time" variant="primary" className="shrink-0">
-              <AdminActionForm action={addTemplate} submitLabel="Add class time" resetOnSave className="gap-3">
+            {/* Version 1.7: "Add class" (was "Add class time") */}
+            <AdminDialogButton label="Add class" title="Add class" variant="primary" className="shrink-0">
+              <AdminActionForm action={addTemplate} submitLabel="Add class" resetOnSave className="gap-3">
                 <TemplateFields template={null} idPrefix="new" />
               </AdminActionForm>
             </AdminDialogButton>
           </div>
 
           {templates.length === 0 ? (
-            <p className="px-4 pb-4 text-sm text-muted lg:px-6 lg:pb-6">No class times yet. Press &quot;Add class time&quot;.</p>
+            <p className="px-4 pb-4 text-sm text-muted lg:px-6 lg:pb-6">No class times yet. Press &quot;Add class&quot;.</p>
           ) : (
             <>
               {/* ===== Tablet and laptop: table ===== */}
@@ -190,21 +197,9 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/admin/
             </>
           )}
         </AdminCard>
-
-        {/* ---- 2. Open classes for booking ---- */}
-        <AdminCard className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold">Open classes for booking</h2>
-          <p className="text-sm leading-relaxed">
-            Makes the dated classes clients can book from the weekly pattern, for this month and next month. Existing
-            classes are not changed.
-          </p>
-          <AdminActionForm action={openNextWeeks} submitLabel="Open the next 9 weeks" pendingLabel="Opening…">
-            {null}
-          </AdminActionForm>
-        </AdminCard>
       </div>
 
-      {/* ---- 3. Upcoming dated classes ---- */}
+      {/* ---- 2. Upcoming dated classes ---- */}
       <AdminCard className="flex flex-col p-0 lg:p-0">
         <div className="p-4 lg:p-6">
           <h2 id="dated-heading" className="text-base font-semibold">
@@ -212,13 +207,14 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/admin/
           </h2>
           <p className="text-xs text-muted">
             Edit one class&apos;s seats (for example 3 instead of 4), or close it so nobody can book it. People who
-            are already booked keep their seats. Cancel class gives booked clients a free transfer.
+            are already booked keep their seats. Cancel class gives booked clients a free re-schedule.
           </p>
         </div>
 
         {upcoming.length === 0 ? (
           <p className="px-4 pb-4 text-sm text-muted lg:px-6 lg:pb-6">
-            No upcoming classes. Press &quot;Open the next 9 weeks&quot; above.
+            {/* Version 1.7: classes open by themselves from the weekly pattern */}
+            No upcoming classes. Turn a class time On (or press &quot;Add class&quot;) and its next 9 weeks open.
           </p>
         ) : (
           <>
@@ -327,7 +323,7 @@ function TemplateEditButton({ template, idPrefix }: { template: ScheduleTemplate
   );
 }
 
-// The fields of one weekly slot (used by Edit and by "Add class time").
+// The fields of one weekly slot (used by Edit and by "Add class").
 // Takes: the template (null = a new one) and a prefix so every field id on
 // the page is different.
 // Gives back: the day, times, seats and on / off fields.

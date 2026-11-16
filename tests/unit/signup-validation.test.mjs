@@ -11,12 +11,16 @@
 //   - checkSignupFields() reports every problem at once
 //   - Version 1.6: under 18 (Philippine date) or a future birthday is
 //     refused with "You must be at least 18 years old to book a class."
+//   - Version 1.7: older than 100 (Philippine date) is refused with
+//     "Please check your birthday: the age limit is 100 years old."
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   AGE_ERROR,
   BIRTHDAY_ERROR,
+  MAX_AGE_ERROR,
+  isAtMost100,
   birthdayInputProblem,
   checkSignupFields,
   isAtLeast18,
@@ -44,7 +48,7 @@ test('mobile: anything else fails', () => {
 test('birthday: a real past MM/DD/YYYY date becomes YYYY-MM-DD', () => {
   assert.equal(parseBirthdayInput('03/12/1998'), '1998-03-12');
   assert.equal(parseBirthdayInput('02/29/2000'), '2000-02-29'); // a leap year
-  assert.equal(parseBirthdayInput('01/01/1900'), '1900-01-01');
+  assert.equal(parseBirthdayInput('01/01/1950'), '1950-01-01');
 });
 
 test('birthday: the screenshot year 275760 and other bad dates fail', () => {
@@ -83,6 +87,32 @@ test('under-18 refused: age 18+ in Philippine time (Version 1.6)', () => {
   assert.equal(parseBirthdayInput('11/17/2008', now), null);
   assert.equal(parseBirthdayInput('11/16/2008', now), '2008-11-16');
   assert.equal(AGE_ERROR, 'You must be at least 18 years old to book a class.');
+});
+
+test('over-100 refused: age 18 to 100 in Philippine time (Version 1.7)', () => {
+  // 15 Nov 2026, 5:00 PM UTC = 16 Nov 2026, 1:00 AM in Manila
+  const now = Date.parse('2026-11-15T17:00:00Z');
+  assert.equal(isAtMost100('1925-11-17', now), true); // still 100 (101 tomorrow)
+  assert.equal(isAtMost100('1925-11-16', now), false); // 101 today (Manila date)
+  assert.equal(isAtMost100('1900-11-05', now), false); // the screenshot's 1900
+  assert.equal(isAtMost100('1990-01-01', now), true);
+  // Born 29 Feb: 101 on 1 March in a year with no 29 Feb (same as the database)
+  assert.equal(isAtMost100('1924-02-29', Date.parse('2025-02-28T04:00:00Z')), true);
+  assert.equal(isAtMost100('1924-02-29', Date.parse('2025-03-01T04:00:00Z')), false);
+
+  assert.equal(birthdayInputProblem('11/05/1900', now), MAX_AGE_ERROR);
+  assert.equal(birthdayInputProblem('11/16/1925', now), MAX_AGE_ERROR);
+  assert.equal(birthdayInputProblem('11/17/1925', now), null);
+  assert.equal(parseBirthdayInput('11/16/1925', now), null);
+  assert.equal(parseBirthdayInput('11/17/1925', now), '1925-11-17');
+  assert.equal(MAX_AGE_ERROR, 'Please check your birthday: the age limit is 100 years old.');
+});
+
+test('the sign-up form refuses an over-100 birthday', () => {
+  const tooOld = checkSignupFields({
+    full_name: 'Lola', mobile: '09171234567', birthday: '01/01/1901', email: 'lola@gmail.com', password: 'longenough',
+  });
+  assert.equal(tooOld.birthday, MAX_AGE_ERROR);
 });
 
 test('the sign-up form refuses an under-18 birthday', () => {

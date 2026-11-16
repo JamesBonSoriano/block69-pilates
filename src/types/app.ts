@@ -29,7 +29,8 @@ export type PaymentMethod = PublicSchema["Enums"]["payment_method"];
 // The generated types say every column is always filled in, but some are
 // empty (null) for many bookings, so we say so here: no drink picked, no
 // voucher, not paid yet.
-type MyBookingRow = PublicSchema["Functions"]["get_my_booking"]["Returns"][number];
+type MyBookingRow =
+  PublicSchema["Functions"]["get_my_booking"]["Returns"][number];
 export type MyBooking = Omit<
   MyBookingRow,
   | "drink_choice"
@@ -75,7 +76,8 @@ export type ChangeRule =
 // One row from get_my_bookings() (migration 8): one of the client's own
 // bookings for My Bookings. As with MyBooking, the columns that can be empty
 // are marked here (the generated types say they never are).
-type MyBookingListRow = PublicSchema["Functions"]["get_my_bookings"]["Returns"][number];
+type MyBookingListRow =
+  PublicSchema["Functions"]["get_my_bookings"]["Returns"][number];
 export type MyBookingListItem = Omit<
   MyBookingListRow,
   | "drink_choice"
@@ -108,10 +110,18 @@ export type PaymentStatus = PublicSchema["Enums"]["payment_status"];
 
 // One row from get_my_payments() (migration 8): one of the client's own
 // payments, with the booking and class it paid for.
-type MyPaymentRow = PublicSchema["Functions"]["get_my_payments"]["Returns"][number];
+type MyPaymentRow =
+  PublicSchema["Functions"]["get_my_payments"]["Returns"][number];
 export type MyPayment = Omit<
   MyPaymentRow,
-  "method" | "paymongo_ref" | "paid_at" | "drink_choice" | "voucher_code" | "now_date" | "now_start_time" | "now_end_time"
+  | "method"
+  | "paymongo_ref"
+  | "paid_at"
+  | "drink_choice"
+  | "voucher_code"
+  | "now_date"
+  | "now_start_time"
+  | "now_end_time"
 > & {
   method: PaymentMethod | null; // empty while a PayMongo checkout is still open
   paymongo_ref: string | null;
@@ -127,8 +137,12 @@ export type MyPayment = Omit<
 export type VoucherState = "active" | "reserved" | "used" | "expired";
 
 // One row from get_my_vouchers(): one of the client's own personal codes.
-type MyVoucherRow = PublicSchema["Functions"]["get_my_vouchers"]["Returns"][number];
-export type MyVoucher = Omit<MyVoucherRow, "percent_off" | "amount_off" | "expires_at" | "state" | "used_for_date"> & {
+type MyVoucherRow =
+  PublicSchema["Functions"]["get_my_vouchers"]["Returns"][number];
+export type MyVoucher = Omit<
+  MyVoucherRow,
+  "percent_off" | "amount_off" | "expires_at" | "state" | "used_for_date"
+> & {
   percent_off: number | null; // one of these two is filled in
   amount_off: number | null;
   expires_at: string | null; // empty = never expires
@@ -155,13 +169,22 @@ export type AdminDashboardSummary =
 
 // One class for the admin (admin_list_sessions): past ones too, with seats
 // taken / left and how many guests still need Attended / No-show.
-export type AdminSession = PublicSchema["Functions"]["admin_list_sessions"]["Returns"][number];
+export type AdminSession =
+  PublicSchema["Functions"]["admin_list_sessions"]["Returns"][number];
 
 // One guest in a class (admin_class_rosters): Attendance list, Dashboard.
-type AdminRosterRow = PublicSchema["Functions"]["admin_class_rosters"]["Returns"][number];
+type AdminRosterRow =
+  PublicSchema["Functions"]["admin_class_rosters"]["Returns"][number];
 export type AdminRosterItem = Omit<
   AdminRosterRow,
-  "guest_contact" | "guest_email" | "health_notes" | "drink_choice" | "paid_amount" | "paid_method" | "paid_provider" | "hold_expires_at"
+  | "guest_contact"
+  | "guest_email"
+  | "health_notes"
+  | "drink_choice"
+  | "paid_amount"
+  | "paid_method"
+  | "paid_provider"
+  | "hold_expires_at"
 > & {
   guest_contact: string | null;
   guest_email: string | null; // walk-ins have no account, so no email
@@ -174,10 +197,16 @@ export type AdminRosterItem = Omit<
 };
 
 // One row of the admin Bookings list (admin_search_bookings).
-type AdminBookingListRow = PublicSchema["Functions"]["admin_search_bookings"]["Returns"][number];
+type AdminBookingListRow =
+  PublicSchema["Functions"]["admin_search_bookings"]["Returns"][number];
 export type AdminBookingListItem = Omit<
   AdminBookingListRow,
-  "guest_contact" | "guest_email" | "drink_choice" | "paid_amount" | "paid_method" | "paid_provider"
+  | "guest_contact"
+  | "guest_email"
+  | "drink_choice"
+  | "paid_amount"
+  | "paid_method"
+  | "paid_provider"
 > & {
   guest_contact: string | null;
   guest_email: string | null;
@@ -204,7 +233,8 @@ export type AdminBookingPayment = {
 
 // One booking with everything about it (admin_get_booking): the admin's
 // booking details page.
-type AdminBookingRow = PublicSchema["Functions"]["admin_get_booking"]["Returns"][number];
+type AdminBookingRow =
+  PublicSchema["Functions"]["admin_get_booking"]["Returns"][number];
 export type AdminBookingDetails = Omit<
   AdminBookingRow,
   | "hold_expires_at"
@@ -252,10 +282,17 @@ export type AdminBookingDetails = Omit<
 // ---------------------------------------------------------------------------
 
 // One payment on the admin Payments page (admin_list_payments).
-type AdminPaymentRow = PublicSchema["Functions"]["admin_list_payments"]["Returns"][number];
+type AdminPaymentRow =
+  PublicSchema["Functions"]["admin_list_payments"]["Returns"][number];
 export type AdminPayment = Omit<
   AdminPaymentRow,
-  "method" | "paymongo_ref" | "screenshot_path" | "verified_by_name" | "paid_at" | "guest_email" | "guest_contact"
+  | "method"
+  | "paymongo_ref"
+  | "screenshot_path"
+  | "verified_by_name"
+  | "paid_at"
+  | "guest_email"
+  | "guest_contact"
 > & {
   method: PaymentMethod | null; // empty while a PayMongo checkout is still open
   paymongo_ref: string | null;
@@ -267,22 +304,32 @@ export type AdminPayment = Omit<
 };
 
 // One day + method of paid money (admin_earnings). Nothing here is empty.
-export type AdminEarningRow = PublicSchema["Functions"]["admin_earnings"]["Returns"][number];
+export type AdminEarningRow =
+  PublicSchema["Functions"]["admin_earnings"]["Returns"][number];
 
 // The money totals on the admin Payments page (admin_billing_summary,
 // migration 11): paid today / this week / this month, mat rental donations,
 // and how many bookings need the admin. Nothing here is ever empty.
-export type AdminBillingSummary = PublicSchema["Functions"]["admin_billing_summary"]["Returns"][number];
+export type AdminBillingSummary =
+  PublicSchema["Functions"]["admin_billing_summary"]["Returns"][number];
 
 // A voucher's state for the admin (admin_list_vouchers): the client's states
 // plus "off" (a promo code the admin turned off).
 export type AdminVoucherState = VoucherState | "off";
 
 // One voucher on the Pricing & Vouchers page (admin_list_vouchers).
-type AdminVoucherRow = PublicSchema["Functions"]["admin_list_vouchers"]["Returns"][number];
+type AdminVoucherRow =
+  PublicSchema["Functions"]["admin_list_vouchers"]["Returns"][number];
 export type AdminVoucher = Omit<
   AdminVoucherRow,
-  "percent_off" | "amount_off" | "expires_at" | "disabled_at" | "owner_name" | "owner_email" | "state" | "used_for_date"
+  | "percent_off"
+  | "amount_off"
+  | "expires_at"
+  | "disabled_at"
+  | "owner_name"
+  | "owner_email"
+  | "state"
+  | "used_for_date"
 > & {
   percent_off: number | null; // one of these two is filled in
   amount_off: number | null;
@@ -295,8 +342,12 @@ export type AdminVoucher = Omit<
 };
 
 // One account on the Users page (admin_list_users).
-type AdminUserRow = PublicSchema["Functions"]["admin_list_users"]["Returns"][number];
-export type AdminUser = Omit<AdminUserRow, "full_name" | "email" | "mobile" | "instagram" | "last_class_date"> & {
+type AdminUserRow =
+  PublicSchema["Functions"]["admin_list_users"]["Returns"][number];
+export type AdminUser = Omit<
+  AdminUserRow,
+  "full_name" | "email" | "mobile" | "instagram" | "last_class_date"
+> & {
   full_name: string | null;
   email: string | null;
   mobile: string | null;
@@ -307,7 +358,8 @@ export type AdminUser = Omit<AdminUserRow, "full_name" | "email" | "mobile" | "i
 // One account's details and totals on the View user page (admin_get_user,
 // migration 20). The generated types say every column is filled in, but
 // these are empty (null) when there's nothing to show.
-type AdminUserDetailsRow = PublicSchema["Functions"]["admin_get_user"]["Returns"][number];
+type AdminUserDetailsRow =
+  PublicSchema["Functions"]["admin_get_user"]["Returns"][number];
 export type AdminUserDetails = Omit<
   AdminUserDetailsRow,
   | "full_name"
@@ -337,7 +389,8 @@ export type AdminUserDetails = Omit<
 
 // One of a person's bookings on the View user and Communications pages
 // (admin_user_bookings, migration 20).
-export type AdminUserBooking = PublicSchema["Functions"]["admin_user_bookings"]["Returns"][number];
+export type AdminUserBooking =
+  PublicSchema["Functions"]["admin_user_bookings"]["Returns"][number];
 
 // One email the admin sent to a client (the communications table, migration 20).
 export type CommunicationRow = PublicSchema["Tables"]["communications"]["Row"];
@@ -348,11 +401,19 @@ export type AdminChangeRule = ChangeRule | "late_payment";
 
 // What an admin did to one booking (booking_admin_actions):
 // moved it, or cancelled it with or without a 50% code.
-export type AdminActionKind = "transfer" | "cancel_voucher" | "cancel_no_credit";
+export type AdminActionKind =
+  "transfer" | "cancel_voucher" | "cancel_no_credit";
 
 // Version 1.6 (migration 24): the log also has re-schedules and rejected
 // payments (each with the admin's reason).
-export type AdminLoggedAction = AdminActionKind | "reschedule" | "reject_payment";
+// Version 1.7 (migration 27): admin cancels with a 100% code or "refunded
+// outside the website".
+export type AdminLoggedAction =
+  | AdminActionKind
+  | "reschedule"
+  | "reject_payment"
+  | "cancel_free_code"
+  | "cancel_refunded";
 
 // One saved admin change, inside admin_booking_change_info's "actions" list.
 export type AdminBookingAction = {
@@ -378,4 +439,14 @@ export type AdminBookingChangeInfo = {
 };
 
 // One weekly class slot (schedule_templates table).
-export type ScheduleTemplate = PublicSchema["Tables"]["schedule_templates"]["Row"];
+export type ScheduleTemplate =
+  PublicSchema["Tables"]["schedule_templates"]["Row"];
+
+// Version 1.7: one of the logged-in client's bookings that an ADMIN cancelled
+// (get_my_cafe_cancellations, migration 27). The admin's reason is never
+// included.
+export type MyCafeCancellation = {
+  booking_id: string;
+  outcome: "free_code" | "half_code" | "no_credit" | "refunded"; // what the cafe gave
+  voucher_code: string | null; // the 100% or 50% code, if one was given
+};

@@ -31,8 +31,15 @@ export type NotificationListItem = NotificationText & {
 // Makes the bell's version of one update.
 // Takes: the notification row.
 // Gives back: its words, time and "new" flag.
-export function toNotificationListItem(n: MyNotification): NotificationListItem {
-  return { ...notificationText(n), id: n.id, createdAt: n.created_at, isNew: !n.read_at };
+export function toNotificationListItem(
+  n: MyNotification,
+): NotificationListItem {
+  return {
+    ...notificationText(n),
+    id: n.id,
+    createdAt: n.created_at,
+    isNew: !n.read_at,
+  };
 }
 
 // Writes the class an update is about, e.g. "Sat, 24 Oct at 9:00 AM".
@@ -52,7 +59,12 @@ export function notificationText(n: MyNotification): NotificationText {
 
   switch (n.kind) {
     case "booking_confirmed":
-      return { title: "Booking confirmed", body: `You're booked for ${when}. See you at the cafe!`, tone: "success", ...bookings };
+      return {
+        title: "Booking confirmed",
+        body: `You're booked for ${when}. See you at the cafe!`,
+        tone: "success",
+        ...bookings,
+      };
     case "payment_checking":
       return {
         title: "We're checking your payment",
@@ -82,7 +94,13 @@ export function notificationText(n: MyNotification): NotificationText {
         ...bookings,
       };
     case "booking_transferred":
-      return { title: "Booking moved", body: `Your booking was moved to ${when}.`, tone: "neutral", ...bookings };
+      // Version 1.7 wording: "re-scheduled"
+      return {
+        title: "Booking re-scheduled",
+        body: `Your booking was re-scheduled to ${when}.`,
+        tone: "neutral",
+        ...bookings,
+      };
     case "cancelled_with_voucher":
       return {
         title: "Booking cancelled, 50% code given",
@@ -126,6 +144,48 @@ export function notificationText(n: MyNotification): NotificationText {
       return {
         title: "Class cancelled by the cafe",
         body: `The cafe cancelled the class on ${when}. The cafe is still checking your payment. Once approved, you can move to another class for free.`,
+        tone: "error",
+        ...bookings,
+      };
+    // Version 1.7: the cafe cancelled THIS booking (admin_cancel_appointment).
+    // A 100% code for one class: the client books any class for free with it.
+    case "cafe_cancelled_free_code":
+      return {
+        title: "Booking cancelled by the cafe",
+        body: n.voucher_code
+          ? `The cafe cancelled your booking for ${when}. Your code ${n.voucher_code} gives you one class for free (class fee). It's in My Vouchers.`
+          : `The cafe cancelled your booking for ${when}. A code for one free class is in My Vouchers.`,
+        tone: "error",
+        href: "/account/vouchers",
+        linkLabel: "See my vouchers",
+      };
+    // Version 1.7: cancelled by the cafe under the normal policy, 12 to 24
+    // hours before class: a 50% code
+    case "cafe_cancelled_half_code":
+      return {
+        title: "Booking cancelled by the cafe",
+        body: n.voucher_code
+          ? `The cafe cancelled your booking for ${when}. Your 50% code ${n.voucher_code} is in My Vouchers.`
+          : `The cafe cancelled your booking for ${when}. Your 50% code is in My Vouchers.`,
+        tone: "error",
+        href: "/account/vouchers",
+        linkLabel: "See my vouchers",
+      };
+    // Version 1.7: cancelled by the cafe under the normal policy, less than
+    // 12 hours before class: no credit
+    case "cafe_cancelled_no_credit":
+      return {
+        title: "Booking cancelled by the cafe",
+        body: `The cafe cancelled your booking for ${when}, with no credit (less than 12 hours before class). Please message the cafe with Chat With Us if you have questions.`,
+        tone: "error",
+        ...bookings,
+      };
+    // Version 1.7: cancelled by the cafe, and the cafe refunded the payment
+    // outside the website
+    case "cafe_cancelled_refunded":
+      return {
+        title: "Booking cancelled by the cafe",
+        body: `The cafe cancelled your booking for ${when} and refunded your payment directly. Please message the cafe with Chat With Us if you haven't received it.`,
         tone: "error",
         ...bookings,
       };

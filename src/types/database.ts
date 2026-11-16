@@ -682,6 +682,16 @@ export type Database = {
           voucher_allowed: boolean
         }[]
       }
+      admin_cancel_appointment: {
+        Args: { p_booking_id: string; p_choice: string; p_reason: string }
+        Returns: {
+          new_status: Database["public"]["Enums"]["booking_status"]
+          outcome: string
+          refunded_amount: number
+          voucher_code: string
+          voucher_expires_at: string
+        }[]
+      }
       admin_cancel_booking: {
         Args: { p_booking_id: string; p_note?: string; p_outcome: string }
         Returns: {
@@ -845,6 +855,7 @@ export type Database = {
           p_from?: string
           p_limit?: number
           p_method?: string
+          p_provider?: string
           p_search?: string
           p_status?: string
           p_to?: string
@@ -1262,6 +1273,14 @@ export type Database = {
           total: number
         }[]
       }
+      get_my_cafe_cancellations: {
+        Args: never
+        Returns: {
+          booking_id: string
+          outcome: string
+          voucher_code: string
+        }[]
+      }
       get_my_notifications: {
         Args: { p_limit?: number }
         Returns: {
@@ -1346,6 +1365,7 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      keep_classes_open: { Args: never; Returns: number }
       manila_today: { Args: never; Returns: string }
       mark_my_notifications_read: { Args: never; Returns: number }
       my_account_deletion_blockers: {
@@ -1448,6 +1468,10 @@ export type Database = {
         | "class_cancelled"
         | "class_cancelled_hold_released"
         | "class_cancelled_checking"
+        | "cafe_cancelled_free_code"
+        | "cafe_cancelled_half_code"
+        | "cafe_cancelled_no_credit"
+        | "cafe_cancelled_refunded"
       payment_method: "gcash" | "maya" | "card" | "bpi" | "cash"
       payment_provider: "paymongo" | "manual" | "cash"
       payment_status:
@@ -1622,6 +1646,10 @@ export const Constants = {
         "class_cancelled",
         "class_cancelled_hold_released",
         "class_cancelled_checking",
+        "cafe_cancelled_free_code",
+        "cafe_cancelled_half_code",
+        "cafe_cancelled_no_credit",
+        "cafe_cancelled_refunded",
       ],
       payment_method: ["gcash", "maya", "card", "bpi", "cash"],
       payment_provider: ["paymongo", "manual", "cash"],

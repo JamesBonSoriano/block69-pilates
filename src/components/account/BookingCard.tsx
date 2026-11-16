@@ -21,47 +21,88 @@
 //   confirmed, class started            -> a short note, no buttons
 //   paid late (paid_needs_action)       -> a short line + "Move to another
 //                                          class" (free, any time; migration 19)
+//   cancelled by the cafe (Version 1.7) -> "Cancelled by the cafe" and what
+//                                          the client got (100% / 50% code,
+//                                          no credit, or refunded)
 
-import { ArrowRightLeft, CircleAlert, Clock, Hourglass } from "lucide-react";
+import {
+  ArrowRightLeft,
+  CircleAlert,
+  Clock,
+  Hourglass,
+  Store,
+} from "lucide-react";
 import Link from "next/link";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { bookingReference, bookingStatusBadge, cancelTiming, paymentMethodLabel } from "@/lib/booking-rules";
-import { formatClassDate, formatMoveBy, formatPeso, formatTime, formatTimeRange } from "@/lib/format";
-import type { MyBookingListItem } from "@/types/app";
+import {
+  bookingReference,
+  bookingStatusBadge,
+  cancelTiming,
+  paymentMethodLabel,
+} from "@/lib/booking-rules";
+import {
+  formatClassDate,
+  formatMoveBy,
+  formatPeso,
+  formatTime,
+  formatTimeRange,
+} from "@/lib/format";
+import type { MyBookingListItem, MyCafeCancellation } from "@/types/app";
 import { CancelBookingButton } from "./CancelBookingButton";
 
 // One booking card.
 // Takes: the booking (a row from get_my_bookings) and "now" in milliseconds
 // (the page reads the clock once, during a real visit, and passes it to
-// every card so they all agree).
+// every card so they all agree), and (Version 1.7) how the cafe cancelled
+// it, or null.
 // Gives back: an <li> with the card.
-export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; nowMs: number }) {
+export function BookingCard({
+  booking,
+  nowMs,
+  cafeCancel = null,
+}: {
+  booking: MyBookingListItem;
+  nowMs: number;
+  cafeCancel?: MyCafeCancellation | null;
+}) {
   const date = formatClassDate(booking.class_date);
   const timeRange = formatTimeRange(booking.start_time, booking.end_time);
-  const transferHref = booking.can_transfer ? `/account/bookings/${booking.booking_id}/transfer` : null;
+  const transferHref = booking.can_transfer
+    ? `/account/bookings/${booking.booking_id}/transfer`
+    : null;
 
   // "Iced Matcha · Rented mat · Paid ₱550 with GCash"
   const money =
     booking.paid_amount !== null && booking.paid_method
       ? `Paid ${formatPeso(booking.paid_amount)} with ${paymentMethodLabel(booking.paid_method)}`
       : `Total ${formatPeso(booking.total)}`;
-  const details = [booking.drink_choice, booking.mat_rental ? "Rented mat" : "Own mat", money]
+  const details = [
+    booking.drink_choice,
+    booking.mat_rental ? "Rented mat" : "Own mat",
+    money,
+  ]
     .filter(Boolean)
     .join(" · ");
 
   // The Cancel / Transfer rule for a confirmed booking (late payments have
   // their own box below, so "late_payment" is left out here)
-  const rule = booking.status === "confirmed" && booking.change_rule !== "late_payment" ? booking.change_rule : null;
+  const rule =
+    booking.status === "confirmed" && booking.change_rule !== "late_payment"
+      ? booking.change_rule
+      : null;
   // The status badge. Version 1.5: once the time to move a cafe-cancelled
   // class is over, it says "Class cancelled" (not a green "Confirmed").
   // Version 1.6: a rejected transfer says "Payment rejected" (not "Expired").
-  const badge: { label: string; variant: BadgeVariant } = booking.payment_rejected
-    ? { label: "Payment rejected", variant: "error" }
-    : rule === "move_window_ended"
-      ? { label: "Class cancelled", variant: "neutral" }
-      : bookingStatusBadge(booking.status);
+  // Version 1.7: a booking the cafe cancelled says so.
+  const badge: { label: string; variant: BadgeVariant } = cafeCancel
+    ? { label: "Cancelled by the cafe", variant: "error" }
+    : booking.payment_rejected
+      ? { label: "Payment rejected", variant: "error" }
+      : rule === "move_window_ended"
+        ? { label: "Class cancelled", variant: "neutral" }
+        : bookingStatusBadge(booking.status);
   // Version 1.6: the pending (hourglass) icon while the cafe checks a transfer
   const checking = booking.status === "awaiting_verification";
 
@@ -71,7 +112,9 @@ export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; no
         {/* Date + time on the left, status badge on the right */}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-heading text-base font-semibold text-brown">{date.short}</h3>
+            <h3 className="font-heading text-base font-semibold text-brown">
+              {date.short}
+            </h3>
             <p className="text-sm">{timeRange}</p>
           </div>
           <Badge variant={badge.variant}>
@@ -85,49 +128,81 @@ export function BookingCard({ booking, nowMs }: { booking: MyBookingListItem; no
         {/* Transfer links: where it came from / where it went */}
         {booking.moved_from_date && booking.moved_from_start_time && (
           <p className="flex items-center gap-2 text-xs text-muted">
-            <ArrowRightLeft aria-hidden="true" className="size-3.5 shrink-0 text-brown" />
-            Moved from {formatClassDate(booking.moved_from_date).short} · {formatTime(booking.moved_from_start_time)}
+            <ArrowRightLeft
+              aria-hidden="true"
+              className="size-3.5 shrink-0 text-brown"
+            />
+            Moved from {formatClassDate(booking.moved_from_date).short} ·{" "}
+            {formatTime(booking.moved_from_start_time)}
           </p>
         )}
         {booking.moved_to_date && booking.moved_to_start_time && (
           <p className="flex items-center gap-2 text-xs text-muted">
-            <ArrowRightLeft aria-hidden="true" className="size-3.5 shrink-0 text-brown" />
-            Moved to {formatClassDate(booking.moved_to_date).short} · {formatTime(booking.moved_to_start_time)}
+            <ArrowRightLeft
+              aria-hidden="true"
+              className="size-3.5 shrink-0 text-brown"
+            />
+            Moved to {formatClassDate(booking.moved_to_date).short} ·{" "}
+            {formatTime(booking.moved_to_start_time)}
           </p>
         )}
 
-        <StatusPart booking={booking} rule={rule} transferHref={transferHref} nowMs={nowMs} />
-
-        {/* Buttons for a confirmed booking that can still change */}
-        {rule && rule !== "free_transfer" && rule !== "move_window_ended" && rule !== "started" && (
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-3">
-              {transferHref && (
-                <ButtonLink href={transferHref} variant="secondary" className="flex-1 sm:flex-none">
-                  <ArrowRightLeft aria-hidden="true" className="size-4" />
-                  Transfer
-                </ButtonLink>
-              )}
-              <CancelBookingButton
-                bookingId={booking.booking_id}
-                classLabel={`${date.short} · ${timeRange}`}
-                rule={rule}
-                transferHref={transferHref}
-                {...cancelTiming(booking.class_date, booking.start_time, nowMs)}
-              />
-            </div>
-            {/* Say why Transfer is missing, so nobody hunts for it */}
-            {!transferHref && (
-              <p className="text-xs text-muted">
-                {rule === "already_transferred"
-                  ? "This booking was already transferred once, so it can't be moved again."
-                  : "Transfers close 24 hours before class."}
-              </p>
-            )}
-          </div>
+        {/* Version 1.7: a cafe cancel has its own line (what the client got) */}
+        {cafeCancel ? (
+          <CafeCancelNote cancel={cafeCancel} />
+        ) : (
+          <StatusPart
+            booking={booking}
+            rule={rule}
+            transferHref={transferHref}
+            nowMs={nowMs}
+          />
         )}
 
-        <p className="text-[11px] text-muted">Booking {bookingReference(booking.booking_id)}</p>
+        {/* Buttons for a confirmed booking that can still change */}
+        {rule &&
+          rule !== "free_transfer" &&
+          rule !== "move_window_ended" &&
+          rule !== "started" && (
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-3">
+                {transferHref && (
+                  <ButtonLink
+                    href={transferHref}
+                    variant="secondary"
+                    className="flex-1 sm:flex-none"
+                  >
+                    <ArrowRightLeft aria-hidden="true" className="size-4" />
+                    {/* Version 1.7: "Re-schedule" (was "Transfer") */}
+                    Re-schedule
+                  </ButtonLink>
+                )}
+                <CancelBookingButton
+                  bookingId={booking.booking_id}
+                  classLabel={`${date.short} · ${timeRange}`}
+                  rule={rule}
+                  transferHref={transferHref}
+                  {...cancelTiming(
+                    booking.class_date,
+                    booking.start_time,
+                    nowMs,
+                  )}
+                />
+              </div>
+              {/* Say why Transfer is missing, so nobody hunts for it */}
+              {!transferHref && (
+                <p className="text-xs text-muted">
+                  {rule === "already_transferred"
+                    ? "This booking was already re-scheduled once, so it can't be moved again."
+                    : "Re-scheduling closes 24 hours before class."}
+                </p>
+              )}
+            </div>
+          )}
+
+        <p className="text-[11px] text-muted">
+          Booking {bookingReference(booking.booking_id)}
+        </p>
       </Card>
     </li>
   );
@@ -160,7 +235,8 @@ function StatusPart({
         <p className="flex items-start gap-2 text-sm font-semibold">
           <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span>
-            The cafe cancelled this class. Move to another class for free, even within 24 hours.
+            The cafe cancelled this class. Move to another class for free, even
+            within 24 hours.
             {moveBy && <span className="mt-1 block">Move by {moveBy}.</span>}
           </span>
         </p>
@@ -177,7 +253,8 @@ function StatusPart({
   if (rule === "move_window_ended") {
     return (
       <p className="text-sm text-muted">
-        The cafe cancelled this class. The time to move it for free ended{moveBy ? ` on ${moveBy}` : ""}.
+        The cafe cancelled this class. The time to move it for free ended
+        {moveBy ? ` on ${moveBy}` : ""}.
       </p>
     );
   }
@@ -213,7 +290,8 @@ function StatusPart({
       if (booking.session_status === "cancelled") {
         return (
           <p className="text-sm text-muted">
-            The cafe cancelled this class. Your seat hold was released and you were not charged.
+            The cafe cancelled this class. Your seat hold was released and you
+            were not charged.
           </p>
         );
       }
@@ -223,9 +301,12 @@ function StatusPart({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-2 text-sm text-warning">
             <Clock aria-hidden="true" className="size-4 shrink-0" />
-            Your seat is held for about {minutes} more minute{minutes === 1 ? "" : "s"}.
+            Your seat is held for about {minutes} more minute
+            {minutes === 1 ? "" : "s"}.
           </p>
-          <ButtonLink href={`/book/pay/${booking.booking_id}`}>Pay now</ButtonLink>
+          <ButtonLink href={`/book/pay/${booking.booking_id}`}>
+            Pay now
+          </ButtonLink>
         </div>
       );
     }
@@ -235,8 +316,8 @@ function StatusPart({
       return booking.session_status === "cancelled" ? (
         <p className="flex items-start gap-2 text-sm text-info">
           <Hourglass aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          Class cancelled – the cafe is still checking your payment. Once approved, you can move to another class
-          for free.
+          Class cancelled – the cafe is still checking your payment. Once
+          approved, you can move to another class for free.
         </p>
       ) : (
         <p className="flex items-start gap-2 text-sm text-info">
@@ -249,7 +330,10 @@ function StatusPart({
       return (
         <div className="flex flex-col gap-3 rounded-2xl bg-warning-bg p-4 text-warning">
           <p className="flex items-start gap-2 text-sm font-semibold">
-            <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+            <CircleAlert
+              aria-hidden="true"
+              className="mt-0.5 size-4 shrink-0"
+            />
             {transferHref
               ? "Your payment came in after your seat hold expired, so this seat couldn't be confirmed. Move to another class for free."
               : "Your payment came in after your seat hold expired, so this seat couldn't be confirmed. The cafe will contact you to sort it out."}
@@ -266,7 +350,10 @@ function StatusPart({
       return (
         <p className="text-sm">
           Your 50% voucher is in{" "}
-          <Link href="/account/vouchers" className="font-semibold text-brown underline underline-offset-2">
+          <Link
+            href="/account/vouchers"
+            className="font-semibold text-brown underline underline-offset-2"
+          >
             My Vouchers
           </Link>
           .
@@ -279,4 +366,50 @@ function StatusPart({
     default:
       return null;
   }
+}
+
+// Version 1.7: the line on a booking the CAFE cancelled (an admin used
+// "Cancel appointment"): what the client got.
+// Takes: the cancel row (outcome + code).
+// Gives back: a short paragraph, with a My Vouchers link when a code was given.
+function CafeCancelNote({ cancel }: { cancel: MyCafeCancellation }) {
+  const vouchersLink = (
+    <Link
+      href="/account/vouchers"
+      className="font-semibold text-brown underline underline-offset-2"
+    >
+      My Vouchers
+    </Link>
+  );
+  // The words for each outcome
+  const words = {
+    free_code: (
+      <>
+        You got a code for one free class
+        {cancel.voucher_code ? ` (${cancel.voucher_code})` : ""}. It&apos;s in{" "}
+        {vouchersLink}.
+      </>
+    ),
+    half_code: (
+      <>
+        You got a 50% code
+        {cancel.voucher_code ? ` (${cancel.voucher_code})` : ""}. It&apos;s in{" "}
+        {vouchersLink}.
+      </>
+    ),
+    no_credit: (
+      <>
+        This cancellation came with no credit (less than 12 hours before class).
+      </>
+    ),
+    refunded: (
+      <>Refunded: the cafe paid you back directly, outside the website.</>
+    ),
+  }[cancel.outcome];
+  return (
+    <p className="flex items-start gap-2 text-sm">
+      <Store aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brown" />
+      <span>{words}</span>
+    </p>
+  );
 }

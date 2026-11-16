@@ -6,8 +6,8 @@
 //
 // The rules (Change 17) are checkSignupFields() in src/lib/validation.ts:
 //   phone    exactly 11 digits starting with 09 (the box takes digits only, 11 at most)
-//   birthday MM/DD/YYYY, a real calendar date with a 4-digit year, and at
-//   least 18 years old (Version 1.6)
+//   birthday MM/DD/YYYY, a real calendar date with a 4-digit year, and 18
+//   to 100 years old (Versions 1.6 / 1.7)
 //   email    @gmail.com or @yahoo.com only (this version)
 //   password at least 8 characters (with a show / hide button)
 // They run HERE when the person presses "Create account" (so every problem

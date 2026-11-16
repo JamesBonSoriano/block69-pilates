@@ -4,8 +4,12 @@
 // Where it's used: the admin menu ("Earnings") and the Dashboard's Earnings card.
 // Layout follows docs/designs/AdminPayments.html: number cards (today, this
 // week, this month and the mat rental donations, from
-// admin_billing_summary), earnings by week + by payment method, then the
-// payments table with filters (search, method, status, dates).
+// admin_billing_summary), earnings by week, then the payments table with
+// filters (search, method, status, dates).
+//
+// Version 1.7: the "By payment method" card was removed (kept minimal), and
+// the Method filter is exactly All, PayMongo, GCash transfer, BPI transfer
+// (src/lib/admin/earnings-filter.ts; Cash was removed).
 //
 // Version 1.6: VIEW ONLY. The "Needs review" and "Paid, needs action" tabs,
 // the Needs action card and the Approve / Reject buttons are gone. Checking a
@@ -22,11 +26,12 @@ import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AdminCard, AdminLoadError, AdminLoading, AdminPage, AdminPageHeader, StatCard } from "@/components/admin/AdminUi";
-import { EarningsByMethod, EarningsByWeek, type MethodEarnings, type WeekEarnings } from "@/components/admin/EarningsChart";
+import { EarningsByWeek, type WeekEarnings } from "@/components/admin/EarningsChart";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { EARNINGS_METHOD_OPTIONS, cleanEarningsMethod, earningsMethodFilter } from "@/lib/admin/earnings-filter";
 import { firstParam } from "@/lib/auth/safe-next";
 import { requireAdmin } from "@/lib/auth/user";
 import { paymentMethodName } from "@/lib/booking-rules";
@@ -41,14 +46,8 @@ export const metadata: Metadata = { title: "Earnings · Admin" };
 // How many weeks the earnings bars show.
 const WEEKS_SHOWN = 8;
 
-// The filter choices (the database refuses anything else).
-const METHOD_OPTIONS = [
-  { value: "gcash", label: "GCash" },
-  { value: "maya", label: "Maya" },
-  { value: "card", label: "Card" },
-  { value: "bpi", label: "BPI transfer" },
-  { value: "cash", label: "Cash" },
-];
+// The status filter choices (the database refuses anything else). The
+// method choices are EARNINGS_METHOD_OPTIONS (Version 1.7).
 const STATUS_OPTIONS = [
   { value: "paid", label: "Paid" },
   { value: "pending", label: "Pending" },
@@ -102,7 +101,8 @@ async function EarningsBody({ searchParams }: { searchParams: PageProps<"/admin/
       getAdminPayments({
         view: "all",
         search: values.q,
-        method: values.method,
+        // Version 1.7: the Method choice becomes a provider and / or method
+        ...earningsMethodFilter(values.method),
         status: values.status,
         from: values.from,
         to: values.to,
@@ -115,7 +115,6 @@ async function EarningsBody({ searchParams }: { searchParams: PageProps<"/admin/
   }
 
   const weeks = earningsByWeek(earnings, firstMonday, WEEKS_SHOWN);
-  const methods = earningsByMethod(earnings.filter((row) => row.day >= monthStart));
   const monthName = new Date(`${monthStart}T00:00:00+08:00`).toLocaleDateString("en-PH", {
     timeZone: "Asia/Manila",
     month: "long",
@@ -141,11 +140,8 @@ async function EarningsBody({ searchParams }: { searchParams: PageProps<"/admin/
         />
       </div>
 
-      {/* ---- Earnings ---- */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <EarningsByWeek weeks={weeks} note={`Last ${WEEKS_SHOWN} weeks, Monday to Sunday`} />
-        <EarningsByMethod methods={methods} note={monthName} />
-      </div>
+      {/* ---- Earnings (Version 1.7: the weekly bars only, full width) ---- */}
+      <EarningsByWeek weeks={weeks} note={`Last ${WEEKS_SHOWN} weeks, Monday to Sunday`} />
 
       {/* ---- The payments table, with filters ---- */}
       <PaymentFilters values={values} />
@@ -181,7 +177,8 @@ function PaymentFilters({ values }: { values: PaymentFilterValues }) {
         autoComplete="off"
         className="sm:col-span-2 lg:col-span-1"
       />
-      <Select label="Method" name="method" defaultValue={values.method} options={[{ value: "", label: "All methods" }, ...METHOD_OPTIONS]} />
+      {/* Version 1.7: exactly All, PayMongo, GCash transfer, BPI transfer */}
+      <Select label="Method" name="method" defaultValue={values.method} options={[...EARNINGS_METHOD_OPTIONS]} />
       <Select label="Status" name="status" defaultValue={values.status} options={[{ value: "", label: "All statuses" }, ...STATUS_OPTIONS]} />
       <Input label="From" name="from" type="date" defaultValue={values.from} />
       <Input label="To" name="to" type="date" defaultValue={values.to} />
@@ -349,7 +346,8 @@ function readFilters(params: Record<string, string | string[] | undefined>): Pay
   const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
   return {
     q: (firstParam(params.q) ?? "").trim().slice(0, 100),
-    method: METHOD_OPTIONS.some((option) => option.value === method) ? method : "",
+    // Version 1.7: only the 4 choices (an old link with ?method=cash = All)
+    method: cleanEarningsMethod(method),
     status: STATUS_OPTIONS.some((option) => option.value === status) ? status : "",
     from: isDate(from) ? from : "",
     to: isDate(to) ? to : "",
@@ -389,17 +387,3 @@ function earningsByWeek(rows: AdminEarningRow[], firstMonday: string, count: num
   });
 }
 
-// Adds up the earnings rows by payment method (the mockup puts BPI and cash
-// together; a GCash transfer counts as GCash).
-// Takes: the rows. Gives back: the methods with money, biggest first.
-function earningsByMethod(rows: AdminEarningRow[]): MethodEarnings[] {
-  const names: Record<string, string> = { gcash: "GCash", maya: "Maya", card: "Card", bpi: "BPI transfer / cash", cash: "BPI transfer / cash" };
-  const totals = new Map<string, number>();
-  for (const row of rows) {
-    const label = names[row.method] ?? row.method;
-    totals.set(label, (totals.get(label) ?? 0) + Number(row.amount));
-  }
-  return [...totals.entries()]
-    .map(([label, amount]) => ({ label, amount }))
-    .sort((a, b) => b.amount - a.amount);
-}

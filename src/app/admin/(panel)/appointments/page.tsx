@@ -10,6 +10,10 @@
 // Version 1.6: only six status chips (All, Pending, Confirmed, Done,
 // Cancelled, Re-scheduled; STATUS_CHIPS in src/lib/admin/display.ts), with a
 // count on Pending, and an "Action" column (eye = view, pencil = manage).
+// Version 1.7: five chips (no "Re-scheduled": a re-scheduled booking's old
+// row is never listed, only the new one), "All" shows every status (ended
+// unpaid holds too), 5 per page, and "Show" defaults to all dates (today and
+// later first, then past classes).
 // Layout follows docs/designs/AdminBookings.html and PhoneAdminBookings.html.
 //
 // Filters live in the address, e.g.
@@ -17,9 +21,8 @@
 //   /admin/appointments?q=ana&when=past&page=2
 //   /admin/appointments?date=2026-10-24&time=09:00:00
 // The database does the filtering, searching and paging
-// (admin_search_bookings, migrations 9 and 22). Without a status filter,
-// abandoned unpaid holds ("Expired") are hidden, because "Change details" and
-// closed tabs make lots of them. A new search or chip goes back to page 1.
+// (admin_search_bookings, migrations 9, 22 and 27). A new search or chip
+// goes back to page 1.
 //
 // LIVE DATA: loaded on every visit, never cached.
 // Protection: proxy + requireAdmin() + the database's own admin check.
@@ -42,8 +45,8 @@ import type { AdminBookingListItem } from "@/types/app";
 
 export const metadata: Metadata = { title: "Appointments · Admin" };
 
-// Appointments per page (Version 1.5, the same as the other admin tables).
-const PER_PAGE = 10;
+// Appointments per page (Version 1.7: 5, like Users).
+const PER_PAGE = 5;
 
 // The statuses counted on the "Pending" chip (the same as the chip filters on).
 const PENDING_STATUSES = STATUS_CHIPS.find((chip) => chip.key === "pending")?.statuses ?? [];
@@ -173,7 +176,7 @@ function readFilters(params: Record<string, string | string[] | undefined>): Boo
     date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "",
     // "09:00" or "09:00:00"
     time: /^\d{2}:\d{2}(:\d{2})?$/.test(time) ? time : "",
-    // Default: today and later, or all dates when searching for someone
-    when: when === "upcoming" || when === "past" || when === "all" ? when : q ? "all" : "upcoming",
+    // Version 1.7: the default is all dates (today and later first, then past)
+    when: when === "upcoming" || when === "past" || when === "all" ? when : "all",
   };
 }

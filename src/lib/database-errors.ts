@@ -4,6 +4,7 @@
 // My Account actions (src/lib/account/actions.ts). Server code only.
 
 import "server-only"; // never sent to the browser
+import { rescheduleWording } from "@/lib/reschedule-wording";
 
 // The message shown when something unexpected goes wrong.
 export const GENERIC_ERROR = "Something went wrong on our side. Please try again in a moment.";
@@ -15,7 +16,8 @@ export const GENERIC_ERROR = "Something went wrong on our side. Please try again
 // login checks), or a general message for anything unexpected (which is
 // logged for us, never shown).
 export function friendlyDatabaseError(error: { code?: string; message: string }): string {
-  if (error.code === "P0001") return error.message;
+  // Version 1.7: old "transfer" messages are shown with the word "re-schedule"
+  if (error.code === "P0001") return rescheduleWording(error.message);
   if (error.code === "42501") {
     // Postgres's own "permission denied" (e.g. logged out) isn't friendly
     return error.message.startsWith("permission denied")

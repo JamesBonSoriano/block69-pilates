@@ -131,7 +131,7 @@ export function adminReceiptData(booking: AdminBookingDetails, cafe: ReceiptCafe
       booking.start_time,
       booking.end_time,
       { date: null, start: null, end: null },
-      booking.session_status === "cancelled" ? "Cancelled by the cafe (free transfer)" : null,
+      booking.session_status === "cancelled" ? "Cancelled by the cafe (free re-schedule)" : null,
     ),
     items: receiptItems(booking),
     total: Number(booking.total),

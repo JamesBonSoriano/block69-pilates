@@ -258,7 +258,7 @@ async function SettingsBody() {
               </p>
               <p className="rounded-xl bg-admin-bg px-3.5 py-3 text-xs leading-relaxed text-muted">
                 Cancellation policy (set by the database, the same for everyone): more than 24 hours before, one free
-                transfer. 12 to 24 hours before, a 50% code. Less than 12 hours or no-show, forfeited. No cash refunds.
+                re-schedule. 12 to 24 hours before, a 50% code. Less than 12 hours or no-show, forfeited. No cash refunds.
               </p>
               {/* Version 1.5 (C8): how long a free move lasts after the cafe
                   cancels a class. The database checks it (1 to 365 days). */}

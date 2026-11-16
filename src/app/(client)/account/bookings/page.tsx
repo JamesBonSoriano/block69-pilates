@@ -15,7 +15,11 @@ import { CalendarPlus, CircleCheck } from "lucide-react";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
-import { AccountHeading, AccountLoadError, AccountLoading } from "@/components/account/AccountHeading";
+import {
+  AccountHeading,
+  AccountLoadError,
+  AccountLoading,
+} from "@/components/account/AccountHeading";
 import { BookingCard } from "@/components/account/BookingCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -25,24 +29,26 @@ import { firstParam } from "@/lib/auth/safe-next";
 import { requireClient } from "@/lib/auth/user";
 import { cn } from "@/lib/cn";
 import { fillSettings, splitLines } from "@/lib/content-text";
-import { getMyBookings } from "@/lib/data/account";
+import { getMyBookings, getMyCafeCancellations } from "@/lib/data/account";
 import { getPageContent } from "@/lib/data/content";
 import { getPublicSettings } from "@/lib/data/settings";
 import { formatClassDate, formatTime } from "@/lib/format";
 import { nowForThisVisit } from "@/lib/server-clock";
-import type { MyBookingListItem } from "@/types/app";
+import type { MyBookingListItem, MyCafeCancellation } from "@/types/app";
 
 export const metadata = { title: "My Bookings" };
 
 // The My Bookings page.
 // Takes: searchParams (?tab=past, ?moved=<id>).
 // Gives back: the heading, then the live list inside <Suspense>.
-export default function MyBookingsPage({ searchParams }: PageProps<"/account/bookings">) {
+export default function MyBookingsPage({
+  searchParams,
+}: PageProps<"/account/bookings">) {
   return (
     <>
       <AccountHeading
         title="My Bookings"
-        intro="Your classes at the cafe. Transfer or cancel a booking here."
+        intro="Your classes at the cafe. Re-schedule or cancel a booking here."
       />
       <Suspense fallback={<AccountLoading label="your bookings" />}>
         <BookingsList searchParams={searchParams} />
@@ -55,21 +61,29 @@ export default function MyBookingsPage({ searchParams }: PageProps<"/account/boo
 // Takes: the searchParams promise.
 // Gives back: the tabs, a "Done" message after a transfer, the cards (or an
 // empty message), and the short cancellation policy.
-async function BookingsList({ searchParams }: { searchParams: PageProps<"/account/bookings">["searchParams"] }) {
+async function BookingsList({
+  searchParams,
+}: {
+  searchParams: PageProps<"/account/bookings">["searchParams"];
+}) {
   const params = await searchParams;
   const tab = firstParam(params.tab) === "past" ? "past" : "upcoming";
   const movedId = firstParam(params.moved);
 
-  await requireClient(tab === "past" ? "/account/bookings?tab=past" : "/account/bookings");
+  await requireClient(
+    tab === "past" ? "/account/bookings?tab=past" : "/account/bookings",
+  );
 
   let bookings: MyBookingListItem[];
   let aboutContent;
   let settings;
+  let cafeCancels: MyCafeCancellation[]; // Version 1.7: bookings the cafe cancelled
   try {
-    [bookings, aboutContent, settings] = await Promise.all([
+    [bookings, aboutContent, settings, cafeCancels] = await Promise.all([
       getMyBookings(),
       getPageContent("about"),
       getPublicSettings(),
+      getMyCafeCancellations(),
     ]);
   } catch (error) {
     unstable_rethrow(error); // pass on Next.js's own signals
@@ -84,15 +98,18 @@ async function BookingsList({ searchParams }: { searchParams: PageProps<"/accoun
   const past = bookings.filter((booking) => !booking.is_upcoming).reverse(); // most recent first
   const shown = tab === "past" ? past : upcoming;
   // After a transfer: the new booking, to say where it went
-  const moved = movedId ? bookings.find((booking) => booking.booking_id === movedId) : undefined;
+  const moved = movedId
+    ? bookings.find((booking) => booking.booking_id === movedId)
+    : undefined;
   const policy = aboutContent.policy_summary;
 
   return (
     <div className="flex flex-col gap-5">
       {moved && (
         <FormMessage tone="success">
-          Done! Your booking is now on {formatClassDate(moved.class_date).full} at {formatTime(moved.start_time)}.
-          Same drink and mat, and nothing more to pay.
+          Done! Your booking is now on {formatClassDate(moved.class_date).full}{" "}
+          at {formatTime(moved.start_time)}. Same drink and mat, and nothing
+          more to pay.
         </FormMessage>
       )}
 
@@ -109,12 +126,24 @@ async function BookingsList({ searchParams }: { searchParams: PageProps<"/accoun
         </ul>
       </nav>
 
-      <h2 className="sr-only">{tab === "past" ? "Past bookings" : "Upcoming bookings"}</h2>
+      <h2 className="sr-only">
+        {tab === "past" ? "Past bookings" : "Upcoming bookings"}
+      </h2>
       {shown.length > 0 ? (
         // 1 card per row on phones, 2 per row on wide laptops
         <ul className="grid gap-4 xl:grid-cols-2">
           {shown.map((booking) => (
-            <BookingCard key={booking.booking_id} booking={booking} nowMs={nowMs} />
+            <BookingCard
+              key={booking.booking_id}
+              booking={booking}
+              nowMs={nowMs}
+              // Version 1.7: if the cafe cancelled this booking, how
+              cafeCancel={
+                cafeCancels.find(
+                  (row) => row.booking_id === booking.booking_id,
+                ) ?? null
+              }
+            />
           ))}
         </ul>
       ) : (
@@ -137,11 +166,16 @@ async function BookingsList({ searchParams }: { searchParams: PageProps<"/accoun
           as on About Us), with a link to the full one */}
       {policy?.body && (
         <Card className="flex flex-col gap-3 bg-transparent">
-          <Overline as="h2">{policy.title || "Cancelling or moving a class"}</Overline>
+          <Overline as="h2">
+            {policy.title || "Cancelling or moving a class"}
+          </Overline>
           <ul className="flex flex-col gap-1.5 text-sm text-muted">
             {splitLines(fillSettings(policy.body, settings)).map((line) => (
               <li key={line} className="flex gap-2">
-                <CircleCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brown" />
+                <CircleCheck
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-brown"
+                />
                 {line}
               </li>
             ))}
@@ -161,7 +195,15 @@ async function BookingsList({ searchParams }: { searchParams: PageProps<"/accoun
 // One tab (Upcoming or Past).
 // Takes: where it goes, whether it's the open tab, and its text.
 // Gives back: an <li> with the link (the open tab is filled brown).
-function TabLink({ href, active, children }: { href: string; active: boolean; children: ReactNode }) {
+function TabLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: ReactNode;
+}) {
   return (
     <li>
       <Link
@@ -171,7 +213,9 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
         className={cn(
           "inline-flex min-h-11 items-center rounded-full px-5 text-sm font-semibold transition-colors",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown",
-          active ? "bg-primary text-on-primary" : "text-brown hover:bg-tan-soft",
+          active
+            ? "bg-primary text-on-primary"
+            : "text-brown hover:bg-tan-soft",
         )}
       >
         {children}

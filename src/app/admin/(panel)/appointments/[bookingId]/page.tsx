@@ -8,16 +8,17 @@
 // it, e.g. "Cancelled · No-show"), the class, the guest, drink / mat / money,
 // every payment (including the original booking's after a move), and a short
 // history with the admin's reasons.
-// Buttons: "Download PDF" (these details as a PDF, .../pdf), "View receipt"
-// (only once something was paid) and "Manage" (the pencil page, where the
-// admin confirms / rejects payments, cancels, re-schedules and marks
-// attendance). Nothing can be changed on this page itself.
+// Buttons (Version 1.7: only one download button): "Download Receipt" (these
+// details as a PDF, .../pdf) and "Manage" (the pencil page, where the admin
+// confirms / rejects payments, cancels, re-schedules and marks attendance).
+// Nothing can be changed on this page itself. Version 1.7: the Payments card
+// also shows the client's uploaded GCash / BPI screenshot, if any.
 // Version 1.6: no "Cancel class" button any more (only on Schedule).
 //
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
 // database's own admin check (admin_get_booking, migration 9).
 
-import { ArrowLeft, Pencil, ReceiptText } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
@@ -38,7 +39,7 @@ import { bookingDetailsStatus } from "@/lib/admin/appointment-status";
 import { requireAdmin } from "@/lib/auth/user";
 import { bookingReference } from "@/lib/booking-rules";
 import { getAdminBooking } from "@/lib/data/admin";
-import { getBookingChangeInfo } from "@/lib/data/admin-setup";
+import { getBookingChangeInfo, getPaymentScreenshotLinks } from "@/lib/data/admin-setup";
 import { nowForThisVisit } from "@/lib/server-clock";
 import type { AdminBookingChangeInfo, AdminBookingDetails } from "@/types/app";
 
@@ -87,10 +88,19 @@ async function AppointmentView({ params }: { params: PageProps<"/admin/appointme
   }
   if (!booking) notFound();
 
-  const status = bookingDetailsStatus(booking, nowMs);
+  // Version 1.7: private links to the payment screenshots. Not fatal: if the
+  // links can't be made, the page still shows (just without the pictures).
+  let screenshotLinks: Record<string, string | null> = {};
+  try {
+    screenshotLinks = await getPaymentScreenshotLinks(booking.payments);
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("Could not load the payment screenshots:", error);
+  }
+
+  // (the admin log lets an admin cancel say what the cafe gave, Version 1.7)
+  const status = bookingDetailsStatus(booking, nowMs, change?.actions ?? []);
   const manageHref = `/admin/appointments/${booking.booking_id}/manage`;
-  // A receipt exists only once money was received
-  const hasPaidPayment = booking.payments.some((pay) => pay.status === "paid");
 
   return (
     <>
@@ -105,13 +115,8 @@ async function AppointmentView({ params }: { params: PageProps<"/admin/appointme
         }
         actions={
           <div className="flex flex-wrap gap-2">
-            <DownloadReceiptButton href={`/admin/appointments/${booking.booking_id}/pdf`} label="Download PDF" />
-            {hasPaidPayment && (
-              <ButtonLink href={`/admin/receipt/${booking.booking_id}`} variant="secondary">
-                <ReceiptText aria-hidden="true" className="size-4" />
-                View receipt
-              </ButtonLink>
-            )}
+            {/* Version 1.7: the ONE download button ("View receipt" removed) */}
+            <DownloadReceiptButton href={`/admin/appointments/${booking.booking_id}/pdf`} label="Download Receipt" />
             <ButtonLink href={manageHref} variant="secondary">
               <Pencil aria-hidden="true" className="size-4" />
               Manage
@@ -129,7 +134,7 @@ async function AppointmentView({ params }: { params: PageProps<"/admin/appointme
         </div>
         <div className="flex flex-col gap-5">
           <OrderDetailsCard booking={booking} />
-          <PaymentsDetailsCard booking={booking} />
+          <PaymentsDetailsCard booking={booking} screenshotLinks={screenshotLinks} />
           <HistoryCard booking={booking} actions={change?.actions ?? []} />
         </div>
       </div>

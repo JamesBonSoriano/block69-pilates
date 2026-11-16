@@ -30,6 +30,7 @@ import type {
   TransferBookingState,
 } from "@/lib/account/form-state";
 import { STAFF_ACCOUNT_ERROR, isStaffAccount } from "@/lib/auth/client-guard";
+import { emailChangeErrorMessage, logEmailChangeError } from "@/lib/auth/email-change-errors";
 import { friendlyAuthError } from "@/lib/auth/errors";
 import { checkCurrentPassword } from "@/lib/auth/password-check";
 import { safeNextPath } from "@/lib/auth/safe-next";
@@ -335,15 +336,11 @@ export async function startEmailChange(_previous: EmailChangeState, formData: Fo
     { emailRedirectTo: `${getSiteUrl()}/auth/confirm?next=${encodeURIComponent("/account/profile")}` },
   );
   if (error) {
-    // e.g. "email_exists" (another account uses it) or too many tries
-    return {
-      step: "start",
-      newEmail,
-      error:
-        error.code === "email_exists"
-          ? "Another account already uses that email."
-          : friendlyAuthError(error),
-    };
+    // Version 1.7: the full error goes to the server console, and the page
+    // shows the real reason in plain words (e.g. "Too many tries" or "The
+    // code email could not be sent"), never a generic message
+    logEmailChangeError("send code", error);
+    return { step: "start", newEmail, error: emailChangeErrorMessage(error) };
   }
   return { step: "code", newEmail };
 }
@@ -369,7 +366,11 @@ export async function confirmEmailChange(_previous: EmailChangeState, formData: 
   if (await isStaffAccount(supabase)) return { ...codeStep, error: STAFF_ACCOUNT_ERROR };
 
   const { error } = await supabase.auth.verifyOtp({ email: newEmail, token: code, type: "email_change" });
-  if (error) return { ...codeStep, fieldErrors: { code: friendlyAuthError(error) } };
+  if (error) {
+    // Version 1.7: log the full error, show the real reason under the box
+    logEmailChangeError("check code", error);
+    return { ...codeStep, fieldErrors: { code: emailChangeErrorMessage(error) } };
+  }
 
   // Did the login email change? If Supabase still waits for a second code,
   // "Secure email change" is still ON in the dashboard (see docs/PROGRESS.md)

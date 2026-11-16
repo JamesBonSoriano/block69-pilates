@@ -2,7 +2,7 @@
 // Where it's used: the admin menu ("Users") and the Dashboard.
 // Version 1.4 (PDF pages 25-26, Figma "User Management"): a table of client
 // accounts (Name, Email, Phone, Actions) with search, sort (A-Z or newest)
-// and pages of 10. Each row has three icon buttons:
+// and pages of 5 (Version 1.7; was 10). Each row has three icon buttons:
 //   View            /admin/users/<id>                 (details and history)
 //   Edit            /admin/users/<id>/edit            (name, mobile, Instagram, birthday)
 //   Communications  /admin/users/<id>/communications  (send an email, see what was sent)
@@ -33,8 +33,8 @@ import type { AdminUser } from "@/types/app";
 
 export const metadata: Metadata = { title: "Users · Admin" };
 
-// Clients per page.
-const PER_PAGE = 10;
+// Clients per page (Version 1.7: 5, so the list is short to scroll).
+const PER_PAGE = 5;
 
 // The sort choices (the value is what admin_list_users takes).
 const SORTS = [

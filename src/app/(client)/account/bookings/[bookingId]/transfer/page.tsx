@@ -48,7 +48,8 @@ import { nowForThisVisit } from "@/lib/server-clock";
 import { isUuid } from "@/lib/validation";
 import type { MyBookingListItem, OpenSession } from "@/types/app";
 
-export const metadata = { title: "Transfer a booking" };
+// Version 1.7: the word the client sees is "Re-schedule" (the route stays /transfer)
+export const metadata = { title: "Re-schedule a booking" };
 
 // The transfer page.
 // Takes: params (the booking id from the address) and searchParams (the
@@ -57,7 +58,7 @@ export const metadata = { title: "Transfer a booking" };
 export default function TransferPage({ params, searchParams }: PageProps<"/account/bookings/[bookingId]/transfer">) {
   return (
     <>
-      <AccountHeading title="Transfer a booking" intro="Move your class to another day or time." />
+      <AccountHeading title="Re-schedule a booking" intro="Move your class to another day or time." />
       <Suspense fallback={<AccountLoading label="the classes" />}>
         <TransferContent params={params} searchParams={searchParams} />
       </Suspense>
@@ -169,16 +170,16 @@ async function TransferContent({
           <span>
             <strong>Your payment came in after your seat hold expired, so this move is free.</strong> Pick any open
             class with a free seat, even one less than 24 hours away. Your drink and mat stay the same, and
-            there&apos;s nothing more to pay. After this, the new booking can&apos;t be transferred again.
+            there&apos;s nothing more to pay. After this, the new booking can&apos;t be re-scheduled again.
           </span>
         </p>
       ) : freeTransfer ? (
         <p className="flex items-start gap-2.5 rounded-2xl bg-warning-bg px-4 py-3.5 text-sm leading-relaxed text-warning">
           <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span>
-            <strong>The cafe cancelled this class, so this transfer is free.</strong> You can pick any open class,
+            <strong>The cafe cancelled this class, so re-scheduling is free.</strong> You can pick any open class,
             even one less than 24 hours away. Your drink and mat stay the same, and there&apos;s nothing to pay.
-            After this, the new booking can&apos;t be transferred again.
+            After this, the new booking can&apos;t be re-scheduled again.
             {/* Version 1.5: the free move has a deadline */}
             {booking.move_by && <> Move by {formatMoveBy(booking.move_by, nowMs)}.</>}
           </span>
@@ -187,7 +188,7 @@ async function TransferContent({
         <p className="flex items-start gap-2.5 rounded-2xl bg-info-bg px-4 py-3.5 text-sm leading-relaxed text-info">
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span>
-            <strong>A booking can only be transferred once.</strong> Your new class keeps the same drink and mat, and
+            <strong>A booking can only be re-scheduled once.</strong> Your new class keeps the same drink and mat, and
             there&apos;s nothing more to pay.
             {!booking.mat_rental && (
               <> If you&apos;d like a mat after all, pay the {formatPeso(settings.matPrice)} rental in cash at the cafe.</>
@@ -225,11 +226,11 @@ function notAllowedReason(booking: MyBookingListItem): string {
     return "Your payment doesn't match the booking total, so this booking can't be moved here. The cafe will contact you to sort it out.";
   }
   if (booking.status !== "confirmed") {
-    return `This booking can't be transferred because it's "${bookingStatusBadge(booking.status).label}". Only confirmed bookings can be moved.`;
+    return `This booking can't be re-scheduled because it's "${bookingStatusBadge(booking.status).label}". Only confirmed bookings can be moved.`;
   }
   switch (booking.change_rule) {
     case "already_transferred":
-      return "This booking was already transferred once, so it can't be moved again. A booking can only be transferred one time.";
+      return "This booking was already re-scheduled once, so it can't be moved again. A booking can only be re-scheduled one time.";
     case "started":
       return "This class has already started, so the booking can't be moved.";
     // Version 1.5: the free move after a cafe cancellation has a deadline
@@ -237,6 +238,6 @@ function notAllowedReason(booking: MyBookingListItem): string {
       return `The cafe cancelled this class, and the time to move it for free ended${booking.move_by ? ` on ${formatClassDate(booking.move_by).short}` : ""}. Please message the cafe with Chat With Us if you need help.`;
     default:
       // "voucher" or "no_credit": less than 24 hours before class
-      return "Transfers close 24 hours before class. You can still cancel it from My Bookings (see what you'd get there first).";
+      return "Re-scheduling closes 24 hours before class. You can still cancel it from My Bookings (see what you'd get there first).";
   }
 }

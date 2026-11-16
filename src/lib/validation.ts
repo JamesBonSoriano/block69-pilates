@@ -105,6 +105,27 @@ export function isAtLeast18(value: string, nowMs: number = Date.now()): boolean 
 // The message for a birthday under 18 (or in the future).
 export const AGE_ERROR = "You must be at least 18 years old to book a class.";
 
+// The oldest age allowed (Version 1.7: 18 to 100 years old).
+export const MAX_AGE = 100;
+
+// Checks that someone born on this date is 100 or younger today (Philippine
+// date), i.e. their 101st birthday hasn't come yet.
+// Takes: the birthday as "YYYY-MM-DD", and "now" in milliseconds.
+// Gives back: true up to the day before their 101st birthday; false from it.
+// (The database trigger check_birthday_age, migration 25, uses the same rule.)
+export function isAtMost100(value: string, nowMs: number = Date.now()): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  // Their 101st birthday as text, e.g. "2026-11-05" for someone born
+  // 1925-11-05. Born 29 Feb: in a year with no 29 Feb, "2025-02-29" sorts
+  // before "2025-03-01", so they turn 101 on 1 March (same as the database).
+  const hundredFirst = `${Number(match[1]) + MAX_AGE + 1}-${match[2]}-${match[3]}`;
+  return hundredFirst > manilaToday(nowMs);
+}
+
+// The message for a birthday that makes someone older than 100.
+export const MAX_AGE_ERROR = "Please check your birthday: the age limit is 100 years old.";
+
 // Reads a birthday typed as MM/DD/YYYY as a real calendar date.
 // Takes: what was typed, e.g. "03/12/1998".
 // Gives back: "1998-03-12", or null unless it is exactly MM/DD/YYYY with a
@@ -125,11 +146,14 @@ function readBirthdayDate(text: string): string | null {
 // Takes: what was typed (MM/DD/YYYY), and "now" in milliseconds.
 // Gives back: null if it's fine; BIRTHDAY_ERROR if it isn't a real date
 // typed as MM/DD/YYYY; AGE_ERROR if the person is under 18 or the date is
-// in the future (Version 1.6, PDF item 5).
+// in the future (Version 1.6, PDF item 5); MAX_AGE_ERROR if they are older
+// than 100 (Version 1.7).
 export function birthdayInputProblem(text: string, nowMs: number = Date.now()): string | null {
   const value = readBirthdayDate(text);
   if (!value) return BIRTHDAY_ERROR;
   if (!isAtLeast18(value, nowMs)) return AGE_ERROR;
+  // Version 1.7: no older than 100
+  if (!isAtMost100(value, nowMs)) return MAX_AGE_ERROR;
   return null;
 }
 
@@ -139,7 +163,7 @@ export function birthdayInputProblem(text: string, nowMs: number = Date.now()): 
 // Takes: what was typed, e.g. "03/12/1998", and "now" in milliseconds.
 // Gives back: "1998-03-12", or null unless it passes birthdayInputProblem():
 // exactly MM/DD/YYYY with a 4-digit year, a real calendar date (no 02/30),
-// from 1900, and the person is at least 18 today (so never in the future).
+// from 1900, and the person is 18 to 100 today (so never in the future).
 export function parseBirthdayInput(text: string, nowMs: number = Date.now()): string | null {
   return birthdayInputProblem(text, nowMs) ? null : readBirthdayDate(text);
 }

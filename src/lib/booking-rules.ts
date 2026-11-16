@@ -139,7 +139,7 @@ export function bookingStatusBadge(status: BookingStatus): { label: string; vari
     confirmed: { label: "Confirmed", variant: "success" },
     paid_needs_action: { label: "Paid late, pick a class", variant: "warning" },
     expired: { label: "Expired", variant: "error" },
-    transferred: { label: "Transferred", variant: "neutral" },
+    transferred: { label: "Re-scheduled", variant: "neutral" }, // Version 1.7 wording
     cancelled_with_voucher: { label: "Cancelled with voucher", variant: "neutral" },
     forfeited: { label: "Forfeited", variant: "error" },
     no_show: { label: "No-show", variant: "error" },
@@ -203,7 +203,7 @@ export function cancelExplanation(rule: ChangeRule, timeLeft: string, cancelOpen
   switch (rule) {
     case "transfer":
       return {
-        title: "Transfer instead",
+        title: "Re-schedule instead", // Version 1.7 wording
         body: `Your class is ${timeLeft}, more than 24 hours away, so it can't be cancelled yet. You can move it to another open class for free instead (one time only). From 24 hours before class, cancelling gives you a 50% voucher.`,
         confirmLabel: null,
         offerTransfer: true,
@@ -211,7 +211,7 @@ export function cancelExplanation(rule: ChangeRule, timeLeft: string, cancelOpen
     case "already_transferred":
       return {
         title: "Not yet",
-        body: `This booking was already transferred once, so it can't be moved again. Your class is ${timeLeft}. You can cancel it from 24 hours before class${cancelOpensAt ? ` (${cancelOpensAt})` : ""} and get a 50% voucher.`,
+        body: `This booking was already re-scheduled once, so it can't be moved again. Your class is ${timeLeft}. You can cancel it from 24 hours before class${cancelOpensAt ? ` (${cancelOpensAt})` : ""} and get a 50% voucher.`,
         confirmLabel: null,
         offerTransfer: false,
       };

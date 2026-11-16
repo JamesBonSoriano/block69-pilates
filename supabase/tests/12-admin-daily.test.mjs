@@ -179,7 +179,9 @@ export default async function run(t) {
   check('Search with % and _ (special characters in LIKE)', 'no rows, no error', rows.length === 0, `${rows.length} rows`);
 
   rows = await search({});
-  check('No filter', 'everything except the ended hold (shown as expired)', !has(rows, deadHoldA) && has(rows, holdB) && has(rows, walkId),
+  // Version 1.7 (migration 27): no filter ("All") lists EVERY status, the
+  // ended hold too (before, it was hidden)
+  check('No filter', 'everything, including the ended hold (shown as expired)', has(rows, deadHoldA) && has(rows, holdB) && has(rows, walkId),
     `${rows.length} rows`);
   rows = await search({ statuses: ['expired'] });
   const deadRow = rows.find((x) => x.booking_id === deadHoldA);

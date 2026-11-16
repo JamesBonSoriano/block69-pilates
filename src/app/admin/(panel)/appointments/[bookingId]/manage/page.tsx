@@ -16,8 +16,10 @@
 //     confirmed bookings, or late payments in a class the cafe cancelled
 //     (admin_reschedule_booking, migration 24). The client gets an update in
 //     their bell and an email.
-//   - Cancel this booking: the existing rule with the 50% code / no-credit
-//     choices and the override reason (admin_cancel_booking, migration 10).
+//   - Cancel this appointment (Version 1.7): 3 choices (free 100% code,
+//     normal policy, refunded outside the website) with a required reason
+//     (admin_cancel_appointment, migration 27). The client gets a bell
+//     update and an email.
 //   - Attendance: Attended / No-show (paid bookings, from the class day).
 // Payment review used to be on the Payments page; it lives here now.
 //
@@ -29,7 +31,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
-import { AdminCard, AdminLoadError, AdminLoading, AdminOverline, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
+import {
+  AdminCard,
+  AdminLoadError,
+  AdminLoading,
+  AdminOverline,
+  AdminPage,
+  AdminPageHeader,
+} from "@/components/admin/AdminUi";
 import {
   AppointmentNotices,
   ClassDetailsCard,
@@ -39,7 +48,7 @@ import {
   classLabelOf,
 } from "@/components/admin/AppointmentDetails";
 import { AttendanceButtons } from "@/components/admin/AttendanceButtons";
-import { BookingChangeBox } from "@/components/admin/BookingChangeBox";
+import { CancelAppointmentBox } from "@/components/admin/CancelAppointmentBox";
 import { ConfirmActionButton } from "@/components/admin/ConfirmActionButton";
 import { RejectPaymentButton } from "@/components/admin/RejectPaymentButton";
 import { RescheduleBox } from "@/components/admin/RescheduleBox";
@@ -50,11 +59,26 @@ import { reviewPayment } from "@/lib/admin/setup-actions";
 import { requireAdmin } from "@/lib/auth/user";
 import { bookingReference, paymentMethodName } from "@/lib/booking-rules";
 import { getAdminBooking } from "@/lib/data/admin";
-import { getAdminPayments, getBookingChangeInfo, getScreenshotLinks } from "@/lib/data/admin-setup";
+import {
+  getAdminPayments,
+  getBookingChangeInfo,
+  getScreenshotLinks,
+} from "@/lib/data/admin-setup";
 import { getBookingSessions } from "@/lib/data/booking";
-import { addDays, formatClassDate, formatManilaDateTime, formatPeso, formatTimeRange, manilaDateString } from "@/lib/format";
+import {
+  addDays,
+  formatClassDate,
+  formatManilaDateTime,
+  formatPeso,
+  formatTimeRange,
+  manilaDateString,
+} from "@/lib/format";
 import { nowForThisVisit } from "@/lib/server-clock";
-import type { AdminBookingChangeInfo, AdminBookingDetails, AdminBookingPayment } from "@/types/app";
+import type {
+  AdminBookingChangeInfo,
+  AdminBookingDetails,
+  AdminBookingPayment,
+} from "@/types/app";
 
 export const metadata: Metadata = { title: "Manage appointment · Admin" };
 
@@ -65,7 +89,9 @@ const RESCHEDULE_DAYS_AHEAD = 62;
 // The manage page.
 // Takes: params (the booking id from the address).
 // Gives back: a back link, then the live part inside <Suspense>.
-export default function ManageAppointmentPage({ params }: PageProps<"/admin/appointments/[bookingId]/manage">) {
+export default function ManageAppointmentPage({
+  params,
+}: PageProps<"/admin/appointments/[bookingId]/manage">) {
   return (
     <AdminPage>
       <Suspense fallback={<AdminLoading label="the appointment" />}>
@@ -78,7 +104,11 @@ export default function ManageAppointmentPage({ params }: PageProps<"/admin/appo
 // The live part: the actions that apply, next to a short summary.
 // Takes: the params promise.
 // Gives back: the heading and the cards, or "page not found".
-async function ManageAppointment({ params }: { params: PageProps<"/admin/appointments/[bookingId]/manage">["params"] }) {
+async function ManageAppointment({
+  params,
+}: {
+  params: PageProps<"/admin/appointments/[bookingId]/manage">["params"];
+}) {
   await requireAdmin();
   const { bookingId } = await params;
   const nowMs = nowForThisVisit();
@@ -86,7 +116,10 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
   let booking: AdminBookingDetails | null;
   let change: AdminBookingChangeInfo | null;
   try {
-    [booking, change] = await Promise.all([getAdminBooking(bookingId), getBookingChangeInfo(bookingId)]);
+    [booking, change] = await Promise.all([
+      getAdminBooking(bookingId),
+      getBookingChangeInfo(bookingId),
+    ]);
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
@@ -94,7 +127,8 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
   }
   if (!booking) notFound();
 
-  const status = bookingDetailsStatus(booking, nowMs);
+  // (the admin log lets an admin cancel say what the cafe gave, Version 1.7)
+  const status = bookingDetailsStatus(booking, nowMs, change?.actions ?? []);
   const viewHref = `/admin/appointments/${booking.booking_id}`;
   const classLabel = classLabelOf(booking);
 
@@ -102,11 +136,15 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
   // A GCash / BPI screenshot waiting for a check
   const pendingManual =
     booking.status === "awaiting_verification"
-      ? booking.payments.find((pay) => pay.provider === "manual" && pay.status === "pending")
+      ? booking.payments.find(
+          (pay) => pay.provider === "manual" && pay.status === "pending",
+        )
       : undefined;
   // Re-schedule: confirmed, or a late payment in a class the cafe cancelled
   const canReschedule =
-    booking.status === "confirmed" || (booking.status === "paid_needs_action" && booking.session_status === "cancelled");
+    booking.status === "confirmed" ||
+    (booking.status === "paid_needs_action" &&
+      booking.session_status === "cancelled");
   const canCancel = Boolean(change?.can_change && change.rule);
 
   // ---- What those actions need ----
@@ -115,7 +153,9 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
   let classOptions: SelectOption[] = [];
   try {
     const [screenshot, options] = await Promise.all([
-      pendingManual ? screenshotFor(booking.booking_id, pendingManual) : Promise.resolve({ url: undefined, saved: false }),
+      pendingManual
+        ? screenshotFor(booking.booking_id, pendingManual)
+        : Promise.resolve({ url: undefined, saved: false }),
       canReschedule ? rescheduleOptions(booking, nowMs) : Promise.resolve([]),
     ]);
     screenshotUrl = screenshot.url;
@@ -127,7 +167,11 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
     return <AdminLoadError what="this appointment" />;
   }
 
-  const nothingToDo = !pendingManual && !canReschedule && !canCancel && !booking.can_mark_attendance;
+  const nothingToDo =
+    !pendingManual &&
+    !canReschedule &&
+    !canCancel &&
+    !booking.can_mark_attendance;
 
   return (
     <>
@@ -142,7 +186,13 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
       <AdminPageHeader
         overline={`Manage · ${bookingReference(booking.booking_id)}`}
         title={booking.guest_name}
-        intro={<StatusLine label={status.label} variant={status.variant} reason={status.reason} />}
+        intro={
+          <StatusLine
+            label={status.label}
+            variant={status.variant}
+            reason={status.reason}
+          />
+        }
         actions={
           <ButtonLink href={viewHref} variant="secondary">
             <Eye aria-hidden="true" className="size-4" />
@@ -159,12 +209,19 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
           {pendingManual && (
             <ActionCard title="Check the payment">
               <p className="text-sm">
-                <span className="font-heading text-lg font-semibold text-brown">{formatPeso(Number(pendingManual.amount))}</span>{" "}
-                by {paymentMethodName(pendingManual.method, pendingManual.provider)} · sent{" "}
-                {formatManilaDateTime(pendingManual.created_at)}
+                <span className="font-heading text-lg font-semibold text-brown">
+                  {formatPeso(Number(pendingManual.amount))}
+                </span>{" "}
+                by{" "}
+                {paymentMethodName(
+                  pendingManual.method,
+                  pendingManual.provider,
+                )}{" "}
+                · sent {formatManilaDateTime(pendingManual.created_at)}
               </p>
               <p className="text-xs text-muted">
-                Check that this amount arrived in the cafe&apos;s {pendingManual.method === "bpi" ? "BPI account" : "GCash"}{" "}
+                Check that this amount arrived in the cafe&apos;s{" "}
+                {pendingManual.method === "bpi" ? "BPI account" : "GCash"}{" "}
                 before confirming. The seat stays held until you decide.
               </p>
               {screenshotUrl ? (
@@ -235,19 +292,20 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
             </ActionCard>
           )}
 
-          {/* ---- Cancel this booking (the cancellation rules) ---- */}
+          {/* ---- Cancel this appointment (Version 1.7: 3 choices) ---- */}
           {canCancel && change?.rule && (
-            <ActionCard title="Cancel this booking">
+            <ActionCard title="Cancel this appointment">
               <p className="text-sm text-muted">
-                You follow the cancellation rules by default; a different choice needs a reason.
+                Cancels only this appointment, not the whole class. Choose free
+                re-schedule (100% code), the normal policy, or refunded outside
+                the website. A reason is required.
               </p>
               <div>
-                <BookingChangeBox
+                <CancelAppointmentBox
                   bookingId={booking.booking_id}
                   guestName={booking.guest_name}
                   classLabel={classLabel}
                   rule={change.rule}
-                  normalAction={change.normal_action}
                   voucherAllowed={change.voucher_allowed}
                 />
               </div>
@@ -258,13 +316,18 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
                in a cancelled class (can_mark_attendance, migration 18) ---- */}
           {booking.can_mark_attendance && (
             <ActionCard title="Attendance">
-              <AttendanceButtons bookingId={booking.booking_id} status={booking.status} guestName={booking.guest_name} />
+              <AttendanceButtons
+                bookingId={booking.booking_id}
+                status={booking.status}
+                guestName={booking.guest_name}
+              />
             </ActionCard>
           )}
 
           {nothingToDo && (
             <AdminCard className="text-sm text-muted">
-              Nothing to change: this appointment is {status.text.toLowerCase()}.
+              Nothing to change: this appointment is {status.text.toLowerCase()}
+              .
             </AdminCard>
           )}
         </div>
@@ -282,7 +345,13 @@ async function ManageAppointment({ params }: { params: PageProps<"/admin/appoint
 
 // One action card with a small heading.
 // Takes: the heading and the card's content. Gives back: the card.
-function ActionCard({ title, children }: { title: string; children: ReactNode }) {
+function ActionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <AdminCard className="flex flex-col gap-3">
       <AdminOverline as="h2">{title}</AdminOverline>
@@ -297,10 +366,19 @@ function ActionCard({ title, children }: { title: string; children: ReactNode })
 // by this booking's code.
 // Takes: the booking id and the pending payment.
 // Gives back: { url } (undefined = no file) and saved = a file was uploaded.
-async function screenshotFor(bookingId: string, payment: AdminBookingPayment): Promise<{ url: string | undefined; saved: boolean }> {
+async function screenshotFor(
+  bookingId: string,
+  payment: AdminBookingPayment,
+): Promise<{ url: string | undefined; saved: boolean }> {
   if (!payment.has_screenshot) return { url: undefined, saved: false };
-  const { rows } = await getAdminPayments({ view: "review", search: bookingReference(bookingId), limit: 20 });
-  const path = rows.find((row) => row.payment_id === payment.id)?.screenshot_path;
+  const { rows } = await getAdminPayments({
+    view: "review",
+    search: bookingReference(bookingId),
+    limit: 20,
+  });
+  const path = rows.find(
+    (row) => row.payment_id === payment.id,
+  )?.screenshot_path;
   if (!path) return { url: undefined, saved: true };
   const links = await getScreenshotLinks([path]);
   return { url: links[path], saved: true };
@@ -312,11 +390,20 @@ async function screenshotFor(bookingId: string, payment: AdminBookingPayment): P
 // Takes: the booking and "now" in milliseconds.
 // Gives back: the choices for the "Move to" list, e.g.
 // "Sat, Nov 21 · 10:15 – 11:05 AM · 3 seats left".
-async function rescheduleOptions(booking: AdminBookingDetails, nowMs: number): Promise<SelectOption[]> {
+async function rescheduleOptions(
+  booking: AdminBookingDetails,
+  nowMs: number,
+): Promise<SelectOption[]> {
   const today = manilaDateString(nowMs);
-  const sessions = await getBookingSessions({ from: today, to: addDays(today, RESCHEDULE_DAYS_AHEAD) });
+  const sessions = await getBookingSessions({
+    from: today,
+    to: addDays(today, RESCHEDULE_DAYS_AHEAD),
+  });
   return sessions
-    .filter((session) => session.is_bookable && session.session_id !== booking.session_id)
+    .filter(
+      (session) =>
+        session.is_bookable && session.session_id !== booking.session_id,
+    )
     .map((session) => ({
       value: session.session_id,
       label: `${formatClassDate(session.date).short} · ${formatTimeRange(session.start_time, session.end_time)} · ${session.seats_left} seat${session.seats_left === 1 ? "" : "s"} left`,

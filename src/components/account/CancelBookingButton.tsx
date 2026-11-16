@@ -140,7 +140,7 @@ export function CancelBookingButton({
               )}
               {explanation.offerTransfer && transferHref && (
                 <ButtonLink href={transferHref} fullWidth className="sm:flex-1">
-                  Transfer instead
+                  Re-schedule instead
                 </ButtonLink>
               )}
               <Button

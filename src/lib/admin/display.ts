@@ -61,7 +61,8 @@ export function prepSummary(roster: AdminRosterItem[]): PrepSummary {
 export function prepLine(summary: PrepSummary): string {
   if (summary.guests === 0) return "No guests yet";
   const parts = summary.drinks.map((drink) => `${drink.count} ${drink.name}`);
-  if (summary.undecidedDrinks > 0) parts.push(`${summary.undecidedDrinks} decide at cafe`);
+  if (summary.undecidedDrinks > 0)
+    parts.push(`${summary.undecidedDrinks} decide at cafe`);
   parts.push(`${summary.mats} mat${summary.mats === 1 ? "" : "s"}`);
   return parts.join(" · ");
 }
@@ -80,13 +81,19 @@ export type BookingFilterWord = BookingStatus | "pending_attendance";
 //   Confirmed     confirmed
 //   Done          attended
 //   Cancelled     cancelled_with_voucher, forfeited, expired, no_show
-//   Re-scheduled  transferred
+//   Re-scheduled  transferred (Version 1.7: no chip any more; the old row of
+//                 a re-schedule is never listed, but its details page still
+//                 says "Re-scheduled" when opened from History)
 // (There is no plain "cancelled" booking status: a class can be cancelled,
 // a booking is cancelled WITH a code, forfeited, expired or a no-show.)
-export type AppointmentGroup = "pending" | "confirmed" | "done" | "cancelled" | "rescheduled";
+export type AppointmentGroup =
+  "pending" | "confirmed" | "done" | "cancelled" | "rescheduled";
 
 // Each group's word and badge colour.
-export const APPOINTMENT_GROUPS: Record<AppointmentGroup, { label: string; variant: BadgeVariant }> = {
+export const APPOINTMENT_GROUPS: Record<
+  AppointmentGroup,
+  { label: string; variant: BadgeVariant }
+> = {
   pending: { label: "Pending", variant: "warning" },
   confirmed: { label: "Confirmed", variant: "success" },
   done: { label: "Done", variant: "info" },
@@ -111,25 +118,62 @@ export const GROUP_OF_STATUS: Record<BookingStatus, AppointmentGroup> = {
 // The database statuses of one group.
 // Takes: the group. Gives back: its statuses, in the order of GROUP_OF_STATUS.
 function statusesOf(group: AppointmentGroup): BookingStatus[] {
-  return (Object.keys(GROUP_OF_STATUS) as BookingStatus[]).filter((status) => GROUP_OF_STATUS[status] === group);
+  return (Object.keys(GROUP_OF_STATUS) as BookingStatus[]).filter(
+    (status) => GROUP_OF_STATUS[status] === group,
+  );
 }
 
-// The status filter chips on the admin Appointments page (Version 1.6: only
-// these six).
+// The status filter chips on the admin Appointments page (Version 1.6: six;
+// Version 1.7: five, the "Re-scheduled" chip was removed).
 // key      what goes in the address (?status=...)
 // label    the chip's text
-// statuses what admin_search_bookings filters on (empty = every status
-//          except expired, the default "All")
+// statuses what admin_search_bookings filters on (empty = every status,
+//          the default "All"; Version 1.7: expired holds included too)
 // "Confirmed" also asks for "pending_attendance" (confirmed bookings whose
 // class has ended), because the database lists those separately.
-export const STATUS_CHIPS: { key: "all" | AppointmentGroup; label: string; statuses: BookingFilterWord[] }[] = [
+export const STATUS_CHIPS: {
+  key: "all" | AppointmentGroup;
+  label: string;
+  statuses: BookingFilterWord[];
+}[] = [
   { key: "all", label: "All", statuses: [] },
   { key: "pending", label: "Pending", statuses: statusesOf("pending") },
-  { key: "confirmed", label: "Confirmed", statuses: ["confirmed", "pending_attendance"] },
+  {
+    key: "confirmed",
+    label: "Confirmed",
+    statuses: ["confirmed", "pending_attendance"],
+  },
   { key: "done", label: "Done", statuses: statusesOf("done") },
   { key: "cancelled", label: "Cancelled", statuses: statusesOf("cancelled") },
-  { key: "rescheduled", label: "Re-scheduled", statuses: statusesOf("rescheduled") },
 ];
+
+// Version 1.7: what the cafe gave when an ADMIN cancelled one appointment
+// (admin_cancel_appointment, migration 27), worked out from the admin log.
+export type CafeCancelOutcome =
+  "free_code" | "half_code" | "no_credit" | "refunded";
+
+// Finds how the admin cancelled this booking, if they did.
+// Takes: the booking id and its admin log rows (admin_booking_change_info).
+// Gives back: the outcome of the newest admin cancel, or null (not
+// cancelled by an admin).
+export function cafeCancelOutcome(
+  bookingId: string,
+  actions: { action: string; booking_id: string; created_at: string }[],
+): CafeCancelOutcome | null {
+  const words: Record<string, CafeCancelOutcome> = {
+    cancel_free_code: "free_code",
+    cancel_voucher: "half_code",
+    cancel_no_credit: "no_credit",
+    cancel_refunded: "refunded",
+  };
+  // The newest cancel on THIS booking (not on the one it was moved from)
+  const newest = actions
+    .filter(
+      (row) => row.booking_id === bookingId && Object.hasOwn(words, row.action),
+    )
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  return newest ? words[newest.action] : null;
+}
 
 // Extra facts that change the exact reason shown on the details page.
 export type AppointmentFacts = {
@@ -137,6 +181,7 @@ export type AppointmentFacts = {
   attendanceDue?: boolean; // confirmed and the class has ended
   sessionCancelled?: boolean; // the cafe cancelled the class
   paymentRejected?: boolean; // a GCash / BPI screenshot was rejected
+  cafeCancel?: CafeCancelOutcome | null; // Version 1.7: cancelled by an admin, and how
 };
 
 // One appointment's status for the admin: the simple group, and the exact
@@ -149,14 +194,24 @@ export type AppointmentFacts = {
 export function appointmentStatus(
   status: BookingStatus,
   facts: AppointmentFacts = {},
-): { group: AppointmentGroup; label: string; variant: BadgeVariant; reason: string | null } {
+): {
+  group: AppointmentGroup;
+  label: string;
+  variant: BadgeVariant;
+  reason: string | null;
+} {
   const group = GROUP_OF_STATUS[status];
   const { label, variant } = APPOINTMENT_GROUPS[group];
-  const inCancelledClass = facts.sessionCancelled ? " · class cancelled by the cafe" : "";
+  const inCancelledClass = facts.sessionCancelled
+    ? " · class cancelled by the cafe"
+    : "";
   const seconds = facts.holdSecondsLeft ?? 0;
   const reasons: Record<BookingStatus, string | null> = {
     // Round the minutes UP, so "0 min" never shows while seconds are left
-    pending_payment: seconds > 0 ? `Waiting for payment (${Math.ceil(seconds / 60)} min left)` : "Waiting for payment",
+    pending_payment:
+      seconds > 0
+        ? `Waiting for payment (${Math.ceil(seconds / 60)} min left)`
+        : "Waiting for payment",
     awaiting_verification: `Awaiting payment verification${inCancelledClass}`,
     paid_needs_action: `Paid, needs action${inCancelledClass}`,
     confirmed: facts.attendanceDue
@@ -165,8 +220,19 @@ export function appointmentStatus(
         ? "Class cancelled by the cafe (free re-schedule)"
         : null,
     attended: "Attended",
-    cancelled_with_voucher: "50% code given",
-    forfeited: "Forfeited (no credit)",
+    // Version 1.7: an admin cancel says what the cafe gave
+    cancelled_with_voucher:
+      facts.cafeCancel === "free_code"
+        ? "Cancelled by the cafe · 100% code given"
+        : facts.cafeCancel === "half_code"
+          ? "Cancelled by the cafe · 50% code given"
+          : "50% code given",
+    forfeited:
+      facts.cafeCancel === "refunded"
+        ? "Refunded outside the website"
+        : facts.cafeCancel === "no_credit"
+          ? "Cancelled by the cafe (no credit)"
+          : "Forfeited (no credit)",
     expired: facts.paymentRejected
       ? "Payment rejected"
       : facts.sessionCancelled

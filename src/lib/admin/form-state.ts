@@ -37,19 +37,20 @@ export type AdminSaveState = {
 // The starting state of every setup form: nothing to show yet.
 export const emptySaveState: AdminSaveState = {};
 
-// What changeOneBooking() answers (the "Cancel booking" box on the admin
-// booking details page).
-export type BookingChangeState = {
+// What cancelAppointment() answers: the "Cancel appointment" box (3 choices)
+// on the admin manage page (Version 1.7; it replaced the old 2-choice box).
+export type CancelAppointmentState = {
   error?: string;
   done?: {
-    message: string; // e.g. "Cancelled with no credit (forfeited)."
-    voucherCode?: string; // after a cancel with a 50% code: the code
-    overridden: boolean; // true = it was an override (the reason was saved)
+    message: string; // e.g. "Cancelled. The client got a 100% code for one class."
+    voucherCode?: string; // the 100% or 50% code, if one was given
+    emailNote: string; // whether the client's email went out, in plain words
+    emailSent: boolean;
   };
 };
 
-// The starting state of the Cancel booking box.
-export const emptyBookingChangeState: BookingChangeState = {};
+// The starting state of the Cancel appointment box.
+export const emptyCancelAppointmentState: CancelAppointmentState = {};
 
 // What rescheduleBooking() answers (the "Re-schedule" box on the admin
 // manage page, Version 1.6).

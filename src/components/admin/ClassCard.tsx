@@ -41,7 +41,7 @@ export function ClassCard({ session, roster, showDate = false }: ClassCardProps)
             </h3>
             <p className="text-xs text-muted">
               {session.status === "cancelled"
-                ? "Cancelled by the cafe: clients can transfer for free"
+                ? "Cancelled by the cafe: clients can re-schedule for free"
                 : session.has_ended
                   ? "Class ended"
                   : session.has_started

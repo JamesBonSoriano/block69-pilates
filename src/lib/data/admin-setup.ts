@@ -19,11 +19,13 @@
 
 import "server-only"; // never sent to the browser
 import { io } from "next/cache";
+import { bookingReference } from "@/lib/booking-rules";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/validation";
 import type {
   AdminBillingSummary,
   AdminBookingChangeInfo,
+  AdminBookingPayment,
   AdminEarningRow,
   AdminPayment,
   AdminUser,
@@ -41,6 +43,7 @@ export type AdminPaymentFilters = {
   view: "all" | "review" | "late"; // the tab
   status?: string; // one payment status, e.g. "paid"
   method?: string; // one method, e.g. "gcash"
+  provider?: string; // Version 1.7: one provider, e.g. "paymongo" or "manual"
   from?: string; // "YYYY-MM-DD" (Philippine date)
   to?: string;
   search?: string; // client name, email, PayMongo reference, booking code
@@ -64,6 +67,8 @@ export async function getAdminPayments(
     p_to: filters.to || undefined,
     p_search: filters.search || undefined,
     p_limit: filters.limit ?? 200,
+    // Version 1.7 (migration 26): PayMongo vs GCash / BPI transfer
+    p_provider: filters.provider || undefined,
   });
   if (error) {
     throw new Error(`Could not load the payments: ${error.message}`);
@@ -228,4 +233,36 @@ export async function getScreenshotLinks(paths: string[]): Promise<Record<string
     if (item.path && item.signedUrl && !item.error) links[item.path] = item.signedUrl;
   }
   return links;
+}
+
+// Version 1.7: the screenshot links for ALL of one booking's payments (any
+// status: waiting, paid or rejected), for the eye view's Payments card.
+// The booking details don't carry the file paths, so they are looked up in
+// the payments list ("all" tab), searched by each booking's code (after a
+// re-schedule, payments sit on the ORIGINAL booking, so that code is used).
+// Takes: the booking's payments (from admin_get_booking).
+// Gives back: payment id -> link. A payment that HAS a screenshot but whose
+// file couldn't be found maps to null; payments without one are left out.
+export async function getPaymentScreenshotLinks(
+  payments: AdminBookingPayment[],
+): Promise<Record<string, string | null>> {
+  const withFile = payments.filter((pay) => pay.has_screenshot);
+  if (withFile.length === 0) return {};
+  // One search per booking the payments sit on (usually just one)
+  const bookingIds = [...new Set(withFile.map((pay) => pay.booking_id))];
+  const lists = await Promise.all(
+    bookingIds.map((id) => getAdminPayments({ view: "all", search: bookingReference(id), limit: 50 })),
+  );
+  // payment id -> file path, only for this booking's payments
+  const paths: Record<string, string> = {};
+  for (const row of lists.flatMap((list) => list.rows)) {
+    if (row.screenshot_path && withFile.some((pay) => pay.id === row.payment_id)) paths[row.payment_id] = row.screenshot_path;
+  }
+  const links = await getScreenshotLinks(Object.values(paths));
+  const result: Record<string, string | null> = {};
+  for (const pay of withFile) {
+    const path = paths[pay.id];
+    result[pay.id] = path ? (links[path] ?? null) : null;
+  }
+  return result;
 }

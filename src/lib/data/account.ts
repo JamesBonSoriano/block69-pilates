@@ -17,7 +17,12 @@ import { io } from "next/cache";
 import { hasGoogleLogin, hasPasswordLogin } from "@/lib/auth/sign-in-methods";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/validation";
-import type { MyBookingListItem, MyPayment, MyVoucher } from "@/types/app";
+import type {
+  MyBookingListItem,
+  MyCafeCancellation,
+  MyPayment,
+  MyVoucher,
+} from "@/types/app";
 
 // A logged-in Supabase client (what createClient() gives back).
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -35,7 +40,9 @@ export async function getMyBookings(): Promise<MyBookingListItem[]> {
 // (used by the cancel action, which doesn't need io()).
 // Takes: a logged-in Supabase client.
 // Gives back: the bookings. Throws if Supabase can't be reached.
-export async function loadMyBookings(supabase: ServerClient): Promise<MyBookingListItem[]> {
+export async function loadMyBookings(
+  supabase: ServerClient,
+): Promise<MyBookingListItem[]> {
   const { data, error } = await supabase.rpc("get_my_bookings");
   if (error) {
     throw new Error(`Could not load your bookings: ${error.message}`);
@@ -43,6 +50,24 @@ export async function loadMyBookings(supabase: ServerClient): Promise<MyBookingL
   // The generated type says no column is ever empty; MyBookingListItem says
   // which ones can be (see src/types/app.ts).
   return data as MyBookingListItem[];
+}
+
+// Loads which of the logged-in client's bookings the CAFE cancelled, and
+// what they got (Version 1.7, My Bookings).
+// Takes: nothing.
+// Gives back: one row per cafe-cancelled booking (see
+// get_my_cafe_cancellations, migration 27). If it can't be loaded it gives
+// back an empty list (the cards then just show the plain status), so My
+// Bookings still opens.
+export async function getMyCafeCancellations(): Promise<MyCafeCancellation[]> {
+  await io();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_cafe_cancellations");
+  if (error) {
+    console.error(`Could not load cafe cancellations: ${error.message}`);
+    return [];
+  }
+  return data as MyCafeCancellation[];
 }
 
 // Loads all of the logged-in client's payments (Payments page).
@@ -62,11 +87,15 @@ export async function getMyPayments(): Promise<MyPayment[]> {
 // Takes: the payment id from the address.
 // Gives back: the payment, or null if the id is wrong, it doesn't exist, or
 // it's someone else's. Throws if Supabase can't be reached.
-export async function getMyPayment(paymentId: string): Promise<MyPayment | null> {
+export async function getMyPayment(
+  paymentId: string,
+): Promise<MyPayment | null> {
   if (!isUuid(paymentId)) return null;
   await io();
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_my_payments", { p_payment_id: paymentId });
+  const { data, error } = await supabase.rpc("get_my_payments", {
+    p_payment_id: paymentId,
+  });
   if (error) {
     throw new Error(`Could not load your payment: ${error.message}`);
   }
@@ -117,12 +146,16 @@ export async function getMyAccountInfo(): Promise<MyAccountInfo> {
   // change waiting for codes); getClaims() alone doesn't have those
   const { data: userData, error } = await supabase.auth.getUser();
   if (error || !userData.user) {
-    throw new Error(`Could not load your login details: ${error?.message ?? "no user"}`);
+    throw new Error(
+      `Could not load your login details: ${error?.message ?? "no user"}`,
+    );
   }
   const user = userData.user;
 
   // Only the caller's own bookings are looked at (the function filters on the login)
-  const { data: blockers, error: blockersError } = await supabase.rpc("my_account_deletion_blockers");
+  const { data: blockers, error: blockersError } = await supabase.rpc(
+    "my_account_deletion_blockers",
+  );
   if (blockersError) {
     console.error("Could not check Delete account:", blockersError.code);
   }
@@ -153,7 +186,9 @@ export type MyProfileExtras = {
 // Takes: the logged-in user's id (from requireUser()).
 // Gives back: birthday, reminder choice and join date. Throws if Supabase
 // can't be reached or the profile is missing.
-export async function getMyProfileExtras(userId: string): Promise<MyProfileExtras> {
+export async function getMyProfileExtras(
+  userId: string,
+): Promise<MyProfileExtras> {
   await io();
   const supabase = await createClient();
   // Row Level Security lets a client read only their own profile row, and

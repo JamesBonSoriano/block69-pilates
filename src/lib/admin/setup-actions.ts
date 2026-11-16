@@ -5,7 +5,7 @@
 //   Settings + Pricing pages: saveSettings()
 //   Pricing & Vouchers:       createPromo(), setPromoEnabled()
 //   Appointments (manage page, Version 1.6): reviewPayment() (Confirm)
-//   Schedule:                 saveTemplate(), addTemplate(), openNextWeeks(), updateClass()
+//   Schedule:                 saveTemplate(), addTemplate(), updateClass()
 //   Content:                  saveContent(), saveSiteImage(), removeSiteImage()
 //   (Users moved to src/lib/admin/user-actions.ts in Version 1.4: no more
 //   Deactivate or Make admin buttons; admins are set with SQL)
@@ -209,8 +209,9 @@ export async function reviewPayment(_previous: AdminSaveState, formData: FormDat
 // Takes: the previous state, and the form: template_id, weekday (0-6),
 // start_time and end_time ("HH:MM"), capacity, is_active ("on" = on).
 // Gives back: { saved } or { error }.
-// Only FUTURE classes made with "Open the next 9 weeks" use the new values. Classes
-// that already have a date are NOT changed (change those one by one below).
+// Version 1.7: the database then opens the next 9 weeks of classes by itself
+// (trigger, migration 28). A new day or time, or Off, removes this row's
+// future classes that nobody booked. Seat changes only apply to new classes.
 export async function saveTemplate(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
   const templateId = readText(formData, "template_id");
   if (!isUuid(templateId)) return { error: "Sorry, we couldn't find that class time." };
@@ -229,7 +230,7 @@ export async function saveTemplate(_previous: AdminSaveState, formData: FormData
   // Home and About Us show the weekly pattern (cached)
   updateTag("schedule");
   refresh();
-  return done("Class time saved. New classes made from now on will use it.");
+  return done("Saved. The next 9 weeks of classes are up to date.");
 }
 
 // Adds a new weekly slot.
@@ -247,35 +248,8 @@ export async function addTemplate(_previous: AdminSaveState, formData: FormData)
 
   updateTag("schedule");
   refresh();
-  return done("Class time added. Press \"Open the next 9 weeks\" to add its dated classes.");
-}
-
-// How many weeks of dated classes "Open the next 9 weeks" makes: enough to
-// cover all of next month, which clients can book (Change 17).
-const WEEKS_AHEAD = 9;
-
-// "Open the next 9 weeks" (Schedule > Open classes for booking): makes the
-// dated classes from the weekly pattern, from today up to 9 weeks ahead.
-// Classes that already exist are skipped (not changed).
-// Takes: nothing (the form's previous state and empty form are ignored), so
-// the number of weeks can't be changed from the browser.
-// Gives back: { saved } saying how many new classes were made, or { error }.
-export async function openNextWeeks(): Promise<AdminSaveState> {
-  const supabase = await createClient();
-  if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
-
-  // generate_sessions (migration 3) checks is_admin() itself too, and gives
-  // back how many NEW classes it made
-  const { data, error } = await supabase.rpc("generate_sessions", { p_weeks: WEEKS_AHEAD });
-  if (error) return { error: friendlyDatabaseError(error) };
-
-  refresh();
-  const made = data ?? 0;
-  return done(
-    made === 0
-      ? `No new classes: the next ${WEEKS_AHEAD} weeks are already open.`
-      : `${made} new class${made === 1 ? "" : "es"} made. Clients can book them now.`,
-  );
+  // Version 1.7: the database opened its classes for the next 9 weeks already
+  return done("Class added. Its classes for the next 9 weeks are open.");
 }
 
 // Changes ONE dated class: its seats, or open / closed for booking.

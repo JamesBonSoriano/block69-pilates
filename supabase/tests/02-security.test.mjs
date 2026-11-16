@@ -146,7 +146,9 @@ export default async function run(t) {
     // (confirm_online_payment is for the server key only, so it's NOT here)
     // migration 20 (Users + Communications) adds admin_finish_message, admin_get_user,
     // admin_start_message, admin_update_user and admin_user_bookings
-    'admin_billing_summary', 'admin_booking_change_info', 'admin_cancel_booking', 'admin_cancel_session', 'admin_class_rosters', 'admin_create_promo', 'admin_dashboard_summary',
+    // migration 27 (Version 1.7 Prompt D) adds admin_cancel_appointment (admin
+    // checks inside) and get_my_cafe_cancellations (only the caller's own rows)
+    'admin_billing_summary', 'admin_booking_change_info', 'admin_cancel_appointment', 'admin_cancel_booking', 'admin_cancel_session', 'admin_class_rosters', 'admin_create_promo', 'admin_dashboard_summary',
     'admin_earnings', 'admin_finish_message', 'admin_get_booking', 'admin_get_user', 'admin_list_payments', 'admin_list_sessions', 'admin_list_users',
     // migration 24 (Version 1.6 admin) adds admin_reject_payment and admin_reschedule_booking
     'admin_list_vouchers', 'admin_reject_payment', 'admin_reschedule_booking', 'admin_review_manual_payment', 'admin_search_bookings', 'admin_set_attendance',
@@ -160,7 +162,7 @@ export default async function run(t) {
     // migration 12 (client revisions) adds get_my_notifications, mark_my_notifications_read
     // and my_unread_notification_count (each only touches the caller's own rows)
     // migration 23 (Version 1.6) adds get_my_rejected_session_booking (the caller's own bookings only)
-    'get_my_booking', 'get_my_bookings', 'get_my_notifications', 'get_my_payments', 'get_my_rejected_session_booking',
+    'get_my_booking', 'get_my_bookings', 'get_my_cafe_cancellations', 'get_my_notifications', 'get_my_payments', 'get_my_rejected_session_booking',
     'get_my_session_booking', 'get_my_vouchers',
     'get_open_sessions', 'is_admin', 'mark_my_notifications_read', 'my_account_deletion_blockers', 'my_unread_notification_count',
     // migration 7 (pay page "Change details"): checks the owner inside

@@ -18,14 +18,23 @@ export type EmailText = { subject: string; text: string };
 // The lines at the bottom of every email.
 // Takes: the cafe details. Gives back: the sign-off text.
 export function emailSignOff(cafe: EmailCafe): string {
-  return ["", "--", cafe.name, cafe.address, cafe.email].filter((line, n) => n < 2 || line.trim() !== "").join("\n");
+  return ["", "--", cafe.name, cafe.address, cafe.email]
+    .filter((line, n) => n < 2 || line.trim() !== "")
+    .join("\n");
 }
 
 // A message the admin typed on the Communications page.
 // Takes: the subject and message as typed, and the cafe details.
 // Gives back: the subject (trimmed) and the message with the sign-off.
-export function adminMessageEmail(subject: string, message: string, cafe: EmailCafe): EmailText {
-  return { subject: subject.trim(), text: `${message.trim()}\n${emailSignOff(cafe)}` };
+export function adminMessageEmail(
+  subject: string,
+  message: string,
+  cafe: EmailCafe,
+): EmailText {
+  return {
+    subject: subject.trim(),
+    text: `${message.trim()}\n${emailSignOff(cafe)}`,
+  };
 }
 
 // What a booking confirmation needs (already turned into words).
@@ -42,7 +51,10 @@ export type ConfirmationDetails = {
 // The "You're booked" email, sent again by the admin.
 // Takes: the booking details and the cafe details.
 // Gives back: the subject and text.
-export function confirmationEmail(details: ConfirmationDetails, cafe: EmailCafe): EmailText {
+export function confirmationEmail(
+  details: ConfirmationDetails,
+  cafe: EmailCafe,
+): EmailText {
   const lines = [
     details.name ? `Hi ${details.name},` : "Hi,",
     "",
@@ -77,11 +89,14 @@ export type RescheduleDetails = {
 // The email sent when the cafe moves a client's booking to another class.
 // Takes: the details above and the cafe details.
 // Gives back: the subject and text.
-export function rescheduleEmail(details: RescheduleDetails, cafe: EmailCafe): EmailText {
+export function rescheduleEmail(
+  details: RescheduleDetails,
+  cafe: EmailCafe,
+): EmailText {
   const lines = [
     details.name ? `Hi ${details.name},` : "Hi,",
     "",
-    `${cafe.name} moved your Mindful Mat Pilates booking to another class.`,
+    `${cafe.name} re-scheduled your Mindful Mat Pilates booking to another class.`,
     "",
     `From: ${details.fromClass}`,
     `To: ${details.toClass}`,
@@ -97,11 +112,61 @@ export function rescheduleEmail(details: RescheduleDetails, cafe: EmailCafe): Em
   };
 }
 
+// What the "the cafe cancelled your booking" email needs (Version 1.7,
+// already turned into words).
+export type CafeCancelDetails = {
+  name: string | null; // the client's name (null = "Hi,")
+  reference: string; // the booking's code, e.g. "B69-3F9A1C2D"
+  classLabel: string; // e.g. "Thursday, November 19 · 9:00 – 9:50 AM"
+  outcome: "free_code" | "half_code" | "no_credit" | "refunded"; // what the cafe gave
+  code: string | null; // the 100% or 50% code (null = none)
+  codeExpires: string | null; // the code's last day, e.g. "January 15, 2027"
+};
+
+// The email sent when an admin cancels one client's booking (Version 1.7).
+// Takes: the details above and the cafe details.
+// Gives back: the subject and text. The admin's reason is NOT in it (the
+// reason is saved for admins only).
+export function cafeCancelEmail(
+  details: CafeCancelDetails,
+  cafe: EmailCafe,
+): EmailText {
+  // The one sentence about what the client gets
+  const until = details.codeExpires ? `, until ${details.codeExpires}` : "";
+  const outcomeLine: Record<CafeCancelDetails["outcome"], string> = {
+    free_code: `Your code ${details.code ?? ""} gives you one class for free (the class fee). Use it when you book any open class${until}. It's also in My Account > My Vouchers.`,
+    half_code: `Your code ${details.code ?? ""} gives you 50% off the class fee of your next booking${until}. It's also in My Account > My Vouchers.`,
+    no_credit:
+      "As the class was less than 12 hours away, this cancellation comes with no credit.",
+    refunded:
+      "The cafe has refunded your payment to you directly (outside the website).",
+  };
+  const lines = [
+    details.name ? `Hi ${details.name},` : "Hi,",
+    "",
+    `${cafe.name} had to cancel your Mindful Mat Pilates booking.`,
+    "",
+    `Class: ${details.classLabel}`,
+    `Booking: ${details.reference}`,
+    "",
+    outcomeLine[details.outcome],
+    "We're sorry for the trouble. If you have any questions, please reply to this email.",
+  ];
+  return {
+    subject: `Your Mat Pilates booking was cancelled: ${details.classLabel}`,
+    text: `${lines.join("\n")}\n${emailSignOff(cafe)}`,
+  };
+}
+
 // The security alert sent to the OLD address after a client changes their
 // login email (My Profile > Change email).
 // Takes: the client's name (or null), the new email and the cafe details.
 // Gives back: the subject and text.
-export function emailChangedAlert(name: string | null, newEmail: string, cafe: EmailCafe): EmailText {
+export function emailChangedAlert(
+  name: string | null,
+  newEmail: string,
+  cafe: EmailCafe,
+): EmailText {
   const lines = [
     name ? `Hi ${name},` : "Hi,",
     "",

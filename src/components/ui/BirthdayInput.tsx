@@ -7,7 +7,7 @@
 // plain text box with a number keyboard on phones. The slashes are added
 // while typing ("03121998" -> "03/12/1998"). When the person leaves the box,
 // it checks the date at once (birthdayInputProblem: a real calendar date,
-// 4-digit year, from 1900, and at least 18 years old, Version 1.6). The
+// 4-digit year, from 1900, and 18 to 100 years old, Versions 1.6 / 1.7). The
 // server checks again with the same function.
 
 import { useState, type ComponentProps } from "react";
@@ -58,7 +58,7 @@ export function BirthdayInput({ label = "Birthday", name, defaultValue = "", hin
       }}
       onBlur={() => {
         // Only check a box that has something in it (empty = "required" handles it).
-        // The message says what's wrong: not a real date, or under 18.
+        // The message says what's wrong: not a real date, under 18 or over 100.
         if (value) setLocalError(birthdayInputProblem(value));
       }}
       // No example under the box (Version 1.4): the placeholder shows the
