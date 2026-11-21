@@ -18,21 +18,30 @@
 // (src/lib/payment-filters.ts). The filters are in the address (a GET
 // form), so they work without JavaScript. The three totals always count ALL
 // payments.
+//
+// Version 1.9: the last column is headed "Action" and holds a receipt ICON.
+// It opens the receipt in a pop-up on this page (?receipt=<payment id>, the
+// same ReceiptSheet + "Download receipt (PDF)" as /account/payments/[id])
+// instead of going to a new page. The filters stay in the address.
 
-import { SlidersHorizontal } from "lucide-react";
-import Link from "next/link";
+import { ReceiptText, SlidersHorizontal } from "lucide-react";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AccountHeading, AccountLoadError, AccountLoading } from "@/components/account/AccountHeading";
+import { IconActionLink } from "@/components/account/IconActionLink";
+import { DownloadReceiptButton } from "@/components/receipt/DownloadReceiptButton";
+import { ReceiptSheet } from "@/components/receipt/ReceiptSheet";
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { RouteModal } from "@/components/ui/RouteModal";
 import { Select } from "@/components/ui/Select";
 import { firstParam } from "@/lib/auth/safe-next";
 import { requireClient } from "@/lib/auth/user";
 import { paymentMethodName, paymentStatusBadge } from "@/lib/booking-rules";
 import { getMyPayments } from "@/lib/data/account";
+import { getPublicSettings, type PublicSettings } from "@/lib/data/settings";
 import { formatClassDate, formatManilaDate, formatPeso, formatTime, manilaDateString } from "@/lib/format";
 import {
   METHOD_FILTERS,
@@ -43,7 +52,9 @@ import {
   readPaymentFilters,
   type PaymentFilters,
 } from "@/lib/payment-filters";
+import { clientReceiptData } from "@/lib/receipt";
 import { nowForThisVisit } from "@/lib/server-clock";
+import { isUuid } from "@/lib/validation";
 import type { MyPayment } from "@/types/app";
 
 export const metadata = { title: "Payments" };
@@ -70,8 +81,11 @@ export default function PaymentsPage({ searchParams }: PageProps<"/account/payme
 // Gives back: the three totals and the (filtered) payments, or a "no
 // payments yet" card.
 async function PaymentsList({ searchParams }: Pick<PageProps<"/account/payments">, "searchParams">) {
-  await requireClient("/account/payments");
+  const user = await requireClient("/account/payments");
   const params = await searchParams;
+  // Version 1.9: the receipt to show in the pop-up (?receipt=<payment id>)
+  const receiptParam = firstParam(params.receipt);
+  const receiptId = receiptParam && isUuid(receiptParam) ? receiptParam : null;
   const filters = readPaymentFilters({
     status: firstParam(params.status),
     method: firstParam(params.method),
@@ -84,11 +98,18 @@ async function PaymentsList({ searchParams }: Pick<PageProps<"/account/payments"
   const today = manilaDateString(nowForThisVisit());
 
   let payments: MyPayment[];
+  let settings: PublicSettings | null = null;
   try {
-    // Leave out PayMongo pages that were never paid (see the top of this file)
-    payments = (await getMyPayments()).filter(
+    // Leave out PayMongo pages that were never paid (see the top of this file).
+    // The cafe details are only needed when a receipt pop-up is open.
+    const [allPayments, cafeSettings] = await Promise.all([
+      getMyPayments(),
+      receiptId ? getPublicSettings() : Promise.resolve(null),
+    ]);
+    payments = allPayments.filter(
       (payment) => payment.provider !== "paymongo" || payment.status === "paid" || payment.status === "refunded",
     );
+    settings = cafeSettings;
   } catch (error) {
     unstable_rethrow(error); // pass on Next.js's own signals
     console.error(error);
@@ -105,8 +126,46 @@ async function PaymentsList({ searchParams }: Pick<PageProps<"/account/payments"
   const shown = filterPayments(payments, filters, today);
   const filterCount = activeFilterCount(filters);
 
+  // Version 1.9: the page address with the filters (no receipt), used by the
+  // receipt links and to close the pop-up.
+  const listQuery = new URLSearchParams();
+  for (const key of ["status", "method", "when", "from", "to"]) {
+    const value = firstParam(params[key]);
+    if (value) listQuery.set(key, value);
+  }
+  const listHref = listQuery.size ? `/account/payments?${listQuery}` : "/account/payments";
+  // The address that opens one payment's receipt, keeping the filters.
+  const receiptHref = (paymentId: string) => {
+    const query = new URLSearchParams(listQuery);
+    query.set("receipt", paymentId);
+    return `/account/payments?${query}`;
+  };
+  // The payment in the pop-up: only one of the client's OWN payments (the
+  // list came from get_my_payments) that is paid. Anything else: no pop-up.
+  const receiptPayment = receiptId
+    ? payments.find((payment) => payment.payment_id === receiptId && payment.status === "paid") ?? null
+    : null;
+
   return (
     <div className="flex flex-col gap-5">
+      {/* Version 1.9: the receipt pop-up (same receipt + PDF button as the receipt page) */}
+      {receiptPayment && settings && (
+        <RouteModal title="Receipt" closeHref={listHref} className="max-w-md bg-white">
+          <div className="flex flex-col gap-4">
+            <ReceiptSheet
+              data={clientReceiptData(
+                receiptPayment,
+                { name: user.fullName, email: user.email },
+                { name: settings.cafeName, address: settings.cafeAddress, email: settings.cafeEmail },
+              )}
+            />
+            <div className="flex justify-center">
+              <DownloadReceiptButton href={`/account/payments/${receiptPayment.payment_id}/pdf`} />
+            </div>
+          </div>
+        </RouteModal>
+      )}
+
       {/* The three totals: one column on small phones, three side by side after */}
       <dl className="grid gap-3 sm:grid-cols-3">
         <Total label="Total paid" value={formatPeso(totalPaid)} />
@@ -150,9 +209,8 @@ async function PaymentsList({ searchParams }: Pick<PageProps<"/account/payments"
                   <th scope="col" className="bg-tan-soft px-4 py-3 font-bold">Method</th>
                   <th scope="col" className="bg-tan-soft px-4 py-3 text-right font-bold">Amount</th>
                   <th scope="col" className="bg-tan-soft px-4 py-3 font-bold">Status</th>
-                  <th scope="col" className="rounded-r-xl bg-tan-soft px-4 py-3">
-                    <span className="sr-only">Receipt</span>
-                  </th>
+                  {/* Version 1.9: a visible "Action" header over the receipt icons */}
+                  <th scope="col" className="rounded-r-xl bg-tan-soft px-4 py-3 text-right font-bold">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -172,7 +230,7 @@ async function PaymentsList({ searchParams }: Pick<PageProps<"/account/payments"
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                       </td>
                       <td className="px-4 py-4 text-right">
-                        <ReceiptLink payment={payment} />
+                        <ReceiptLink payment={payment} href={receiptHref(payment.payment_id)} />
                       </td>
                     </tr>
                   );
@@ -198,7 +256,7 @@ async function PaymentsList({ searchParams }: Pick<PageProps<"/account/payments"
                     <p className="text-muted">
                       {paymentMethodName(payment.method, payment.provider)} · Payment date: {paymentDate(payment)}
                     </p>
-                    <ReceiptLink payment={payment} />
+                    <ReceiptLink payment={payment} href={receiptHref(payment.payment_id)} />
                   </Card>
                 </li>
               );
@@ -299,17 +357,19 @@ function ClassText({ payment }: { payment: MyPayment }) {
   );
 }
 
-// The "Receipt" link (paid payments only).
-// Takes: the payment. Gives back: the link, or nothing.
-function ReceiptLink({ payment }: { payment: MyPayment }) {
+// The receipt icon button (paid payments only). Version 1.9: an icon that
+// opens the receipt pop-up on this page, instead of the word "Receipt"
+// going to a new page.
+// Takes: the payment and the address that opens its receipt.
+// Gives back: the icon link, or nothing.
+function ReceiptLink({ payment, href }: { payment: MyPayment; href: string }) {
   if (payment.status !== "paid") return null;
   return (
-    <Link
-      href={`/account/payments/${payment.payment_id}`}
-      className="inline-flex min-h-11 items-center text-sm font-semibold text-brown underline underline-offset-2"
-    >
-      Receipt
-      <span className="sr-only"> for the payment on {paymentDate(payment)}</span>
-    </Link>
+    <IconActionLink
+      href={href}
+      icon={ReceiptText}
+      tooltip="Receipt"
+      label={`Receipt for the payment on ${paymentDate(payment)}`}
+    />
   );
 }

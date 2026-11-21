@@ -16,6 +16,10 @@
 // GCash / BPI screenshot now happens in Appointments (the Pending chip, then
 // the pencil on the booking). Each payment row links to its appointment.
 //
+// Version 1.9: a visible "Action" header over the View appointment column,
+// and a Sort box (Newest first / Oldest first, ?sort=oldest). The database
+// sorts before it splits the list into pages (admin_list_payments p_sort).
+//
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
 // database's own admin checks (admin_list_payments, admin_earnings).
 
@@ -33,6 +37,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { EARNINGS_METHOD_OPTIONS, cleanEarningsMethod, earningsMethodFilter } from "@/lib/admin/earnings-filter";
+import { EARNINGS_SORT_OPTIONS, cleanEarningsSort, type EarningsSort } from "@/lib/admin/sort";
 import { firstParam } from "@/lib/auth/safe-next";
 import { requireAdmin } from "@/lib/auth/user";
 import { paymentMethodName } from "@/lib/booking-rules";
@@ -61,7 +66,7 @@ const STATUS_OPTIONS = [
 ];
 
 // The filters as they are in the address.
-type PaymentFilterValues = { q: string; method: string; status: string; from: string; to: string };
+type PaymentFilterValues = { q: string; method: string; status: string; from: string; to: string; sort: EarningsSort };
 
 // The Earnings page.
 // Takes: searchParams (the filters).
@@ -105,6 +110,7 @@ async function EarningsBody({ searchParams }: { searchParams: PageProps<"/admin/
   const filters = {
     view: "all" as const, search: values.q, ...earningsMethodFilter(values.method),
     status: values.status, from: values.from, to: values.to,
+    sort: values.sort, // Version 1.9: newest or oldest first
     limit: PAYMENTS_PER_PAGE,
   };
   try {
@@ -174,7 +180,8 @@ async function EarningsBody({ searchParams }: { searchParams: PageProps<"/admin/
 // Takes: the current filters. Gives back: the form.
 function PaymentFilters({ values }: { values: PaymentFilterValues }) {
   return (
-    <Form action="/admin/earnings" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_auto] lg:items-end">
+    // Version 1.9: one more column for Sort (at least 9.5rem, so its words never get cut off)
+    <Form action="/admin/earnings" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,1fr))_minmax(9.5rem,auto)_repeat(2,minmax(0,1fr))_auto] lg:items-end">
       <Input
         label="Search"
         name="q"
@@ -188,6 +195,8 @@ function PaymentFilters({ values }: { values: PaymentFilterValues }) {
       {/* Version 1.7: exactly All, PayMongo, GCash transfer, BPI transfer */}
       <Select label="Method" name="method" defaultValue={values.method} options={[...EARNINGS_METHOD_OPTIONS]} />
       <Select label="Status" name="status" defaultValue={values.status} options={[{ value: "", label: "All statuses" }, ...STATUS_OPTIONS]} />
+      {/* Version 1.9: newest or oldest payment first */}
+      <Select label="Sort" name="sort" defaultValue={values.sort} options={[...EARNINGS_SORT_OPTIONS]} />
       <Input label="From" name="from" type="date" defaultValue={values.from} />
       <Input label="To" name="to" type="date" defaultValue={values.to} />
       <div className="flex gap-2 sm:col-span-2 lg:col-span-1">
@@ -226,9 +235,8 @@ function PaymentList({ payments }: { payments: AdminPayment[] }) {
               <th scope="col" className="px-4 py-3 font-semibold">Amount</th>
               <th scope="col" className="px-4 py-3 font-semibold">Status</th>
               <th scope="col" className="px-4 py-3 font-semibold">Reference</th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">
-                <span className="sr-only">Appointment</span>
-              </th>
+              {/* Version 1.9: a visible "Action" header */}
+              <th scope="col" className="px-4 py-3 text-right font-semibold">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -359,6 +367,8 @@ function readFilters(params: Record<string, string | string[] | undefined>): Pay
     status: STATUS_OPTIONS.some((option) => option.value === status) ? status : "",
     from: isDate(from) ? from : "",
     to: isDate(to) ? to : "",
+    // Version 1.9: "oldest", or the default "newest" for anything else
+    sort: cleanEarningsSort(firstParam(params.sort)),
   };
 }
 
@@ -399,7 +409,8 @@ function earningsByWeek(rows: AdminEarningRow[], firstMonday: string, count: num
 // Carries all payment filters into each Earnings page link.
 function earningsPageHref(values: PaymentFilterValues, page: number): string {
   const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(values)) if (value) query.set(key, value);
+  // Every filter that is set; the default sort ("newest") is left out
+  for (const [key, value] of Object.entries(values)) if (value && !(key === "sort" && value === "newest")) query.set(key, value);
   if (page > 1) query.set("page", String(page));
   return query.size ? `/admin/earnings?${query}` : "/admin/earnings";
 }

@@ -71,7 +71,8 @@ export function toCentavos(pesos: number | string): number {
 // Gives back: the parsed JSON answer. Throws a PaymongoError if the key is
 // missing, PayMongo can't be reached, or it answers with an error.
 async function paymongoRequest(method: "GET" | "POST", path: string, body?: unknown): Promise<unknown> {
-  const secretKey = process.env.PAYMONGO_SECRET_KEY;
+  // trim(): a stray space or line ending pasted into .env.local breaks the key
+  const secretKey = process.env.PAYMONGO_SECRET_KEY?.trim();
   if (!secretKey) {
     throw new PaymongoError("PAYMONGO_SECRET_KEY is missing in .env.local.", 0);
   }
@@ -101,13 +102,52 @@ async function paymongoRequest(method: "GET" | "POST", path: string, body?: unkn
 
   const json: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    // PayMongo errors look like { errors: [{ code, detail }] }. We keep
-    // only the codes and details (they never contain our key).
-    const errors = (json as { errors?: { code?: string; detail?: string }[] } | null)?.errors ?? [];
-    const summary = errors.map((e) => `${e.code ?? "error"}: ${e.detail ?? ""}`).join("; ");
+    // PayMongo errors look like { errors: [{ code, detail, source: { pointer,
+    // attribute } }] }. "source" says WHICH field it didn't like (e.g.
+    // payment_method_types when GCash isn't enabled on the account). None of
+    // this contains our key, so it is safe to log.
+    const errors =
+      (json as { errors?: { code?: string; detail?: string; source?: { pointer?: string; attribute?: string } }[] } | null)
+        ?.errors ?? [];
+    const summary = errors
+      .map((e) => {
+        const field = e.source?.attribute ?? e.source?.pointer;
+        return `${e.code ?? "error"}: ${e.detail ?? ""}${field ? ` [field: ${field}]` : ""}`;
+      })
+      .join("; ");
+    // Version 1.9: the full error answer goes to the server log (the
+    // terminal running `npm run dev`), so the real reason is easy to find.
+    console.error(`PayMongo ${method} ${path} answered ${response.status}:`, JSON.stringify(json));
     throw new PaymongoError(`PayMongo answered ${response.status}${summary ? ` (${summary})` : ""}`, response.status);
   }
   return json;
+}
+
+// Version 1.9: checks the PayMongo set-up BEFORE talking to PayMongo, so a
+// missing key or a bad site address is reported clearly in the server log
+// instead of only "couldn't open PayMongo's payment page".
+// Takes: the site address the success / cancel links will use.
+// Gives back: null when everything looks right, or a short "how to fix it"
+// message (safe to log: it never includes the key itself).
+export function paymongoSetupProblem(siteUrl: string): string | null {
+  const secretKey = process.env.PAYMONGO_SECRET_KEY?.trim() ?? "";
+  if (!secretKey) {
+    return "PAYMONGO_SECRET_KEY is empty in .env.local. Copy the TEST secret key (sk_test_...) from the PayMongo dashboard (Developers > API keys), then restart `npm run dev`.";
+  }
+  if (secretKey.startsWith("pk_")) {
+    return "PAYMONGO_SECRET_KEY holds the PUBLIC key (pk_...). Use the SECRET test key (sk_test_...).";
+  }
+  if (!secretKey.startsWith("sk_test_")) {
+    return "PAYMONGO_SECRET_KEY must be a PayMongo TEST secret key (sk_test_...). Live keys are refused on purpose.";
+  }
+  // PayMongo needs FULL addresses for success_url and cancel_url
+  try {
+    const parsed = new URL(siteUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("not http");
+  } catch {
+    return `NEXT_PUBLIC_SITE_URL must be a full address like http://localhost:3000 (it is "${siteUrl}").`;
+  }
+  return null;
 }
 
 // Reads the parts we need from a Checkout Session object (the "data" part

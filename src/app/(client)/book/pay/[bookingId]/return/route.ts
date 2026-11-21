@@ -27,6 +27,7 @@
 import { redirect } from "next/navigation";
 import { PaymongoError, retrieveCheckoutSession } from "@/lib/paymongo";
 import { createClient } from "@/lib/supabase/server";
+import { queueAdminBookingAlert } from "@/lib/booking/admin-booking-alert";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isUuid } from "@/lib/validation";
 import type { PaymentMethod } from "@/types/app";
@@ -86,7 +87,7 @@ async function checkAndConfirm(bookingId: string): Promise<"paid" | "not_paid" |
         console.error("PayMongo checkout metadata doesn't match its booking:", ref);
         continue;
       }
-      const { error: confirmError } = await service.rpc("confirm_online_payment", {
+      const { data: confirmed, error: confirmError } = await service.rpc("confirm_online_payment", {
         p_checkout_ref: checkout.id,
         p_booking_id: bookingId,
         p_amount: checkout.paid.amountPesos,
@@ -96,6 +97,11 @@ async function checkAndConfirm(bookingId: string): Promise<"paid" | "not_paid" |
         p_paid_at: checkout.paid.paidAt ?? undefined,
       });
       if (confirmError) throw new Error(`confirm_online_payment: ${confirmError.message}`);
+      // Version 1.9: tell the admin about a NEW booking, only if THIS check
+      // recorded it (the webhook may have done it first: "already_paid")
+      const outcome = confirmed?.[0]?.outcome;
+      if (outcome === "confirmed") queueAdminBookingAlert(bookingId, "paid_online");
+      if (outcome === "needs_action") queueAdminBookingAlert(bookingId, "needs_action");
       return "paid";
     }
     return "not_paid";

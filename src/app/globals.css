@@ -101,6 +101,28 @@
 }
 
 /*
+  Version 1.9: data-theme="client" puts the CLIENT (green / beige) values
+  back, inside an admin page. Used by the Home page "Live preview" on admin
+  Content (src/components/admin/ContentSectionPreview.tsx), so the preview
+  looks exactly like the real website. Same values as @theme above.
+*/
+[data-theme="client"] {
+  --color-primary: #5F735D;
+  --color-on-primary: #FFFFFF;
+  --color-heading: #2E2A24;
+  --color-brown: #5B3F2E;
+  --color-cream: #FFF9F2;
+  --color-card: #F3E7D8;
+  --color-line: #E2D0B8;
+  --color-tan-soft: #E8EFE6;
+  --color-tan: #7A8F78;
+  --color-ink: #2E2A24;
+  --color-muted: #565D59;
+  --color-neutral-bg: #EAD8C1;
+  --color-caramel: #5F735D;
+}
+
+/*
   Fonts. `next/font/google` (src/app/layout.tsx) downloads the fonts and puts
   them in the CSS variables --font-poppins and --font-montserrat. `inline`
   means Tailwind copies the variable straight into its classes.

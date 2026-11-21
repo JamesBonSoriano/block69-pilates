@@ -104,7 +104,9 @@ export function BookingFilters({
       </nav>
 
       {/* Search + date + time + when. action = this same page. */}
-      <Form action="/admin/appointments" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_auto] lg:items-end">
+      {/* Version 1.9: the Sort column (2nd) is at least 11rem wide, so
+          "Newest booked" / "Oldest booked" are never cut off */}
+      <Form action="/admin/appointments" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(11rem,auto)_repeat(3,minmax(0,1fr))_auto] lg:items-end">
         {/* Keep the chosen status chip when searching */}
         {values.status !== "all" && <input type="hidden" name="status" value={values.status} />}
         <Input

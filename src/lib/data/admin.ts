@@ -136,10 +136,14 @@ export async function getAdminBooking(bookingId: string): Promise<AdminBookingDe
 export type UpcomingAdminClass = import("@/types/database").Database["public"]["Functions"]["admin_upcoming_classes"]["Returns"][number];
 
 // Reads a five-row page of upcoming classes as the signed-in admin.
-export async function getUpcomingAdminClasses(page: number): Promise<UpcomingAdminClass[]> {
+// Takes: the page number and (Version 1.9) the date order: "asc" = soonest
+// class first (default), "desc" = latest first.
+// Gives back: up to 5 classes with live seat counts and paging numbers.
+export async function getUpcomingAdminClasses(page: number, sort: "asc" | "desc" = "asc"): Promise<UpcomingAdminClass[]> {
   await io();
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_upcoming_classes", { p_page: page });
+  // The database sorts and pages (migration 20261121000006)
+  const { data, error } = await supabase.rpc("admin_upcoming_classes", { p_page: page, p_sort: sort });
   if (error) throw new Error(`Could not load the classes: ${error.message}`);
   return data;
 }

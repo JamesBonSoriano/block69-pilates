@@ -14,6 +14,7 @@
 // is the caller's own. The secret Supabase key is NOT used here.
 
 import { redirect } from "next/navigation";
+import { queueAdminBookingAlert } from "@/lib/booking/admin-booking-alert";
 import { STAFF_ACCOUNT_ERROR, isStaffAccount } from "@/lib/auth/client-guard";
 import { bookingReference } from "@/lib/booking-rules";
 import type { PaymentState } from "@/lib/booking/form-state";
@@ -26,6 +27,7 @@ import {
   isOnlineMethod,
   isPaymongoCheckoutUrl,
   PaymongoError,
+  paymongoSetupProblem,
   retrieveCheckoutSession,
 } from "@/lib/paymongo";
 import { getSiteUrl } from "@/lib/site-url";
@@ -71,6 +73,15 @@ export async function payOnline(_previous: PaymentState, formData: FormData): Pr
   if (!userId) redirect(`/login?next=${encodeURIComponent(`/book/pay/${bookingId}`)}`);
   // Admin accounts don't book or use My Account (src/lib/auth/client-guard.ts)
   if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
+
+  // Version 1.9: stop early (with a clear line in the server log) when the
+  // PayMongo key or the site address isn't set up. The client only sees the
+  // usual friendly message; their seat stays held.
+  const setupProblem = paymongoSetupProblem(getSiteUrl());
+  if (setupProblem) {
+    console.error("PayMongo set-up problem:", setupProblem);
+    return { error: PAYMONGO_PROBLEM };
+  }
 
   // The return check, as a FULL address: it's a route (not a page), so the
   // browser must load it fully instead of the app fetching it in the background
@@ -216,6 +227,9 @@ export async function submitManualTransfer(_previous: PaymentState, formData: Fo
   });
   if (error) return { error: friendlyDatabaseError(error) };
 
+  // Version 1.9: email the admin alert address (sent after this answer)
+  queueAdminBookingAlert(bookingId, "manual_transfer");
+
   // The pay page now shows "We're checking your payment"
   redirect(`/book/pay/${bookingId}?payment=sent`);
 }
@@ -238,6 +252,8 @@ export async function confirmFreeBooking(_previous: PaymentState, formData: Form
   if (await isStaffAccount(supabase)) return { error: STAFF_ACCOUNT_ERROR };
   const { error } = await supabase.rpc("confirm_free_booking", { p_booking_id: bookingId });
   if (error) return { error: friendlyDatabaseError(error) };
+  // Version 1.9: email the admin alert address (sent after this answer)
+  queueAdminBookingAlert(bookingId, "free");
   redirect(`/book/done/${bookingId}`);
 }
 

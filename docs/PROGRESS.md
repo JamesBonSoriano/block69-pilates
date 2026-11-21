@@ -64,6 +64,13 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - Calendar follow-up: both booking requests hit the same server error. PostgREST could not find public.bookable_class_months(), which is added by 20261121000002. All five migrations applied in disposable Postgres and the focused Version 1.8 suite passed 27/27. Local Supabase status confirmed Docker and Podman are unavailable, so the app-facing retest remains pending.
 - End-to-end Auth, email and recovery need isolated Supabase Auth with test inboxes and SMTP. Staff email changes use replacement-inbox confirmation. PayMongo test checkout needs a test key, webhook signing secret and reachable test endpoint.
 
+## Version 1.9 (2026-11-21)
+
+- Client: My Bookings View / Manage (eye / pen icons) and Payments receipt (icon, "Action" header) open pop-ups (`RouteModal`, `?view=` / `?manage=` / `?receipt=`); Home blocks moved to `HomeSections`, also used by the admin Home "Live preview" (`data-theme="client"`, inert)
+- Admin: Appointments Sort no longer cut off; Earnings "Action" header + Newest / Oldest sort; Schedule "Sort by date" under the title (intro line removed); new booking (PayMongo paid, screenshot sent, free, late payment) emails Settings > Alert email via `after()` (`src/lib/booking/admin-booking-alert.ts`)
+- PayMongo "couldn't open" cause: **`PAYMONGO_SECRET_KEY` is empty in `.env.local`** (and no `SMTP_*` keys there either). Pay now checks the set-up first and logs the fix + PayMongo's full error answer in the `npm run dev` terminal
+- Migration `20261121000006_v19_admin_sorting` (p_sort on `admin_list_payments`, `admin_upcoming_classes`) pushed 2026-11-21; `gen:types` matched the hand edit. The 5 Version 1.8 migrations were already live; the stage-2 closure revoke (`supabase/rollout/`) is still held. Checks: DB 930/930, unit 79/79, tsc / lint / build clean
+
 ## Next
 - **You:** click-through Prompt C + D at 390px and 1440px (admin cancel all 3 choices on a test booking, then My Bookings / bell / My Vouchers as that client; Schedule add / edit / Off a class time); try Change email once and read the `Change email (send code) failed:` line in the `npm run dev` terminal
 - **You:** click-through Version 1.6 admin (Appointments chips, eye / pencil, PDF, re-schedule, reject; Earnings) at 390px and 1440px

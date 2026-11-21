@@ -874,6 +874,7 @@ export type Database = {
           p_offset?: number
           p_provider?: string
           p_search?: string
+          p_sort?: string
           p_status?: string
           p_to?: string
           p_view?: string
@@ -1068,7 +1069,7 @@ export type Database = {
         }[]
       }
       admin_upcoming_classes: {
-        Args: { p_page: number }
+        Args: { p_page: number; p_sort?: string }
         Returns: {
           capacity: number
           date: string

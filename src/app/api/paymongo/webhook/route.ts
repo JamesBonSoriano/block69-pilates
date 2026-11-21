@@ -18,8 +18,12 @@
 //      If the database fails we answer 500, so PayMongo tries again later.
 //
 // We never log the body or the secret, only event ids and short messages.
+// Version 1.9: when THIS call recorded the payment (outcome "confirmed" or
+// "needs_action", not "already_paid"), the admin alert email is queued
+// (src/lib/booking/admin-booking-alert.ts), so the cafe hears about it once.
 
 import { NextResponse } from "next/server";
+import { queueAdminBookingAlert } from "@/lib/booking/admin-booking-alert";
 import { isValidPaymongoSignature } from "@/lib/paymongo-signature";
 import { readCheckoutSession } from "@/lib/paymongo";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -78,7 +82,12 @@ export async function POST(request: Request) {
       p_paid_at: checkout.paid.paidAt ?? undefined,
     });
     if (error) throw new Error(error.message);
-    return NextResponse.json({ received: true, outcome: data?.[0]?.outcome ?? null });
+    const outcome = data?.[0]?.outcome ?? null;
+    // Version 1.9: tell the admin about a NEW booking (only the call that
+    // recorded it; the database answers "already_paid" to every later one)
+    if (outcome === "confirmed") queueAdminBookingAlert(checkout.bookingId, "paid_online");
+    if (outcome === "needs_action") queueAdminBookingAlert(checkout.bookingId, "needs_action");
+    return NextResponse.json({ received: true, outcome });
   } catch (problem) {
     console.error("PayMongo webhook: could not record payment for event", eventId, problem instanceof Error ? problem.message : "");
     // 500 = "please try again later": PayMongo resends it

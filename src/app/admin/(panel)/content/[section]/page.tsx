@@ -10,6 +10,9 @@
 // the cached page text (updateTag("site-content")), so the change shows on
 // the website straight away.
 //
+// Version 1.9: on the Home page section, the live preview draws the REAL
+// Home page blocks (HomeSections, the same code as "/"), not plain text.
+//
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + RLS (only
 // admins may change site_content or upload to site-images).
 
@@ -18,7 +21,7 @@ import type { Metadata } from "next";
 import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AdminBackLink, AdminCard, AdminLoadError, AdminLoading, AdminOverline, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
-import { ContentSectionPreview } from "@/components/admin/ContentSectionPreview";
+import { ContentSectionPreview, type HomePreviewData } from "@/components/admin/ContentSectionPreview";
 import { ContentBlockEditor } from "@/components/admin/ContentBlockEditor";
 import { SiteImageUpload } from "@/components/admin/SiteImageUpload";
 import {
@@ -34,7 +37,9 @@ import { requireAdmin } from "@/lib/auth/user";
 import { cn } from "@/lib/cn";
 import { fillInValues } from "@/lib/content-text";
 import { getAllSiteContent } from "@/lib/data/admin-setup";
+import { getWeeklySchedule } from "@/lib/data/schedule";
 import { getPublicSettings } from "@/lib/data/settings";
+import { formatWeekdays } from "@/lib/format";
 import { siteImageUrl } from "@/lib/site-images";
 import type { SiteContentRow } from "@/types/app";
 
@@ -64,13 +69,31 @@ async function SectionBody({ params }: { params: PageProps<"/admin/content/[sect
 
   let blocks: SiteContentRow[];
   let fillIns: Record<string, string>;
+  let home: HomePreviewData | undefined;
   try {
-    const [content, settings] = await Promise.all([getAllSiteContent(), getPublicSettings()]);
+    const [content, settings, schedule] = await Promise.all([
+      getAllSiteContent(),
+      getPublicSettings(),
+      // Version 1.9: only the Home preview needs the class days
+      section.key === "home" ? getWeeklySchedule() : Promise.resolve(null),
+    ]);
     blocks = content
       .filter((row) => row.page === section.key && isEditableBlock(row))
       .sort(byNumberedSection);
     // For the editor's preview of words like {class_price}
     fillIns = fillInValues(settings);
+    // Version 1.9: everything the real Home page uses, from the rows just
+    // loaded (so the preview shows the latest saved text and photos)
+    if (section.key === "home" && schedule) {
+      const asBlock = (row: SiteContentRow) => ({ title: row.title, body: row.body, image_path: row.image_path });
+      const whatToBring = content.find((row) => row.page === "booking" && row.section === "what_to_bring");
+      home = {
+        settings,
+        content: Object.fromEntries(content.filter((row) => row.page === "home").map((row) => [row.section, asBlock(row)])),
+        whatToBring: whatToBring ? asBlock(whatToBring) : undefined,
+        classDays: formatWeekdays(schedule.map((day) => day.weekday)),
+      };
+    }
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
@@ -98,8 +121,8 @@ async function SectionBody({ params }: { params: PageProps<"/admin/content/[sect
       {blocks.length === 0 && <AdminCard className="text-sm text-muted">This section has no text blocks.</AdminCard>}
 
       {/* Preview only the blocks from this section while the editor keeps its existing Save actions. */}
-      <ContentSectionPreview key={section.key} fillIns={fillIns} blocks={blocks.map((block) => ({
-        id: block.id, title: block.title ?? "", body: block.body ?? "",
+      <ContentSectionPreview key={section.key} fillIns={fillIns} home={home} blocks={blocks.map((block) => ({
+        id: block.id, section: block.section, title: block.title ?? "", body: block.body ?? "",
         name: BLOCK_NAMES[`${block.page}/${block.section}`] ?? sectionName(block.section),
       }))}>
       {blocks.map((block) => {

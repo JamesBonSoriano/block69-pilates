@@ -2,7 +2,8 @@
 // Where it's used: src/lib/admin/user-actions.ts (admin messages and resent
 // confirmations), src/lib/account/actions.ts (the "your email was
 // changed" alert) and src/lib/admin/actions.ts (Version 1.6: "your class was
-// re-scheduled"). The unit tests (tests/unit/email-text.test.mjs) load this
+// re-scheduled"), and (Version 1.9) src/lib/booking/admin-booking-alert.ts
+// (the "new booking" alert to the admin). The unit tests (tests/unit/email-text.test.mjs) load this
 // file directly with Node, so it must not import anything.
 
 // The cafe details every email ends with.
@@ -195,5 +196,77 @@ export function wholeClassCancelledEmail(
   return {
     subject: "Your Mat Pilates class was cancelled",
     text: `The cafe cancelled the Mat Pilates class on ${classLabel}.\n\n${next[kind]}\n${emailSignOff(cafe)}`,
+  };
+}
+
+// How a new booking came in (Version 1.9 admin alert).
+//   paid_online      paid with PayMongo (GCash, Maya or card): confirmed
+//   needs_action     paid with PayMongo AFTER the seat hold ended and the
+//                    class filled up: "paid, needs action"
+//   manual_transfer  a GCash / BPI screenshot was sent: waiting for the
+//                    admin to check it under Appointments > Pending
+//   free             a 0-peso booking (e.g. a 100% code): confirmed
+export type AdminBookingAlertKind = "paid_online" | "needs_action" | "manual_transfer" | "free";
+
+// What the admin alert needs (already turned into words).
+export type AdminBookingAlertDetails = {
+  kind: AdminBookingAlertKind;
+  reference: string; // e.g. "B69-3F9A1C2D"
+  clientName: string; // e.g. "Ana Cruz" (or the email when there's no name)
+  clientEmail: string | null;
+  clientMobile: string | null;
+  classDate: string; // e.g. "Thursday, October 29"
+  classTime: string; // e.g. "9:00 – 9:50 AM"
+  drink: string | null; // null = choose at the cafe
+  matRental: boolean;
+  total: string; // e.g. "₱550"
+  adminUrl: string; // the appointment on the admin side, e.g. https://.../admin/appointments/<id>
+};
+
+// The email sent to Settings > Alerts > "Alert email (admins only)" when a
+// client books (Version 1.9).
+// Takes: the booking details above and the cafe details.
+// Gives back: the subject and text. The subject starts with what the admin
+// must do, if anything ("Action needed" / "Check payment").
+export function adminBookingAlertEmail(
+  details: AdminBookingAlertDetails,
+  cafe: EmailCafe,
+): EmailText {
+  // The first line and the subject's start, for each kind of booking
+  const what: Record<AdminBookingAlertKind, { subject: string; line: string }> = {
+    paid_online: {
+      subject: "New booking",
+      line: "A client booked and paid online (PayMongo). The booking is confirmed.",
+    },
+    needs_action: {
+      subject: "Action needed: late payment",
+      line: "A client paid online AFTER their seat hold ended and the class is now full. The booking is \"paid, needs action\": please sort it out (the client can also move it to another class).",
+    },
+    manual_transfer: {
+      subject: "Check payment",
+      line: "A client booked and sent a GCash / BPI transfer screenshot. Please check it under Appointments > Pending, then confirm or reject it.",
+    },
+    free: {
+      subject: "New booking",
+      line: "A client booked a free class (nothing to pay). The booking is confirmed.",
+    },
+  };
+  const lines = [
+    what[details.kind].line,
+    "",
+    `Booking: ${details.reference}`,
+    `Client: ${details.clientName}`,
+    ...(details.clientEmail ? [`Email: ${details.clientEmail}`] : []),
+    ...(details.clientMobile ? [`Mobile: ${details.clientMobile}`] : []),
+    `Class: ${details.classDate}, ${details.classTime}`,
+    `Drink: ${details.drink ?? "Choose at the cafe"}`,
+    `Mat rental: ${details.matRental ? "Yes" : "No"}`,
+    `Total: ${details.total}`,
+    "",
+    `Open it in the admin side: ${details.adminUrl}`,
+  ];
+  return {
+    subject: `${what[details.kind].subject}: ${details.classDate}, ${details.classTime} (${details.reference})`,
+    text: `${lines.join("\n")}\n${emailSignOff(cafe)}`,
   };
 }

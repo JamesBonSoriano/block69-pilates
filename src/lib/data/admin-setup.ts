@@ -49,6 +49,7 @@ export type AdminPaymentFilters = {
   search?: string; // client name, email, PayMongo reference, booking code
   limit?: number; // default 200
   offset?: number; // rows skipped when paging through Earnings
+  sort?: "newest" | "oldest"; // Version 1.9: newest (default) or oldest payment first
 };
 
 // Loads the payments for the Payments page.
@@ -71,6 +72,8 @@ export async function getAdminPayments(
     // Version 1.7 (migration 26): PayMongo vs GCash / BPI transfer
     p_provider: filters.provider || undefined,
     p_offset: filters.offset,
+    // Version 1.9 (migration 20261121000006): newest or oldest first
+    p_sort: filters.sort,
   });
   if (error) {
     throw new Error(`Could not load the payments: ${error.message}`);

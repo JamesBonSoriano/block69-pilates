@@ -11,10 +11,12 @@
 //   - (Version 1.7) the "cafe cancelled your booking" email says what the
 //     client got (100% / 50% code with its last day, no credit, refunded)
 //     and never shows the admin's reason
+//   - (Version 1.9) the admin "new booking" alert has the booking, client and
+//     class, a link to the appointment, and says what to do for each kind
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adminMessageEmail, cafeCancelEmail, confirmationEmail, emailChangedAlert, emailSignOff, rescheduleEmail, wholeClassCancelledEmail } from '../../src/lib/email-text.ts';
+import { adminBookingAlertEmail, adminMessageEmail, cafeCancelEmail, confirmationEmail, emailChangedAlert, emailSignOff, rescheduleEmail, wholeClassCancelledEmail } from '../../src/lib/email-text.ts';
 
 const cafe = { name: 'Block 69 Cafe', address: '444 Kamagong St., Comembo, Taguig City', email: 'block69cafe@gmail.com' };
 
@@ -103,4 +105,52 @@ test('whole-class cancellation distinguishes paid, checking, and unpaid holds', 
     assert.ok(email.text.includes(label));
     assert.match(email.text, text);
   }
+});
+
+// Version 1.9: the email to Settings > Alerts > Alert email when a client books
+const alertDetails = {
+  kind: 'paid_online',
+  reference: 'B69-3F9A1C2D',
+  clientName: 'Ana Cruz',
+  clientEmail: 'ana@gmail.com',
+  clientMobile: '09171234567',
+  classDate: 'Thursday, October 29',
+  classTime: '9:00 – 9:50 AM',
+  drink: null,
+  matRental: true,
+  total: '₱550',
+  adminUrl: 'http://localhost:3000/admin/appointments/3f9a1c2d-0000-0000-0000-000000000000',
+};
+
+test('admin booking alert: booking, client, class, total and the admin link', () => {
+  const email = adminBookingAlertEmail(alertDetails, cafe);
+  assert.equal(email.subject, 'New booking: Thursday, October 29, 9:00 – 9:50 AM (B69-3F9A1C2D)');
+  for (const part of ['Booking: B69-3F9A1C2D', 'Client: Ana Cruz', 'Email: ana@gmail.com', 'Mobile: 09171234567',
+    'Class: Thursday, October 29, 9:00 – 9:50 AM', 'Drink: Choose at the cafe', 'Mat rental: Yes', 'Total: ₱550',
+    'Open it in the admin side: http://localhost:3000/admin/appointments/']) {
+    assert.ok(email.text.includes(part), part);
+  }
+  assert.ok(email.text.endsWith(emailSignOff(cafe)));
+});
+
+test('admin booking alert: each kind says what happened (and what to do)', () => {
+  const kinds = {
+    paid_online: ['New booking:', 'paid online'],
+    free: ['New booking:', 'free class'],
+    manual_transfer: ['Check payment:', 'Appointments > Pending'],
+    needs_action: ['Action needed: late payment:', 'paid, needs action'],
+  };
+  for (const [kind, [subjectStart, words]] of Object.entries(kinds)) {
+    const email = adminBookingAlertEmail({ ...alertDetails, kind }, cafe);
+    assert.ok(email.subject.startsWith(subjectStart), kind);
+    assert.ok(email.text.includes(words), kind);
+  }
+});
+
+test('admin booking alert: missing email / mobile lines are left out', () => {
+  const email = adminBookingAlertEmail({ ...alertDetails, clientEmail: null, clientMobile: null, matRental: false, drink: 'Iced Matcha' }, cafe);
+  assert.ok(!email.text.includes('Email:'));
+  assert.ok(!email.text.includes('Mobile:'));
+  assert.ok(email.text.includes('Mat rental: No'));
+  assert.ok(email.text.includes('Drink: Iced Matcha'));
 });

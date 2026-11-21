@@ -1,6 +1,13 @@
 // Admin Schedule lists dated classes and provides add, edit, and cancel controls.
+// Where it's used: the admin menu and tab bar ("Schedule").
+// Version 1.9: a "Sort by date" box (soonest / latest first, ?sort=desc) sits
+// right under the page title, where the short intro line used to leave an
+// empty strip. The database sorts before splitting into pages
+// (admin_upcoming_classes p_sort), and the page links keep the sort.
 
+import { ArrowDownUp } from "lucide-react";
 import type { Metadata } from "next";
+import Form from "next/form";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
@@ -9,9 +16,11 @@ import { AdminPagination } from "@/components/admin/AdminPagination";
 import { AdminCard, AdminLoadError, AdminLoading, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
 import { CancelClassButton } from "@/components/admin/CancelClassButton";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { addDatedClass, updateClass } from "@/lib/admin/setup-actions";
+import { SCHEDULE_SORT_OPTIONS, cleanScheduleSort, scheduleHref, type ScheduleSort } from "@/lib/admin/sort";
 import { firstParam } from "@/lib/auth/safe-next";
 import { requireAdmin } from "@/lib/auth/user";
 import { cn } from "@/lib/cn";
@@ -35,16 +44,14 @@ const HEAD_ROW = "border-b border-admin-line bg-admin-bg/50 text-left text-[11px
 const ROW_BUTTON = "px-4 py-2 text-[13px]";
 
 // The Schedule page.
-// Takes: searchParams (page = which page of dated classes).
+// Takes: searchParams (page = which page of dated classes, sort = asc / desc).
 // Gives back: the heading, then the live part in <Suspense>.
+// Version 1.9: no intro line under the title (it left an empty-looking
+// strip); the Sort box sits there instead (inside ScheduleBody).
 export default function AdminSchedulePage({ searchParams }: PageProps<"/admin/schedule">) {
   return (
     <AdminPage>
-      <AdminPageHeader
-        overline="Mat Pilates admin"
-        title="Schedule"
-        intro="Add and manage dated classes."
-      />
+      <AdminPageHeader overline="Mat Pilates admin" title="Schedule" />
       <Suspense fallback={<AdminLoading label="the schedule" />}>
         <ScheduleBody searchParams={searchParams} />
       </Suspense>
@@ -57,11 +64,14 @@ export default function AdminSchedulePage({ searchParams }: PageProps<"/admin/sc
 async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/admin/schedule">["searchParams"] }) {
   await requireAdmin();
   const today = manilaDateString(nowForThisVisit());
-  const pageParam = Number(firstParam((await searchParams).page));
+  const params = await searchParams;
+  const pageParam = Number(firstParam(params.page));
+  // Version 1.9: "desc" (latest first) or the default "asc" (soonest first)
+  const sort = cleanScheduleSort(firstParam(params.sort));
 
   let shown: UpcomingAdminClass[];
   try {
-    shown = await getUpcomingAdminClasses(Number.isSafeInteger(pageParam) && pageParam <= 2147483647 ? pageParam : 1);
+    shown = await getUpcomingAdminClasses(Number.isSafeInteger(pageParam) && pageParam <= 2147483647 ? pageParam : 1, sort);
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
@@ -74,6 +84,10 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/admin/
 
   return (
     <>
+      {/* Version 1.9: sort the dated classes by date (a GET form, so it works
+          without JavaScript and goes back to page 1) */}
+      <ScheduleSortForm sort={sort} />
+
       {/* Upcoming sessions are managed individually. */}
       <AdminCard className="flex flex-col p-0 lg:p-0">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between lg:p-6">
@@ -167,13 +181,35 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/admin/
                 total={total}
                 noun="classes"
                 label="Upcoming classes pages"
-                hrefFor={(n) => (n === 1 ? "/admin/schedule" : `/admin/schedule?page=${n}`)}
+                // Version 1.9: every page link keeps the chosen sort
+                hrefFor={(n) => scheduleHref(n, sort)}
               />
             </div>
           </>
         )}
       </AdminCard>
     </>
+  );
+}
+
+// The "Sort by date" box under the page title (Version 1.9).
+// Takes: the sort in use now.
+// Gives back: a small GET form: the date order box and an Apply button.
+function ScheduleSortForm({ sort }: { sort: ScheduleSort }) {
+  return (
+    <Form action="/admin/schedule" className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <Select
+        label="Sort by date"
+        name="sort"
+        defaultValue={sort}
+        options={[...SCHEDULE_SORT_OPTIONS]}
+        className="sm:w-60"
+      />
+      <Button type="submit" variant="secondary">
+        <ArrowDownUp aria-hidden="true" className="size-4" />
+        Apply
+      </Button>
+    </Form>
   );
 }
 

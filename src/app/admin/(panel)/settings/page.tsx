@@ -79,7 +79,9 @@ const ALERT_FIELDS: TextField[] = [
     label: "Alert email (admins only)",
     type: "email",
     required: true,
-    hint: "Where late payments and screenshots to check will be emailed (emails come in a later step). Never shown on the website.",
+    // Version 1.9: every new booking (paid online, screenshot sent, free or
+    // late payment) emails this address (src/lib/booking/admin-booking-alert.ts)
+    hint: "Gets an email each time a client books (paid online, a GCash / BPI screenshot to check, a free booking or a late payment). Never shown on the website.",
     wide: true,
   },
 ];

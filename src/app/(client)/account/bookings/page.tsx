@@ -11,7 +11,7 @@
 // LIVE DATA: loaded on every visit, never cached, so statuses, holds and the
 // cancel rules are always right now.
 
-import { CalendarPlus, CircleCheck } from "lucide-react";
+import { CalendarPlus, CircleCheck, Eye, Pencil } from "lucide-react";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
@@ -20,6 +20,8 @@ import {
   AccountLoadError,
   AccountLoading,
 } from "@/components/account/AccountHeading";
+import { IconActionLink } from "@/components/account/IconActionLink";
+import { RouteModal } from "@/components/ui/RouteModal";
 import { PolicyDialogLink } from "@/components/booking/PolicyDialog";
 import { Badge } from "@/components/ui/Badge";
 import { bookingReference } from "@/lib/booking-rules";
@@ -160,13 +162,11 @@ async function BookingsList({
         </ul>
       </nav>
 
-      {/* The detail links use owned booking IDs and leave the list page intact. */}
+      {/* Version 1.9: View / Manage open a pop-up over the list (no panel at
+          the top). The links use owned booking IDs; closing goes back to the
+          same tab and page. */}
       {selected && (
-        <section aria-label={manageId ? "Manage booking" : "Booking details"} className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-heading text-lg">{manageId ? "Manage booking" : "Booking details"}</h2>
-            <ButtonLink href={hrefFor(page)} variant="secondary">Close</ButtonLink>
-          </div>
+        <RouteModal title={manageId ? "Manage booking" : "Booking details"} closeHref={hrefFor(page)}>
           <BookingCard
             booking={selected}
             nowMs={nowForThisVisit()}
@@ -174,7 +174,7 @@ async function BookingsList({
             receiptId={receiptId}
             cafeCancel={cancelByBooking.get(selected.booking_id)}
           />
-        </section>
+        </RouteModal>
       )}
       {shown.length > 0 ? (
         <Card className="overflow-x-auto p-0 lg:p-0">
@@ -196,10 +196,11 @@ async function BookingsList({
                     </th>
                     <td className="p-3"><Badge variant={badge.variant}>{badge.label}</Badge></td>
                     <td className="p-3">
-                      <div className="flex flex-wrap gap-x-3">
-                        <Link href={hrefFor(page, "view", booking.booking_id)} aria-label={`View ${reference}`} className="inline-flex min-h-11 items-center font-semibold underline">View</Link>
+                      {/* Version 1.9: eye = View, pen = Manage (icons with labels) */}
+                      <div className="flex flex-wrap gap-2">
+                        <IconActionLink href={hrefFor(page, "view", booking.booking_id)} icon={Eye} tooltip="View" label={`View booking ${reference}`} />
                         {canManageBooking(booking) && (
-                          <Link href={hrefFor(page, "manage", booking.booking_id)} aria-label={`Manage ${reference}`} className="inline-flex min-h-11 items-center font-semibold underline">Manage</Link>
+                          <IconActionLink href={hrefFor(page, "manage", booking.booking_id)} icon={Pencil} tooltip="Manage" label={`Manage booking ${reference}`} />
                         )}
                       </div>
                     </td>
