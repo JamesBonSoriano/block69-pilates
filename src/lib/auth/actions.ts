@@ -21,7 +21,7 @@ import {
   loginErrorMessage,
 } from "@/lib/auth/errors";
 import type { AuthFormState } from "@/lib/auth/form-state";
-import { googleSignInIsOn, signupConfirmationIsOn } from "@/lib/auth/google-provider";
+import { googleSignInIsOn, signupConfirmationStatus } from "@/lib/auth/google-provider";
 import {
   ADMIN_LOGIN_PATH,
   INCORRECT_LOGIN_MESSAGE,
@@ -97,7 +97,15 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
   const birthday = parseBirthdayInput(birthdayText);
 
   // Check the Auth setting before sending a signup that could bypass the code.
-  if (!(await signupConfirmationIsOn())) {
+  // Version 1.9: the real reason goes to the server log (the person still
+  // sees the short message; no keys or passwords are logged).
+  const confirmation = await signupConfirmationStatus();
+  if (confirmation !== "on") {
+    console.error(
+      confirmation === "off"
+        ? "Sign-up stopped: Supabase \"Confirm email\" is OFF (mailer_autoconfirm = true), so new accounts would get no code. Turn it ON: Supabase dashboard > Authentication > Sign In / Providers > Email > Confirm email."
+        : "Sign-up stopped: Supabase's Auth settings couldn't be read, so it isn't known whether \"Confirm email\" is on (see the line above).",
+    );
     return { error: "Email verification is unavailable. Please try again later.", values };
   }
 
@@ -112,6 +120,9 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
   });
 
   if (error) {
+    // Version 1.9: log Supabase's own code (e.g. a failed code email from
+    // its SMTP settings), never the password
+    console.error("Sign-up failed at Supabase:", error.code ?? "", error.status ?? "", error.message);
     return { error: friendlyAuthError(error), values };
   }
 
@@ -126,6 +137,8 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
 
   // Catch a hosted project with signup confirmation accidentally disabled.
   if (data.session) {
+    // Version 1.9: say why in the server log
+    console.error("Sign-up stopped: Supabase created a session without a code, so \"Confirm email\" is OFF. The new account was signed out; turn Confirm email ON.");
     await supabase.auth.signOut({ scope: "local" });
     return { error: "Email verification is unavailable. Please contact the cafe.", values };
   }
@@ -154,6 +167,8 @@ export async function resendSignupCode(_previous: AuthFormState, formData: FormD
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resend({ email, type: "signup" });
+  // Version 1.9: log Supabase's own reason (e.g. its email rate limit)
+  if (error) console.error("Resend sign-up code failed at Supabase:", error.code ?? "", error.status ?? "", error.message);
   return error
     ? { error: friendlyAuthError(error) }
     : { success: "Check your inbox for the new code." };
