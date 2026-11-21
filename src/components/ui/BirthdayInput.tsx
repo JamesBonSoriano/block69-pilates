@@ -18,6 +18,7 @@ type BirthdayInputProps = Omit<ComponentProps<"input">, "type" | "defaultValue" 
   label?: string;
   name: string;
   defaultValue?: string; // MM/DD/YYYY
+  onValueChange?: (value: string) => void; // Reports the formatted date to parent editors.
   hint?: string;
   error?: string; // the server's message, if the form came back with one
 };
@@ -37,7 +38,7 @@ function withSlashes(text: string): string {
 // server's error, plus normal <input> attributes (required...).
 // Gives back: the labelled box. Its own message (after leaving the box)
 // shows until it's fixed; otherwise the server's error.
-export function BirthdayInput({ label = "Birthday", name, defaultValue = "", hint, error, ...props }: BirthdayInputProps) {
+export function BirthdayInput({ label = "Birthday", name, defaultValue = "", hint, error, onValueChange, ...props }: BirthdayInputProps) {
   const [value, setValue] = useState(defaultValue);
   // The browser-side message (null = no problem found, or not checked yet)
   const [localError, setLocalError] = useState<string | null>(null);
@@ -53,7 +54,9 @@ export function BirthdayInput({ label = "Birthday", name, defaultValue = "", hin
       maxLength={10}
       value={value}
       onChange={(event) => {
-        setValue(withSlashes(event.target.value));
+        const formatted = withSlashes(event.target.value);
+        setValue(formatted);
+        onValueChange?.(formatted);
         setLocalError(null); // typing again clears the old message
       }}
       onBlur={() => {

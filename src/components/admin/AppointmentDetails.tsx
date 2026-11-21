@@ -10,6 +10,7 @@ import { ExternalLink, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
+import { isManualApprovalExpired } from "@/lib/admin/appointment-status";
 import { appointmentStatus } from "@/lib/admin/display";
 import { adminSeatsBadge, paymentMethodName } from "@/lib/booking-rules";
 import {
@@ -59,16 +60,20 @@ export function StatusLine({
 export function AppointmentNotices({
   booking,
   manageHref,
+  nowMs,
 }: {
   booking: AdminBookingDetails;
   manageHref: string;
+  nowMs: number;
 }) {
   const sessionCancelled = booking.session_status === "cancelled";
-  const pendingManual = booking.payments.some(
+  // Expired payment proof is shown for staff reconciliation, without approval prompts.
+  const expiredManual = isManualApprovalExpired(booking, nowMs);
+  const pendingManual = !expiredManual && booking.payments.some(
     (pay) => pay.provider === "manual" && pay.status === "pending",
   );
   const holdInCancelled =
-    sessionCancelled &&
+    sessionCancelled && !expiredManual &&
     (booking.status === "pending_payment" || booking.status === "expired") &&
     !booking.payments.some(
       (pay) => pay.status === "paid" || pay.status === "rejected",
@@ -95,6 +100,9 @@ export function AppointmentNotices({
           refund outside the website first).
         </Notice>
       )}
+      {expiredManual && (
+        <Notice>Manual payment approval expired at class end. Compare the stored transfer proof with any money received.</Notice>
+      )}
       {pendingManual && (
         <Notice>
           A GCash / BPI transfer screenshot is waiting to be checked. Confirm or
@@ -111,7 +119,7 @@ export function AppointmentNotices({
             {manage}.
           </Notice>
         )}
-      {sessionCancelled && booking.status === "awaiting_verification" && (
+      {sessionCancelled && pendingManual && booking.status === "awaiting_verification" && (
         <Notice>
           This class was cancelled by the cafe while the transfer is still being
           checked. Once you confirm it, the client can move to another open
@@ -433,6 +441,10 @@ function PaymentRow({
           <> · paid on the original booking (before the re-schedule)</>
         )}
       </p>
+      {/* Preserve visible proof for an expired or previously reviewed transfer. */}
+      {payment.provider === "manual" && (
+        <p className="break-all text-xs text-muted">Transaction reference: {payment.transaction_reference || "Missing (older submission)"}</p>
+      )}
       {/* Version 1.7: the client's uploaded screenshot, so the admin can see it */}
       {screenshotLink && (
         <a

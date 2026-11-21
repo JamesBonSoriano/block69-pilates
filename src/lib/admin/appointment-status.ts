@@ -24,7 +24,11 @@ export function bookingDetailsStatus(
   const sessionCancelled = booking.session_status === "cancelled";
   // The class is over (its END time has passed)
   const classEnded = classStartsAt(booking.class_date, booking.end_time).getTime() <= nowMs;
-  const status = appointmentStatus(booking.shown_status, {
+  const manualPaymentExpired = isManualApprovalExpired(booking, nowMs);
+  const status = appointmentStatus(
+    booking.status === "awaiting_verification" && manualPaymentExpired ? "expired" : booking.shown_status,
+    {
+      manualPaymentExpired,
     // Seconds left on an unpaid seat hold (0 when none or ended)
     holdSecondsLeft: booking.hold_expires_at
       ? Math.max(0, (new Date(booking.hold_expires_at).getTime() - nowMs) / 1000)
@@ -38,4 +42,12 @@ export function bookingDetailsStatus(
     cafeCancel: cafeCancelOutcome(booking.booking_id, actions),
   });
   return { ...status, text: status.reason ? `${status.label} · ${status.reason}` : status.label };
+}
+
+// Identifies manual approvals that ended, including rows the job has not updated yet.
+export function isManualApprovalExpired(booking: AdminBookingDetails, nowMs: number): boolean {
+  return classStartsAt(booking.class_date, booking.end_time).getTime() <= nowMs
+    && booking.payments.some((pay) =>
+      pay.provider === "manual" && (pay.method === "gcash" || pay.method === "bpi")
+      && (pay.status === "expired" || (booking.status === "awaiting_verification" && pay.status === "pending")));
 }

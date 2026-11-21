@@ -84,6 +84,7 @@ export type AdminBookingFilters = {
   startTime?: string; // "09:00": only classes starting then
   when: "upcoming" | "past" | "all"; // used when there's no date
   limit?: number; // default 200
+  sort?: "newest" | "oldest"; // booking timestamp order
   offset?: number; // Version 1.5: how many matches to skip (pages), default 0
 };
 
@@ -106,6 +107,7 @@ export async function searchAdminBookings(
     p_when: filters.when,
     p_limit: filters.limit ?? 200,
     p_offset: filters.offset ?? 0,
+    p_sort: filters.sort,
   });
   if (error) {
     throw new Error(`Could not load the bookings: ${error.message}`);
@@ -128,4 +130,16 @@ export async function getAdminBooking(bookingId: string): Promise<AdminBookingDe
   }
   // "payments" arrives as a JSON list; AdminBookingDetails describes its shape
   return (data[0] as unknown as AdminBookingDetails | undefined) ?? null;
+}
+
+// One Schedule row, including the live seat count and pagination metadata.
+export type UpcomingAdminClass = import("@/types/database").Database["public"]["Functions"]["admin_upcoming_classes"]["Returns"][number];
+
+// Reads a five-row page of upcoming classes as the signed-in admin.
+export async function getUpcomingAdminClasses(page: number): Promise<UpcomingAdminClass[]> {
+  await io();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_upcoming_classes", { p_page: page });
+  if (error) throw new Error(`Could not load the classes: ${error.message}`);
+  return data;
 }

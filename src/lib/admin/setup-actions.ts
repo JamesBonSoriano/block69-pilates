@@ -5,7 +5,7 @@
 //   Settings + Pricing pages: saveSettings()
 //   Pricing & Vouchers:       createPromo(), setPromoEnabled()
 //   Appointments (manage page, Version 1.6): reviewPayment() (Confirm)
-//   Schedule:                 saveTemplate(), addTemplate(), updateClass()
+//   Schedule:                 addDatedClass(), updateClass()
 //   Content:                  saveContent(), saveSiteImage(), removeSiteImage()
 //   (Users moved to src/lib/admin/user-actions.ts in Version 1.4: no more
 //   Deactivate or Make admin buttons; admins are set with SQL)
@@ -26,6 +26,10 @@
 
 import { refresh, updateTag } from "next/cache";
 import { NOT_ADMIN, isAdmin, readText, type ServerClient } from "@/lib/admin/action-helpers";
+import { cafeDetails, sendLogged } from "@/lib/admin/logged-email";
+import { confirmationEmail } from "@/lib/email-text";
+import { bookingReference } from "@/lib/booking-rules";
+import { formatClassDate, formatPeso, formatTimeRange } from "@/lib/format";
 import type { AdminSaveState } from "@/lib/admin/form-state";
 import { friendlyDatabaseError } from "@/lib/database-errors";
 import { SITE_IMAGES_BUCKET } from "@/lib/site-images";
@@ -75,12 +79,16 @@ const NUMBER_KEYS = new Set(["class_price", "mat_price", "hold_minutes", "resche
 // refused (the database saves them all together, or none).
 export async function saveSettings(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
   const form = readText(formData, "form");
-  if (form !== "pricing" && form !== "settings") {
+  if (form !== "pricing" && form !== "settings" && form !== "settings_field") {
     return { error: "Sorry, we don't know which settings to save." };
   }
 
+  // A pencil dialog submits one allowlisted key, so it cannot overwrite other settings.
+  const field = FORM_KEYS.settings.find((key) => key === readText(formData, "setting_key"));
+  const keys = form === "settings_field" ? (field ? [field] : []) : FORM_KEYS[form];
+  if (!keys.length) return { error: "Choose a valid setting." };
   const values: Record<string, Json> = {};
-  for (const key of FORM_KEYS[form]) {
+  for (const key of keys) {
     const text = readText(formData, key);
     if (NUMBER_KEYS.has(key)) {
       // A real number is sent as a number. Anything else (empty, "abc") is
@@ -193,63 +201,70 @@ export async function reviewPayment(_previous: AdminSaveState, formData: FormDat
   });
   if (error) return { error: friendlyDatabaseError(error) };
 
-  refresh();
-  return done(
-    decision === "approve"
-      ? "Approved. The booking is confirmed."
-      : "Rejected. The seat is free again. Please message the client.",
-  );
+  if (decision === "reject") {
+    refresh();
+    return done("Rejected. The seat is free again. Please message the client.");
+  }
+
+  // Only the request that changed payment status sends a confirmation.
+  // Keep this result on screen even when delivery fails.
+  try {
+    const { data: payment } = await supabase.from("payments").select("booking_id").eq("id", paymentId).maybeSingle();
+    const { data: bookings } = payment
+      ? await supabase.rpc("admin_get_booking", { p_booking_id: payment.booking_id })
+      : { data: null };
+    const booking = bookings?.[0];
+    const cafe = await cafeDetails();
+    if (!booking?.user_id || !cafe) {
+      return { ...done("Approved. The booking is confirmed."), error: "Confirmation email was not sent. Check the booking contact and email settings." };
+    }
+    const delivery = await sendLogged(supabase, {
+      userId: booking.user_id, kind: "confirmation", bookingId: booking.booking_id,
+      replyTo: cafe.email, refreshPage: false,
+      email: confirmationEmail({
+        name: booking.guest_name, reference: bookingReference(booking.booking_id),
+        classDate: formatClassDate(booking.class_date).full,
+        classTime: formatTimeRange(booking.start_time, booking.end_time),
+        drink: booking.drink_choice || null, matRental: booking.mat_rental,
+        total: formatPeso(Number(booking.total)),
+      }, cafe),
+    });
+    return {
+      ...done(delivery.saved ? "Approved. The booking is confirmed and the email was sent." : "Approved. The booking is confirmed."),
+      error: delivery.error,
+    };
+  } catch (error) {
+    console.error("Manual confirmation email failed:", error);
+    return { ...done("Approved. The booking is confirmed."), error: "The confirmation email could not be delivered." };
+  }
 }
 
 // ---------------------------------------------------------------------------
 // SCHEDULE: the weekly pattern and one dated class
 // ---------------------------------------------------------------------------
 
-// Saves changes to one weekly slot (day, times, seats, on / off).
-// Takes: the previous state, and the form: template_id, weekday (0-6),
-// start_time and end_time ("HH:MM"), capacity, is_active ("on" = on).
-// Gives back: { saved } or { error }.
-// Version 1.7: the database then opens the next 9 weeks of classes by itself
-// (trigger, migration 28). A new day or time, or Off, removes this row's
-// future classes that nobody booked. Seat changes only apply to new classes.
-export async function saveTemplate(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
-  const templateId = readText(formData, "template_id");
-  if (!isUuid(templateId)) return { error: "Sorry, we couldn't find that class time." };
-  const slot = readTemplate(formData);
-  if ("error" in slot) return slot;
+// Creates one class from its date, start, end, and capacity.
+export async function addDatedClass(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
+  const date = readText(formData, "date");
+  const start = readText(formData, "start_time");
+  const end = readText(formData, "end_time");
+  const capacity = Number(readText(formData, "capacity"));
+  const time = /^([01]\d|2[0-3]):[0-5]\d$/;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Please choose a class date." };
+  if (!time.test(start) || !time.test(end)) return { error: "Please enter the start and end times." };
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 50) return { error: "Choose between 1 and 50 seats." };
 
   const supabase = await createClient();
   if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
 
-  // RLS: only admins may change templates (migration 2). select("id") tells
-  // us if a row was really changed.
-  const { data, error } = await supabase.from("schedule_templates").update(slot).eq("id", templateId).select("id");
-  if (error) return { error: templateError(error) };
-  if (data.length === 0) return { error: "Sorry, we couldn't find that class time." };
-
-  // Home and About Us show the weekly pattern (cached)
+  const { error } = await supabase.rpc("admin_create_dated_class", {
+    p_date: date, p_start: start, p_end: end, p_capacity: capacity,
+  });
+  if (error?.code === "23505") return { error: "There is already a class on that date at that start time." };
+  if (error) return { error: friendlyDatabaseError(error) };
   updateTag("schedule");
   refresh();
-  return done("Saved. The next 9 weeks of classes are up to date.");
-}
-
-// Adds a new weekly slot.
-// Takes: the previous state, and the same fields as saveTemplate (no id).
-// Gives back: { saved } or { error } (e.g. that day and time already exist).
-export async function addTemplate(_previous: AdminSaveState, formData: FormData): Promise<AdminSaveState> {
-  const slot = readTemplate(formData);
-  if ("error" in slot) return slot;
-
-  const supabase = await createClient();
-  if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
-
-  const { error } = await supabase.from("schedule_templates").insert(slot);
-  if (error) return { error: templateError(error) };
-
-  updateTag("schedule");
-  refresh();
-  // Version 1.7: the database opened its classes for the next 9 weeks already
-  return done("Class added. Its classes for the next 9 weeks are open.");
+  return done("Class added.");
 }
 
 // Changes ONE dated class: its seats, or open / closed for booking.
@@ -396,46 +411,6 @@ function readJsonList(text: string): string[] {
   } catch {
     return [];
   }
-}
-
-// The columns of one weekly slot, as saved in schedule_templates.
-type TemplateValues = {
-  weekday: number;
-  start_time: string;
-  end_time: string;
-  default_capacity: number;
-  is_active: boolean;
-};
-
-// Reads and checks the fields of one weekly slot.
-// Takes: the form. Gives back: the values to save, or { error }.
-function readTemplate(formData: FormData): TemplateValues | { error: string } {
-  const weekday = Number(readText(formData, "weekday"));
-  const start = readText(formData, "start_time").slice(0, 5);
-  const end = readText(formData, "end_time").slice(0, 5);
-  const capacity = Number(readText(formData, "capacity"));
-  const time = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) return { error: "Please pick a day." };
-  if (!time.test(start) || !time.test(end)) return { error: "Please type the start and end times." };
-  // "09:50" > "09:00" works as text because both are HH:MM
-  if (end <= start) return { error: "The class must end after it starts." };
-  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 50) return { error: "Seats must be between 1 and 50." };
-
-  return {
-    weekday,
-    start_time: start,
-    end_time: end,
-    default_capacity: capacity,
-    is_active: formData.get("is_active") === "on",
-  };
-}
-
-// Turns a schedule_templates error into a message.
-// Takes: the error. Gives back: plain words (23505 = "already exists").
-function templateError(error: { code?: string; message: string }): string {
-  if (error.code === "23505") return "There is already a class on that day at that start time.";
-  return friendlyDatabaseError(error);
 }
 
 // Reads the photo path saved on one page block.

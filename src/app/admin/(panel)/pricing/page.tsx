@@ -18,6 +18,9 @@
 import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
+import { AdminDialogButton } from "@/components/admin/AdminDialogButton";
+import { AdminPagination } from "@/components/admin/AdminPagination";
+import { firstParam } from "@/lib/auth/safe-next";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminCard, AdminLoadError, AdminLoading, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
 import { ConfirmActionButton } from "@/components/admin/ConfirmActionButton";
@@ -36,7 +39,7 @@ export const metadata: Metadata = { title: "Pricing & Vouchers · Admin" };
 
 // The Pricing & Vouchers page.
 // Takes: nothing. Gives back: the heading, then the live part in <Suspense>.
-export default function AdminPricingPage() {
+export default function AdminPricingPage({ searchParams }: PageProps<"/admin/pricing">) {
   return (
     <AdminPage>
       <AdminPageHeader
@@ -45,7 +48,7 @@ export default function AdminPricingPage() {
         intro="Prices here feed the booking page, the Home page and every total. Nothing is typed into page text."
       />
       <Suspense fallback={<AdminLoading label="prices and vouchers" />}>
-        <PricingBody />
+        <PricingBody searchParams={searchParams} />
       </Suspense>
     </AdminPage>
   );
@@ -53,13 +56,19 @@ export default function AdminPricingPage() {
 
 // The live part: the two forms and the two lists.
 // Takes: nothing. Gives back: the cards.
-async function PricingBody() {
+async function PricingBody({ searchParams }: Pick<PageProps<"/admin/pricing">, "searchParams">) {
   await requireAdmin();
 
   let settings: Record<string, Json>;
-  let vouchers: AdminVoucher[];
+  const params = await searchParams;
+  const perPage = 5;
+  let promoList: Awaited<ReturnType<typeof getAdminVouchers>>;
+  let systemList: Awaited<ReturnType<typeof getAdminVouchers>>;
   try {
-    [settings, vouchers] = await Promise.all([getAllSettings(), getAdminVouchers()]);
+    [settings, promoList, systemList] = await Promise.all([
+      getAllSettings(), getAdminVouchers("promo", voucherPage(params.promoPage), perPage),
+      getAdminVouchers("cancellation", voucherPage(params.systemPage), perPage),
+    ]);
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
@@ -68,14 +77,14 @@ async function PricingBody() {
 
   // The earliest last day a new promo code may have: today (Manila)
   const today = manilaDateString(nowForThisVisit());
-  const promos = vouchers.filter((voucher) => voucher.source === "promo");
-  const personal = vouchers.filter((voucher) => voucher.source === "cancellation");
+  const promos = promoList.rows;
+  const personal = systemList.rows;
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
+      <div className="flex flex-wrap gap-3">
         {/* ---- Prices and booking rules ---- */}
-        <AdminCard>
+        <AdminDialogButton title="Prices" label="Prices">
           <AdminActionForm
             action={saveSettings}
             submitLabel="Save prices"
@@ -136,12 +145,11 @@ async function PricingBody() {
               />
             </div>
           </AdminActionForm>
-        </AdminCard>
+        </AdminDialogButton>
 
         {/* ---- Create a promo code ---- */}
-        <AdminCard>
+        <AdminDialogButton title="Create a promo code" label="Create a promo code">
           <AdminActionForm action={createPromo} submitLabel="Create code" pendingLabel="Creating…" resetOnSave>
-            <h2 className="text-base font-semibold">Create a promo code</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Code"
@@ -190,7 +198,7 @@ async function PricingBody() {
               for the system&apos;s 50% codes.
             </p>
           </AdminActionForm>
-        </AdminCard>
+        </AdminDialogButton>
       </div>
 
       {/* ---- Promo codes ---- */}
@@ -208,6 +216,8 @@ async function PricingBody() {
             ))}
           </ul>
         )}
+        {promoList.total > 0 && <AdminPagination page={promoList.page} perPage={perPage} total={promoList.total}
+          noun="promo codes" label="Promo code pages" hrefFor={(n) => voucherHref(n, systemList.page)} />}
       </AdminCard>
 
       {/* ---- The system's 50% codes (read-only) ---- */}
@@ -280,6 +290,8 @@ async function PricingBody() {
           </ul>
           </>
         )}
+        {systemList.total > 0 && <AdminPagination page={systemList.page} perPage={perPage} total={systemList.total}
+          noun="system codes" label="System code pages" hrefFor={(n) => voucherHref(promoList.page, n)} />}
       </AdminCard>
     </>
   );
@@ -359,4 +371,15 @@ function adminVoucherBadge(state: AdminVoucherState, usedForDate: string | null)
 // Takes: the saved value. Gives back: e.g. "500", or "" if it isn't a number.
 function numberText(value: Json | undefined): string {
   return typeof value === "number" ? String(value) : "";
+}
+
+// Parses a voucher page address safely.
+function voucherPage(value: string | string[] | undefined): number {
+  const page = Number(firstParam(value));
+  return Number.isSafeInteger(page) && page > 0 ? page : 1;
+}
+
+// Keeps the other voucher list on its current page.
+function voucherHref(promoPage: number, systemPage: number): string {
+  return `/admin/pricing?promoPage=${promoPage}&systemPage=${systemPage}`;
 }

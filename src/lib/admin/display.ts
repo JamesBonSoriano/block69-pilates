@@ -129,8 +129,7 @@ function statusesOf(group: AppointmentGroup): BookingStatus[] {
 // label    the chip's text
 // statuses what admin_search_bookings filters on (empty = every status,
 //          the default "All"; Version 1.7: expired holds included too)
-// "Confirmed" also asks for "pending_attendance" (confirmed bookings whose
-// class has ended), because the database lists those separately.
+// The database uses its historical pending_attendance filter for completed confirmed bookings.
 export const STATUS_CHIPS: {
   key: "all" | AppointmentGroup;
   label: string;
@@ -141,9 +140,9 @@ export const STATUS_CHIPS: {
   {
     key: "confirmed",
     label: "Confirmed",
-    statuses: ["confirmed", "pending_attendance"],
+    statuses: ["confirmed"],
   },
-  { key: "done", label: "Done", statuses: statusesOf("done") },
+  { key: "done", label: "Done", statuses: [...statusesOf("done"), "pending_attendance"] },
   { key: "cancelled", label: "Cancelled", statuses: statusesOf("cancelled") },
 ];
 
@@ -180,6 +179,7 @@ export type AppointmentFacts = {
   holdSecondsLeft?: number; // seconds left on an unpaid hold
   attendanceDue?: boolean; // confirmed and the class has ended
   sessionCancelled?: boolean; // the cafe cancelled the class
+  manualPaymentExpired?: boolean; // manual approval closed at class end
   paymentRejected?: boolean; // a GCash / BPI screenshot was rejected
   cafeCancel?: CafeCancelOutcome | null; // Version 1.7: cancelled by an admin, and how
 };
@@ -200,7 +200,8 @@ export function appointmentStatus(
   variant: BadgeVariant;
   reason: string | null;
 } {
-  const group = GROUP_OF_STATUS[status];
+  // Completed confirmed appointments go in Done without changing stored attendance history.
+  const group = status === "confirmed" && facts.attendanceDue ? "done" : GROUP_OF_STATUS[status];
   const { label, variant } = APPOINTMENT_GROUPS[group];
   const inCancelledClass = facts.sessionCancelled
     ? " · class cancelled by the cafe"
@@ -215,7 +216,7 @@ export function appointmentStatus(
     awaiting_verification: `Awaiting payment verification${inCancelledClass}`,
     paid_needs_action: `Paid, needs action${inCancelledClass}`,
     confirmed: facts.attendanceDue
-      ? "Pending attendance verification"
+      ? "Class ended"
       : facts.sessionCancelled
         ? "Class cancelled by the cafe (free re-schedule)"
         : null,
@@ -233,7 +234,9 @@ export function appointmentStatus(
         : facts.cafeCancel === "no_credit"
           ? "Cancelled by the cafe (no credit)"
           : "Forfeited (no credit)",
-    expired: facts.paymentRejected
+    expired: facts.manualPaymentExpired
+      ? "Manual payment approval expired · check received funds"
+      : facts.paymentRejected
       ? "Payment rejected"
       : facts.sessionCancelled
         ? "Class cancelled by the cafe (seat hold released, not charged)"

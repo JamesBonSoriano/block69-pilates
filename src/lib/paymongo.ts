@@ -76,6 +76,11 @@ async function paymongoRequest(method: "GET" | "POST", path: string, body?: unkn
     throw new PaymongoError("PAYMONGO_SECRET_KEY is missing in .env.local.", 0);
   }
 
+  // The site uses test mode, so a live key must never create a charge here.
+  if (!secretKey.startsWith("sk_test_")) {
+    throw new PaymongoError("PAYMONGO_SECRET_KEY must be a PayMongo test secret key.", 0);
+  }
+
   let response: Response;
   try {
     response = await fetch(`${API}${path}`, {

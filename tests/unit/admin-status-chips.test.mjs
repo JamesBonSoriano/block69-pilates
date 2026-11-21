@@ -31,8 +31,8 @@ test('only the five chips, in order, "All" first with no status filter', () => {
 
 test('each chip filters on the agreed statuses', () => {
   assert.deepEqual(chip('pending').statuses, ['pending_payment', 'awaiting_verification', 'paid_needs_action']);
-  assert.deepEqual(chip('confirmed').statuses, ['confirmed', 'pending_attendance']);
-  assert.deepEqual(chip('done').statuses, ['attended']);
+  assert.deepEqual(chip('confirmed').statuses, ['confirmed']);
+  assert.deepEqual(chip('done').statuses, ['attended', 'pending_attendance']);
   assert.deepEqual([...chip('cancelled').statuses].sort(), ['cancelled_with_voucher', 'expired', 'forfeited', 'no_show']);
   // Version 1.7: no "Re-scheduled" chip (the old row of a re-schedule is never listed)
   assert.equal(chip('rescheduled'), undefined);
@@ -54,7 +54,8 @@ test('the simple label and the exact reason', () => {
   assert.equal(appointmentStatus('attended').label, 'Done');
   assert.equal(appointmentStatus('awaiting_verification').label, 'Pending');
   assert.equal(appointmentStatus('confirmed').reason, null);
-  assert.equal(appointmentStatus('confirmed', { attendanceDue: true }).reason, 'Pending attendance verification');
+  assert.equal(appointmentStatus('confirmed', { attendanceDue: true }).label, 'Done');
+  assert.equal(appointmentStatus('confirmed', { attendanceDue: true }).reason, 'Class ended');
   assert.equal(appointmentStatus('expired', { paymentRejected: true }).reason, 'Payment rejected');
   assert.equal(appointmentStatus('expired').reason, 'Payment time ran out');
   // Version 1.7: an admin cancel says what the cafe gave

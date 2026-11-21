@@ -13,12 +13,12 @@
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + RLS (only
 // admins may change site_content or upload to site-images).
 
-import { ExternalLink, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AdminBackLink, AdminCard, AdminLoadError, AdminLoading, AdminOverline, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
+import { ContentSectionPreview } from "@/components/admin/ContentSectionPreview";
 import { ContentBlockEditor } from "@/components/admin/ContentBlockEditor";
 import { SiteImageUpload } from "@/components/admin/SiteImageUpload";
 import {
@@ -84,17 +84,6 @@ async function SectionBody({ params }: { params: PageProps<"/admin/content/[sect
         overline="Content"
         title={section.label}
         intro={section.about}
-        actions={
-          <Link
-            href={section.where}
-            target="_blank"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-brown px-4 text-sm font-semibold text-brown hover:bg-admin-bg"
-          >
-            Open the page
-            <ExternalLink aria-hidden="true" className="size-4" />
-            <span className="sr-only"> (opens in a new tab)</span>
-          </Link>
-        }
       />
 
       {placeholders > 0 && (
@@ -108,6 +97,11 @@ async function SectionBody({ params }: { params: PageProps<"/admin/content/[sect
       )}
       {blocks.length === 0 && <AdminCard className="text-sm text-muted">This section has no text blocks.</AdminCard>}
 
+      {/* Preview only the blocks from this section while the editor keeps its existing Save actions. */}
+      <ContentSectionPreview key={section.key} fillIns={fillIns} blocks={blocks.map((block) => ({
+        id: block.id, title: block.title ?? "", body: block.body ?? "",
+        name: BLOCK_NAMES[`${block.page}/${block.section}`] ?? sectionName(block.section),
+      }))}>
       {blocks.map((block) => {
         const key = `${block.page}/${block.section}`;
         const photoLabel = PHOTO_SPOTS[key];
@@ -136,6 +130,7 @@ async function SectionBody({ params }: { params: PageProps<"/admin/content/[sect
           </AdminCard>
         );
       })}
+      </ContentSectionPreview>
     </>
   );
 }

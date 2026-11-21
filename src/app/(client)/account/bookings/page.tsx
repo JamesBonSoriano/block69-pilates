@@ -20,7 +20,10 @@ import {
   AccountLoadError,
   AccountLoading,
 } from "@/components/account/AccountHeading";
-import { BookingCard } from "@/components/account/BookingCard";
+import { PolicyDialogLink } from "@/components/booking/PolicyDialog";
+import { Badge } from "@/components/ui/Badge";
+import { bookingReference } from "@/lib/booking-rules";
+import { BookingCard, clientBookingBadge } from "@/components/account/BookingCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormMessage } from "@/components/ui/FormMessage";
@@ -29,12 +32,15 @@ import { firstParam } from "@/lib/auth/safe-next";
 import { requireClient } from "@/lib/auth/user";
 import { cn } from "@/lib/cn";
 import { fillSettings, splitLines } from "@/lib/content-text";
-import { getMyBookings, getMyCafeCancellations } from "@/lib/data/account";
+import { getMyBookingListItem, getMyBookingPage, getMyBookingReceiptId, getMyCafeCancellations } from "@/lib/data/account";
 import { getPageContent } from "@/lib/data/content";
 import { getPublicSettings } from "@/lib/data/settings";
-import { formatClassDate, formatTime } from "@/lib/format";
+import { formatClassDate, formatTime, formatTimeRange } from "@/lib/format";
 import { nowForThisVisit } from "@/lib/server-clock";
 import type { MyBookingListItem, MyCafeCancellation } from "@/types/app";
+
+// Five compact rows keep the booking history easy to scan on a phone.
+const BOOKING_PAGE_SIZE = 5;
 
 export const metadata = { title: "My Bookings" };
 
@@ -57,9 +63,9 @@ export default function MyBookingsPage({
   );
 }
 
-// The live part: the tabs and the booking cards.
+// Loads the client's booking table and the selected detail or management view.
 // Takes: the searchParams promise.
-// Gives back: the tabs, a "Done" message after a transfer, the cards (or an
+// Gives back: the tabs, a "Done" message after a transfer, the table (or an
 // empty message), and the short cancellation policy.
 async function BookingsList({
   searchParams,
@@ -69,39 +75,67 @@ async function BookingsList({
   const params = await searchParams;
   const tab = firstParam(params.tab) === "past" ? "past" : "upcoming";
   const movedId = firstParam(params.moved);
+  const manageId = firstParam(params.manage);
+  const viewId = firstParam(params.view);
+  const pageParam = Number(firstParam(params.page));
 
   await requireClient(
     tab === "past" ? "/account/bookings?tab=past" : "/account/bookings",
   );
 
-  let bookings: MyBookingListItem[];
+  let shown: MyBookingListItem[];
+  let selected: MyBookingListItem | null;
+  let moved: MyBookingListItem | null;
+  let receiptId: string | null;
+  let upcomingCount: number;
+  let pastCount: number;
+  let page: number;
   let aboutContent;
   let settings;
   let cafeCancels: MyCafeCancellation[]; // Version 1.7: bookings the cafe cancelled
   try {
-    [bookings, aboutContent, settings, cafeCancels] = await Promise.all([
-      getMyBookings(),
+    // Query both tab counts, then load the requested page and owned details.
+    const [upcoming, past, detail, move, content, publicSettings, cancels] = await Promise.all([
+      getMyBookingPage(true, 1, BOOKING_PAGE_SIZE),
+      getMyBookingPage(false, 1, BOOKING_PAGE_SIZE),
+      getMyBookingListItem(manageId ?? viewId),
+      getMyBookingListItem(movedId),
       getPageContent("about"),
       getPublicSettings(),
       getMyCafeCancellations(),
     ]);
+    const first = tab === "past" ? past : upcoming;
+    const lastPage = Math.max(1, Math.ceil(first.count / BOOKING_PAGE_SIZE));
+    page = Number.isSafeInteger(pageParam) ? Math.min(Math.max(1, pageParam), lastPage) : 1;
+    shown = page === 1 ? first.rows : (await getMyBookingPage(tab === "upcoming", page, BOOKING_PAGE_SIZE)).rows;
+    upcomingCount = upcoming.count;
+    pastCount = past.count;
+    selected = detail;
+    moved = move;
+    aboutContent = content;
+    settings = publicSettings;
+    cafeCancels = cancels;
+    receiptId = selected?.paid_amount != null && !manageId ? await getMyBookingReceiptId(selected.booking_id) : null;
   } catch (error) {
     unstable_rethrow(error); // pass on Next.js's own signals
     console.error(error);
     return <AccountLoadError what="your bookings" />;
   }
 
-  // Read the clock ONCE (we're in a real visit: requireClient has run), so all
-  // cards agree on "in 18 hours" etc.
-  const nowMs = nowForThisVisit();
-  const upcoming = bookings.filter((booking) => booking.is_upcoming); // soonest first
-  const past = bookings.filter((booking) => !booking.is_upcoming).reverse(); // most recent first
-  const shown = tab === "past" ? past : upcoming;
-  // After a transfer: the new booking, to say where it went
-  const moved = movedId
-    ? bookings.find((booking) => booking.booking_id === movedId)
-    : undefined;
+  // Keep the active tab and page when opening and closing a booking.
+  const base = new URLSearchParams();
+  if (tab === "past") base.set("tab", tab);
+  const hrefFor = (pageNumber: number, action?: "view" | "manage", bookingId?: string) => {
+    const query = new URLSearchParams(base);
+    if (pageNumber > 1) query.set("page", String(pageNumber));
+    if (action && bookingId) query.set(action, bookingId);
+    const search = query.toString();
+    return search ? `/account/bookings?${search}` : "/account/bookings";
+  };
+  const total = tab === "past" ? pastCount : upcomingCount;
   const policy = aboutContent.policy_summary;
+  const cancelByBooking = new Map(cafeCancels.map((cancel) => [cancel.booking_id, cancel]));
+
 
   return (
     <div className="flex flex-col gap-5">
@@ -118,34 +152,70 @@ async function BookingsList({
       <nav aria-label="Which bookings">
         <ul className="inline-flex rounded-full border border-line bg-white p-1">
           <TabLink href="/account/bookings" active={tab === "upcoming"}>
-            Upcoming ({upcoming.length})
+            Upcoming ({upcomingCount})
           </TabLink>
           <TabLink href="/account/bookings?tab=past" active={tab === "past"}>
-            Past ({past.length})
+            Past ({pastCount})
           </TabLink>
         </ul>
       </nav>
 
-      <h2 className="sr-only">
-        {tab === "past" ? "Past bookings" : "Upcoming bookings"}
-      </h2>
+      {/* The detail links use owned booking IDs and leave the list page intact. */}
+      {selected && (
+        <section aria-label={manageId ? "Manage booking" : "Booking details"} className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-heading text-lg">{manageId ? "Manage booking" : "Booking details"}</h2>
+            <ButtonLink href={hrefFor(page)} variant="secondary">Close</ButtonLink>
+          </div>
+          <BookingCard
+            booking={selected}
+            nowMs={nowForThisVisit()}
+            manage={Boolean(manageId)}
+            receiptId={receiptId}
+            cafeCancel={cancelByBooking.get(selected.booking_id)}
+          />
+        </section>
+      )}
       {shown.length > 0 ? (
-        // 1 card per row on phones, 2 per row on wide laptops
-        <ul className="grid gap-4 xl:grid-cols-2">
-          {shown.map((booking) => (
-            <BookingCard
-              key={booking.booking_id}
-              booking={booking}
-              nowMs={nowMs}
-              // Version 1.7: if the cafe cancelled this booking, how
-              cafeCancel={
-                cafeCancels.find(
-                  (row) => row.booking_id === booking.booking_id,
-                ) ?? null
-              }
-            />
-          ))}
-        </ul>
+        <Card className="overflow-x-auto p-0 lg:p-0">
+          <table className="w-full border-collapse text-left text-sm">
+            <caption className="sr-only">{tab === "past" ? "Past bookings" : "Upcoming bookings"}</caption>
+            <thead className="border-b border-line text-xs text-muted">
+              <tr><th scope="col" className="p-3">Class</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Actions</th></tr>
+            </thead>
+            <tbody>
+              {shown.map((booking) => {
+                const badge = clientBookingBadge(booking, cancelByBooking.get(booking.booking_id));
+                const reference = bookingReference(booking.booking_id);
+                return (
+                  <tr key={booking.booking_id} className="border-b border-line last:border-0">
+                    <th scope="row" className="p-3 font-normal">
+                      <span className="block font-semibold">{formatClassDate(booking.class_date).short}</span>
+                      <span className="block text-xs">{formatTimeRange(booking.start_time, booking.end_time)}</span>
+                      <span className="block text-xs text-muted">{reference}</span>
+                    </th>
+                    <td className="p-3"><Badge variant={badge.variant}>{badge.label}</Badge></td>
+                    <td className="p-3">
+                      <div className="flex flex-wrap gap-x-3">
+                        <Link href={hrefFor(page, "view", booking.booking_id)} aria-label={`View ${reference}`} className="inline-flex min-h-11 items-center font-semibold underline">View</Link>
+                        {canManageBooking(booking) && (
+                          <Link href={hrefFor(page, "manage", booking.booking_id)} aria-label={`Manage ${reference}`} className="inline-flex min-h-11 items-center font-semibold underline">Manage</Link>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <nav aria-label="Booking pages" className="flex flex-wrap items-center justify-between gap-2 border-t border-line p-3 text-xs">
+            <p>Showing {(page - 1) * BOOKING_PAGE_SIZE + 1}–{Math.min(page * BOOKING_PAGE_SIZE, total)} of {total}</p>
+            <div className="flex gap-3">
+              {page > 1 && <ButtonLink href={hrefFor(page - 1)} variant="secondary">Previous</ButtonLink>}
+              {page * BOOKING_PAGE_SIZE < total && <ButtonLink href={hrefFor(page + 1)} variant="secondary">Next</ButtonLink>}
+            </div>
+          </nav>
+        </Card>
       ) : (
         <Card className="flex flex-col items-start gap-4">
           <p className="text-sm text-muted">
@@ -180,12 +250,12 @@ async function BookingsList({
               </li>
             ))}
           </ul>
-          <Link
-            href="/policies#cancellation"
+          <PolicyDialogLink
+            section="cancellation"
             className="text-xs font-semibold text-brown underline underline-offset-2"
           >
             Read the full cancellation policy
-          </Link>
+          </PolicyDialogLink>
         </Card>
       )}
     </div>
@@ -222,4 +292,13 @@ function TabLink({
       </Link>
     </li>
   );
+}
+
+// Shows Manage for bookings with a current payment, retry, cancellation, or move action.
+function canManageBooking(booking: MyBookingListItem): boolean {
+  return booking.can_transfer
+    || (booking.is_upcoming && booking.payment_rejected)
+    || (booking.status === "pending_payment" && booking.hold_seconds_left > 0 && booking.session_status !== "cancelled")
+    || (booking.status === "confirmed" && booking.change_rule !== null
+      && !["free_transfer", "move_window_ended", "started"].includes(booking.change_rule));
 }

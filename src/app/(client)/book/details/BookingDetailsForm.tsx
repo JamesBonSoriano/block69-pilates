@@ -28,6 +28,7 @@
 
 import { Pencil, Tag, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
+import { PolicyDialogLink } from "@/components/booking/PolicyDialog";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -498,16 +499,15 @@ export function BookingDetailsForm({
           <Card className="flex flex-col gap-1">
             <Checkbox
               name="agreed"
-              label={
-                <>
-                  I have read and agree to the{" "}
-                  <PolicyLink href="/policies#agreement">Registration Agreement</PolicyLink> and the{" "}
-                  <PolicyLink href="/policies#cancellation">cancellation policy</PolicyLink>.
-                </>
-              }
+              label="I have read and agree to the policies below."
               defaultChecked={values.agreed === "on"}
               error={fieldError("agreed")}
             />
+            {/* Keep the dialog links outside the checkbox label. */}
+            <div className="pl-7 text-sm">
+              <PolicyDialogLink section="agreement">Registration Agreement</PolicyDialogLink> and the{" "}
+              <PolicyDialogLink section="cancellation">cancellation policy</PolicyDialogLink>.
+            </div>
           </Card>
 
           <p className="pb-2 text-xs leading-relaxed text-muted lg:hidden">
@@ -566,20 +566,3 @@ function ShownDetail({ label, value, optional = false }: { label: string; value:
   );
 }
 
-// A link to the Policies page that opens in a new tab, so the form (and
-// everything typed in it) stays open in this one.
-// Takes: the address and the link text.
-// Gives back: the link (screen readers also hear "opens in a new tab").
-function PolicyLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener"
-      className="font-semibold text-brown underline underline-offset-2"
-    >
-      {children}
-      <span className="sr-only"> (opens in a new tab)</span>
-    </a>
-  );
-}

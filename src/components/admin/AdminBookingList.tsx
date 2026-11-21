@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { appointmentStatus } from "@/lib/admin/display";
 import { bookingReference, paymentMethodName } from "@/lib/booking-rules";
-import { formatClassDate, formatPeso, formatTime, initialsOf } from "@/lib/format";
+import { formatClassDate, formatManilaDateTime, formatPeso, formatTime, initialsOf } from "@/lib/format";
 import type { AdminBookingListItem } from "@/types/app";
 import { AdminCard } from "./AdminUi";
 import { AppointmentActionLinks } from "./AppointmentActionLinks";
@@ -35,6 +35,7 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
             <tr className="border-b border-admin-line text-left text-[11px] uppercase tracking-[0.06em] text-muted">
               <th scope="col" className="px-4 py-3 font-semibold">Client</th>
               <th scope="col" className="px-4 py-3 font-semibold">Class</th>
+              <th scope="col" className="px-4 py-3 font-semibold">Booked at</th>
               <th scope="col" className="px-4 py-3 font-semibold">Drink</th>
               <th scope="col" className="px-4 py-3 font-semibold">Mat</th>
               <th scope="col" className="px-4 py-3 font-semibold">Payment</th>
@@ -44,7 +45,7 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
           </thead>
           <tbody>
             {bookings.map((booking) => {
-              const status = appointmentStatus(booking.status);
+              const status = appointmentStatus(booking.status, { attendanceDue: booking.attendance_due });
               return (
                 <tr key={booking.booking_id} className="border-b border-admin-bg last:border-b-0 hover:bg-admin-bg/60">
                   <td className="px-4 py-3">
@@ -70,6 +71,7 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
                     {formatClassDate(booking.class_date).short}
                     <span className="block text-[11px] text-muted">{formatTime(booking.start_time)}</span>
                   </td>
+                  <td className="px-4 py-3">{formatManilaDateTime(booking.created_at)}</td>
                   <td className="px-4 py-3">{booking.drink_choice ?? "At the cafe"}</td>
                   <td className="px-4 py-3">{booking.mat_rental ? "Yes" : "No"}</td>
                   <td className="px-4 py-3">{paymentLine(booking)}</td>
@@ -89,7 +91,7 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
       {/* ===== Phone: cards ===== */}
       <ul className="flex flex-col gap-2.5 lg:hidden">
         {bookings.map((booking) => {
-          const status = appointmentStatus(booking.status);
+          const status = appointmentStatus(booking.status, { attendanceDue: booking.attendance_due });
           return (
             <li
               key={booking.booking_id}
@@ -112,6 +114,7 @@ export function AdminBookingList({ bookings }: { bookings: AdminBookingListItem[
                 <span className="min-w-0 text-muted">{refLine(booking)}</span>
                 <span className="shrink-0 font-semibold text-ink">{paymentLine(booking)}</span>
               </span>
+              <span className="text-xs text-muted">Booked at {formatManilaDateTime(booking.created_at)}</span>
               {/* The same two buttons as the table's Action column */}
               <div className="flex justify-end border-t border-admin-bg pt-2">
                 <AppointmentActionLinks bookingId={booking.booking_id} guestName={booking.guest_name} />

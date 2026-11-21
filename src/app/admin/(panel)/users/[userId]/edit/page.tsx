@@ -15,13 +15,11 @@ import { MessageSquare } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
-import { AdminActionForm } from "@/components/admin/AdminActionForm";
+import { ConfirmActionButton } from "@/components/admin/ConfirmActionButton";
+import { UserDetailsEditor } from "@/components/admin/UserDetailsEditor";
 import { AdminBackLink, AdminCard, AdminLoadError, AdminLoading, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
-import { BirthdayInput } from "@/components/ui/BirthdayInput";
 import { ButtonLink } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { PhoneInput } from "@/components/ui/PhoneInput";
-import { updateUser } from "@/lib/admin/user-actions";
+import { setClientActive } from "@/lib/admin/user-actions";
 import { requireAdmin } from "@/lib/auth/user";
 import { getAdminUserDetails } from "@/lib/data/admin-users";
 import { formatBirthdayInput } from "@/lib/validation";
@@ -64,54 +62,44 @@ async function EditBody({ params }: { params: PageProps<"/admin/users/[userId]/e
 
   return (
     <>
-      <AdminBackLink href={`/admin/users/${user.user_id}`} label="Back to the account" />
+      <AdminBackLink href="/admin/users" label="Back to Users" />
       <AdminPageHeader
         overline="Edit user"
         title={name}
         intro="Change the client's contact details. The email and the role can't be changed here."
         actions={
-          canEdit && (
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink href={`/admin/users/${user.user_id}`} variant="secondary">View User</ButtonLink>
+            {canEdit && (
             <ButtonLink href={`/admin/users/${user.user_id}/communications`} variant="secondary">
               <MessageSquare aria-hidden="true" className="size-4" />
               Communications
             </ButtonLink>
-          )
+            )}
+          </div>
         }
       />
 
       <AdminCard className="max-w-2xl">
         {canEdit ? (
-          <AdminActionForm action={updateUser} submitLabel="Save details">
-            <input type="hidden" name="user_id" value={user.user_id} />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                label="Full name"
-                name="full_name"
-                required
-                maxLength={120}
-                autoComplete="off"
-                defaultValue={user.full_name ?? ""}
-                className="sm:col-span-2"
-              />
-              <PhoneInput label="Mobile" name="mobile" required defaultValue={user.mobile ?? ""} hint="11 digits, starting with 09" />
-              <Input
-                label="Instagram (optional)"
-                name="instagram"
-                maxLength={31}
-                autoComplete="off"
-                placeholder="@yourname"
-                defaultValue={user.instagram ? `@${user.instagram}` : ""}
-              />
-              <BirthdayInput
-                label="Birthday (optional)"
-                name="birthday"
-                defaultValue={formatBirthdayInput(user.birthday)}
-                hint="MM/DD/YYYY"
-              />
-              {/* Shown so the admin knows who this is, but never sent */}
-              <Input label="Email (can't be changed here)" name="email_shown" defaultValue={user.email ?? ""} disabled />
+          <>
+            <UserDetailsEditor userId={user.user_id} email={user.email ?? ""} initial={{
+              full_name: user.full_name ?? "", mobile: user.mobile ?? "",
+              instagram: user.instagram ? `@${user.instagram}` : "",
+              birthday: formatBirthdayInput(user.birthday),
+            }} />
+            <div className="mt-6 border-t border-admin-line pt-4">
+              {/* Staff can restore access without changing the booking history. */}
+              <ConfirmActionButton action={setClientActive} fields={{ user_id: user.user_id, active: user.is_active ? "no" : "yes" }}
+                label={user.is_active ? "Deactivate account" : "Reactivate account"}
+                variant={user.is_active ? "danger" : "secondary"}
+                confirm={{
+                  title: user.is_active ? "Deactivate this client?" : "Reactivate this client?",
+                  body: user.is_active ? "Only staff can restore access. Existing bookings and payments are kept." : "The client will be able to sign in again.",
+                  confirmLabel: user.is_active ? "Deactivate account" : "Reactivate account",
+                }} />
             </div>
-          </AdminActionForm>
+          </>
         ) : (
           <p className="text-sm text-muted">
             {user.is_deleted

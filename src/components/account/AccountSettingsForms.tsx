@@ -509,8 +509,7 @@ export function DeleteAccount({ blockers, hasPassword }: { blockers: DeletionBlo
 
 // The open "Delete" panel.
 // Takes: hasPassword and what Cancel does.
-// Gives back: what happens to their data, "type DELETE", the password (if
-// any) and the button.
+// Gives back: the deletion warning and a password or Google confirmation form.
 function DeleteForm({ hasPassword, onClose }: { hasPassword: boolean; onClose: () => void }) {
   const [state, formAction, pending] = useActionState(deleteAccount, emptyAccountFormState);
   const errors = state.fieldErrors ?? {};
@@ -530,15 +529,8 @@ function DeleteForm({ hasPassword, onClose }: { hasPassword: boolean; onClose: (
         </div>
       </div>
       {state.error && <FormMessage tone="error">{state.error}</FormMessage>}
-      <Input
-        label='Type DELETE to confirm'
-        name="confirm_text"
-        autoComplete="off"
-        autoCapitalize="characters"
-        spellCheck={false}
-        required
-        error={errors.confirm_text}
-      />
+      {/* Google-only accounts confirm through a fresh Google sign-in. */}
+      {!hasPassword && <p className="text-sm">Confirm with the same Google account before deleting.</p>}
       {hasPassword && (
         <PasswordInput label="Your password" name="password" autoComplete="current-password" required error={errors.password} />
       )}

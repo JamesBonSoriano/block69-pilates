@@ -20,7 +20,6 @@
 //     normal policy, refunded outside the website) with a required reason
 //     (admin_cancel_appointment, migration 27). The client gets a bell
 //     update and an email.
-//   - Attendance: Attended / No-show (paid bookings, from the class day).
 // Payment review used to be on the Payments page; it lives here now.
 //
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
@@ -47,7 +46,6 @@ import {
   StatusLine,
   classLabelOf,
 } from "@/components/admin/AppointmentDetails";
-import { AttendanceButtons } from "@/components/admin/AttendanceButtons";
 import { CancelAppointmentBox } from "@/components/admin/CancelAppointmentBox";
 import { ConfirmActionButton } from "@/components/admin/ConfirmActionButton";
 import { RejectPaymentButton } from "@/components/admin/RejectPaymentButton";
@@ -57,7 +55,7 @@ import type { SelectOption } from "@/components/ui/Select";
 import { bookingDetailsStatus } from "@/lib/admin/appointment-status";
 import { reviewPayment } from "@/lib/admin/setup-actions";
 import { requireAdmin } from "@/lib/auth/user";
-import { bookingReference, paymentMethodName } from "@/lib/booking-rules";
+import { bookingReference, classStartsAt, paymentMethodName } from "@/lib/booking-rules";
 import { getAdminBooking } from "@/lib/data/admin";
 import {
   getAdminPayments,
@@ -135,7 +133,7 @@ async function ManageAppointment({
   // ---- Which actions apply (display only; the database decides) ----
   // A GCash / BPI screenshot waiting for a check
   const pendingManual =
-    booking.status === "awaiting_verification"
+    booking.status === "awaiting_verification" && classStartsAt(booking.class_date, booking.end_time).getTime() > nowMs
       ? booking.payments.find(
           (pay) => pay.provider === "manual" && pay.status === "pending",
         )
@@ -170,8 +168,7 @@ async function ManageAppointment({
   const nothingToDo =
     !pendingManual &&
     !canReschedule &&
-    !canCancel &&
-    !booking.can_mark_attendance;
+    !canCancel;
 
   return (
     <>
@@ -201,7 +198,7 @@ async function ManageAppointment({
         }
       />
 
-      <AppointmentNotices booking={booking} manageHref={`${viewHref}/manage`} />
+      <AppointmentNotices booking={booking} nowMs={nowMs} manageHref={`${viewHref}/manage`} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
         <div className="flex flex-col gap-5">
@@ -224,6 +221,8 @@ async function ManageAppointment({
                 {pendingManual.method === "bpi" ? "BPI account" : "GCash"}{" "}
                 before confirming. The seat stays held until you decide.
               </p>
+              {/* Older submissions remain reviewable with their screenshot. */}
+              <p className="text-sm break-all">Transaction reference: {pendingManual.transaction_reference || "Missing (older submission)"}</p>
               {screenshotUrl ? (
                 <figure className="flex flex-col gap-2">
                   {/* Full size. A plain <img>: next/image only loads the PUBLIC
@@ -254,6 +253,7 @@ async function ManageAppointment({
               <div className="flex flex-wrap gap-2">
                 <ConfirmActionButton
                   action={reviewPayment}
+                  disableAfterSave
                   fields={{ payment_id: pendingManual.id, decision: "approve" }}
                   label="Confirm"
                   srLabel={` ${booking.guest_name}'s payment`}
@@ -312,17 +312,7 @@ async function ManageAppointment({
             </ActionCard>
           )}
 
-          {/* ---- Attendance: only for PAID bookings, from the class day, not
-               in a cancelled class (can_mark_attendance, migration 18) ---- */}
-          {booking.can_mark_attendance && (
-            <ActionCard title="Attendance">
-              <AttendanceButtons
-                bookingId={booking.booking_id}
-                status={booking.status}
-                guestName={booking.guest_name}
-              />
-            </ActionCard>
-          )}
+
 
           {nothingToDo && (
             <AdminCard className="text-sm text-muted">

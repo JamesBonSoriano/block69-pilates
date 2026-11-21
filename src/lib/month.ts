@@ -32,12 +32,10 @@ export function monthRange(month: string): { first: string; last: string } {
   return { first: `${month}-01`, last };
 }
 
-// The months a client may look at: this month and next month only.
-// Takes: today's date (Philippine time), "YYYY-MM-DD".
-// Gives back: e.g. ["2026-10", "2026-11"].
-export function bookableMonths(today: string): [string, string] {
+// Gives the navigator the current month and all scheduled bookable months, in order.
+export function bookableMonths(today: string, scheduled: readonly string[]): string[] {
   const current = monthOf(today);
-  return [current, addMonths(current, 1)];
+  return [...new Set([current, ...scheduled.filter((month) => month >= current)])].sort();
 }
 
 // Picks the month to show from what the address asked for.

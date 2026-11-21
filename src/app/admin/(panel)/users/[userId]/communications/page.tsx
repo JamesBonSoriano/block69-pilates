@@ -23,10 +23,11 @@ import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminPagination } from "@/components/admin/AdminPagination";
 import { AdminBackLink, AdminCard, AdminLoadError, AdminLoading, AdminOverline, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
+import { ButtonLink } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import { resendConfirmation, sendUserMessage } from "@/lib/admin/user-actions";
+import { resendConfirmation, sendClientEmailChange, sendClientPasswordReset, sendUserMessage } from "@/lib/admin/user-actions";
 import { firstParam } from "@/lib/auth/safe-next";
 import { requireAdmin } from "@/lib/auth/user";
 import { getAdminUserBookings, getAdminUserDetails, getUserMessages } from "@/lib/data/admin-users";
@@ -78,11 +79,11 @@ async function CommunicationsBody({
   await requireAdmin();
   const { userId } = await params;
   const pageParam = Number(firstParam((await searchParams).page));
-  const page = Number.isInteger(pageParam) && pageParam > 1 ? pageParam : 1;
+  const page = Number.isSafeInteger(pageParam) && pageParam > 1 ? pageParam : 1;
 
   let user: AdminUserDetails | null;
   let bookings: AdminUserBooking[];
-  let history: { rows: CommunicationRow[]; total: number };
+  let history: Awaited<ReturnType<typeof getUserMessages>>;
   try {
     [user, bookings, history] = await Promise.all([
       getAdminUserDetails(userId),
@@ -105,11 +106,15 @@ async function CommunicationsBody({
 
   return (
     <>
-      <AdminBackLink href={`/admin/users/${user.user_id}`} label="Back to the account" />
+      <AdminBackLink href="/admin/users" label="Back to Users" />
       <AdminPageHeader
         overline={name}
         title="Communications"
         intro="Send this client an email, and see every email sent to them."
+        actions={<div className="flex flex-wrap gap-2">
+          <ButtonLink href={`/admin/users/${user.user_id}`} variant="secondary">View User</ButtonLink>
+          <ButtonLink href={`/admin/users/${user.user_id}/edit`} variant="secondary">Edit User</ButtonLink>
+        </div>}
       />
 
       {!setUp && (
@@ -168,6 +173,26 @@ async function CommunicationsBody({
         </AdminCard>
       )}
 
+      {canSend && (
+        <AdminCard className="grid gap-5 md:grid-cols-2">
+          {/* Both recovery actions derive the target from Auth after checking the admin role. */}
+          <section className="space-y-2">
+            <h2 className="text-base font-semibold">Password reset</h2>
+            <p className="text-sm text-muted">Sends a link only to the current verified address.</p>
+            <AdminActionForm action={sendClientPasswordReset} submitLabel="Send password reset" pendingLabel="Sending…">
+              <input type="hidden" name="user_id" value={user.user_id} />
+            </AdminActionForm>
+          </section>
+          <section className="space-y-2">
+            <h2 className="text-base font-semibold">Replace sign-in email</h2>
+            <p className="text-sm text-muted">The current login remains active until the replacement address is verified. This staff flow requires single-inbox email-change confirmation in Supabase.</p>
+            <AdminActionForm action={sendClientEmailChange} submitLabel="Send verification" pendingLabel="Sending…">
+              <input type="hidden" name="user_id" value={user.user_id} />
+              <Input label="Replacement email" name="new_email" type="email" maxLength={254} required autoComplete="off" />
+            </AdminActionForm>
+          </section>
+        </AdminCard>
+      )}
       {/* ---- 3. History ---- */}
       <AdminCard className="flex flex-col p-0 lg:p-0">
         <div className="p-4 lg:p-6">
@@ -185,7 +210,7 @@ async function CommunicationsBody({
         )}
         <div className="border-t border-admin-line">
           <AdminPagination
-            page={page}
+            page={history.page}
             perPage={PER_PAGE}
             total={history.total}
             noun={history.total === 1 ? "email" : "emails"}

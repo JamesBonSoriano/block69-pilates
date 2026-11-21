@@ -14,7 +14,7 @@ import { useId, useRef, type ReactNode } from "react";
 import { Button, type ButtonVariant } from "@/components/ui/Button";
 
 type AdminDialogButtonProps = {
-  label: string; // the button text, e.g. "Edit"
+  label: ReactNode; // visible text or an icon accompanied by srLabel
   srLabel?: string; // extra words for screen readers, e.g. " Thursday 9:00 AM"
   title: string; // the box's heading
   intro?: string; // a short line under the heading

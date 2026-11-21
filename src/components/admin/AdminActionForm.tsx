@@ -33,6 +33,8 @@ type AdminActionFormProps = {
   id?: string; // lets a button elsewhere on the page send this form (form="<id>")
   className?: string; // layout of the form
   footerNote?: ReactNode; // a small grey line next to the button
+  submitDisabled?: boolean; // Disable save until the editor has changes.
+  onSaved?: (submission: FormData) => void; // Lets a client editor mark the submitted values as saved.
   resetOnSave?: boolean; // empty the fields after a successful save
   children: ReactNode; // the fields
 };
@@ -49,21 +51,31 @@ export function AdminActionForm({
   className,
   footerNote,
   resetOnSave = false,
+  submitDisabled = false,
+  onSaved,
   children,
 }: AdminActionFormProps) {
   const [state, formAction, pending] = useActionState(action, emptySaveState);
   const formRef = useRef<HTMLFormElement>(null);
+  const handledSave = useRef<number>(0);
+  const submitted = useRef<FormData | null>(null);
 
   // After a successful save, empty the form if asked to
   useEffect(() => {
     if (resetOnSave && state.savedAt) formRef.current?.reset();
-  }, [resetOnSave, state.savedAt]);
+    if (state.savedAt && handledSave.current !== state.savedAt) {
+      handledSave.current = state.savedAt;
+      if (submitted.current) onSaved?.(submitted.current);
+    }
+  }, [resetOnSave, state.savedAt, onSaved]);
 
   // Sends the form to the Server Action without React's automatic reset.
   // Takes: the submit event. Gives back: nothing.
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitDisabled || pending) return;
     const formData = new FormData(event.currentTarget);
+    submitted.current = formData;
     // startTransition: lets useActionState show "Saving…" while it runs
     startTransition(() => formAction(formData));
   }
@@ -82,7 +94,7 @@ export function AdminActionForm({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {footerNote ? <p className="text-xs text-muted">{footerNote}</p> : <span aria-hidden="true" />}
-        <Button type="submit" variant={buttonVariant} disabled={pending} className="sm:shrink-0">
+        <Button type="submit" variant={buttonVariant} disabled={pending || submitDisabled} className="sm:shrink-0">
           {pending ? pendingLabel : submitLabel}
         </Button>
       </div>

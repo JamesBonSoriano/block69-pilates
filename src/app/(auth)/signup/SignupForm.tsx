@@ -27,7 +27,7 @@ import { FormMessage } from "@/components/ui/FormMessage";
 import { Input } from "@/components/ui/Input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { PhoneInput } from "@/components/ui/PhoneInput";
-import { signInWithGoogle, signUp } from "@/lib/auth/actions";
+import { resendSignupCode, signInWithGoogle, signUp, verifySignupCode } from "@/lib/auth/actions";
 import { emptyFormState } from "@/lib/auth/form-state";
 import { MIN_PASSWORD, checkSignupFields } from "@/lib/validation";
 
@@ -41,16 +41,9 @@ export function SignupForm({ next }: { next: string | null }) {
   const [localErrors, setLocalErrors] = useState<Partial<Record<string, string>> | null>(null);
   const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : "/login";
 
-  // Done, and Supabase wants them to confirm their email first
-  if (state.success) {
-    return (
-      <div className="flex flex-col gap-4">
-        <FormMessage tone="success">{state.success}</FormMessage>
-        <Link href={loginHref} className="inline-flex min-h-11 items-center text-sm font-semibold text-brown hover:underline">
-          Back to log in
-        </Link>
-      </div>
-    );
+  // Keep the verification step separate so passwords are never carried forward.
+  if (state.verificationEmail) {
+    return <SignupCodeForm email={state.verificationEmail} next={next} loginHref={loginHref} />;
   }
 
   // Checks the fields in the browser before sending.
@@ -158,6 +151,47 @@ export function SignupForm({ next }: { next: string | null }) {
           Log in
         </Link>
       </p>
+    </div>
+  );
+}
+
+// Shows code verification and resend controls for the pending signup address.
+function SignupCodeForm({ email, next, loginHref }: { email: string; next: string | null; loginHref: string }) {
+  const [verification, verify, verifying] = useActionState(verifySignupCode, emptyFormState);
+  const [resend, send, sending] = useActionState(resendSignupCode, emptyFormState);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm">Enter the six-digit verification code sent to {email}.</p>
+      <form action={verify} className="flex flex-col gap-4">
+        <input type="hidden" name="email" value={email} />
+        {next && <input type="hidden" name="next" value={next} />}
+        {verification.error && <FormMessage tone="error">{verification.error}</FormMessage>}
+        <Input
+          label="Verification code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="[0-9]{6}"
+          maxLength={6}
+          required
+          error={verification.fieldErrors?.code}
+        />
+        <Button type="submit" fullWidth disabled={verifying || sending}>
+          {verifying ? "Verifying…" : "Verify email"}
+        </Button>
+      </form>
+      <form action={send} className="flex flex-col gap-3">
+        <input type="hidden" name="email" value={email} />
+        {resend.error && <FormMessage tone="error">{resend.error}</FormMessage>}
+        {resend.success && <FormMessage tone="success">{resend.success}</FormMessage>}
+        <Button type="submit" variant="secondary" fullWidth disabled={sending || verifying}>
+          {sending ? "Sending…" : "Resend code"}
+        </Button>
+      </form>
+      <Link href={loginHref} className="inline-flex min-h-11 items-center text-sm font-semibold text-brown hover:underline">
+        Back to log in
+      </Link>
     </div>
   );
 }

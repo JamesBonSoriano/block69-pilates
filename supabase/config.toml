@@ -224,11 +224,12 @@ web3 = 30
 [auth.email]
 # Allow/disallow new user signups via email to your project.
 enable_signup = true
-# If enabled, a user will be required to confirm any email change on both the old, and new email
-# addresses. If disabled, only the new email is required to confirm.
-double_confirm_changes = true
+# Local recovery verifies the replacement inbox before changing the login address.
+# Hosted Auth settings are configured separately.
+double_confirm_changes = false
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# Password signup requires proof that the client owns the email address.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -247,6 +248,11 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# Sends a typed verification code for password signup.
+[auth.email.template.confirmation]
+subject = "Verify your Block 69 Cafe email"
+content_path = "./supabase/templates/signup-confirmation.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

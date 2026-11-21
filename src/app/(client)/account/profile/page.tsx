@@ -35,6 +35,7 @@ import {
 } from "@/components/account/AccountSettingsForms";
 import { ProfileField } from "@/components/account/ProfileForms";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { FormMessage } from "@/components/ui/FormMessage";
 import { Card } from "@/components/ui/Card";
 import { firstParam, safeNextPath } from "@/lib/auth/safe-next";
 import { requireClient } from "@/lib/auth/user";
@@ -91,6 +92,13 @@ async function ProfileContent({ searchParams }: Pick<PageProps<"/account/profile
 
   return (
     <div className="flex flex-col gap-5">
+      {/* The callback confirms Google sign-in before the client submits deletion again. */}
+      {params.deleteGoogle === "verified" && (
+        <FormMessage tone="success">Google account verified. Open Delete account again to finish.</FormMessage>
+      )}
+      {params.deleteGoogle === "failed" && (
+        <FormMessage tone="error">Google confirmation was not completed. Try deleting the account again.</FormMessage>
+      )}
       {backToBooking && (
         <Link
           href={backToBooking}

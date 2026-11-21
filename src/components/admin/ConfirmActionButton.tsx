@@ -26,6 +26,7 @@ type ConfirmActionButtonProps = {
   // Show a box first? Its title, explanation and confirm button text.
   confirm?: { title: string; body: string; confirmLabel: string };
   className?: string;
+  disableAfterSave?: boolean; // A one-time approval keeps its result visible.
 };
 
 // The button (and its box).
@@ -39,6 +40,7 @@ export function ConfirmActionButton({
   variant = "secondary",
   confirm,
   className,
+  disableAfterSave = false,
 }: ConfirmActionButtonProps) {
   const [state, formAction, pending] = useActionState(action, emptySaveState);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -56,7 +58,7 @@ export function ConfirmActionButton({
         <Button
           variant={variant}
           aria-haspopup="dialog"
-          disabled={pending}
+          disabled={pending || (disableAfterSave && Boolean(state.saved))}
           onClick={() => dialogRef.current?.showModal()}
           className={className}
         >
@@ -67,7 +69,7 @@ export function ConfirmActionButton({
         // No box: the button sends the form straight away
         <form action={formAction}>
           {hidden}
-          <Button type="submit" variant={variant} disabled={pending} className={className}>
+          <Button type="submit" variant={variant} disabled={pending || (disableAfterSave && Boolean(state.saved))} className={className}>
             {pending ? "Saving…" : label}
             {srLabel && <span className="sr-only">{srLabel}</span>}
           </Button>

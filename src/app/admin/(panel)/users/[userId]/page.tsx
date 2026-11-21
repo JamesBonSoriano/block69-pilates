@@ -160,30 +160,33 @@ async function UserBody({ params }: { params: PageProps<"/admin/users/[userId]">
           {bookings.length === 0 ? (
             <p className="text-sm text-muted">No bookings yet.</p>
           ) : (
-            <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {bookings.map((booking) => {
-                // The simple word (Version 1.6): Pending, Confirmed, Done, ...
-                const badge = appointmentStatus(booking.status);
-                const paid = Number(booking.paid_amount);
-                return (
-                  <li key={booking.booking_id}>
-                    <Link
-                      href={`/admin/appointments/${booking.booking_id}`}
-                      className="flex flex-col gap-1.5 rounded-xl border border-admin-line px-3.5 py-3 hover:bg-admin-bg/50 focus-visible:outline-2 focus-visible:outline-brown"
-                    >
-                      <span className="text-[13px] font-semibold">
-                        {formatClassDate(booking.date).short} · {formatTime(booking.start_time)}
-                      </span>
-                      <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
-                        {paid > 0 ? `${formatPeso(paid)} paid` : "Not paid"}
-                        {booking.mat_rental && " · Mat"}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="overflow-x-auto rounded-xl border border-admin-line">
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">Recent bookings for this client</caption>
+                <thead className="bg-admin-bg text-xs">
+                  <tr><th scope="col" className="p-3">Class</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Payment</th><th scope="col" className="p-3">Mat</th></tr>
+                </thead>
+                <tbody>
+                  {bookings.map((booking) => {
+                    // Preserve the original attendance outcome and show completed confirmed classes as Done.
+                    const badge = appointmentStatus(booking.status, { attendanceDue: booking.class_ended && booking.session_status !== "cancelled" });
+                    const paid = Number(booking.paid_amount);
+                    return (
+                      <tr key={booking.booking_id} className="border-t border-admin-line">
+                        <th scope="row" className="px-3 font-semibold">
+                          <Link href={`/admin/appointments/${booking.booking_id}`} className="inline-flex min-h-11 items-center py-2 underline">
+                            {formatClassDate(booking.date).short} · {formatTime(booking.start_time)}
+                          </Link>
+                        </th>
+                        <td className="p-3"><Badge variant={badge.variant}>{badge.label}</Badge></td>
+                        <td className="p-3">{paid > 0 ? formatPeso(paid) : "Not paid"}</td>
+                        <td className="p-3">{booking.mat_rental ? "Yes" : "No"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
           {user.email && user.sessions_booked > RECENT && (
             <Link

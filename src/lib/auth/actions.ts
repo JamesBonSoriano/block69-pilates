@@ -21,7 +21,7 @@ import {
   loginErrorMessage,
 } from "@/lib/auth/errors";
 import type { AuthFormState } from "@/lib/auth/form-state";
-import { googleSignInIsOn } from "@/lib/auth/google-provider";
+import { googleSignInIsOn, signupConfirmationIsOn } from "@/lib/auth/google-provider";
 import {
   ADMIN_LOGIN_PATH,
   INCORRECT_LOGIN_MESSAGE,
@@ -34,7 +34,7 @@ import { safeNextPath } from "@/lib/auth/safe-next";
 import { reactivatePath } from "@/lib/auth/user";
 import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
-import { checkSignupFields, isValidEmail, normalizePhMobile, parseBirthdayInput } from "@/lib/validation";
+import { checkSignupFields, isSignupVerificationCode, isValidEmail, normalizePhMobile, parseBirthdayInput } from "@/lib/validation";
 
 // ---------------------------------------------------------------------------
 // LOG IN
@@ -68,9 +68,7 @@ export async function adminLogIn(_previous: AuthFormState, formData: FormData): 
 // Makes a new client account.
 // Takes: the previous form state, and the form (full_name, mobile, birthday
 // as MM/DD/YYYY, email, password, optional hidden "next").
-// Gives back: field errors, a general error, or a "check your email" message.
-// If Supabase logs them in straight away ("Confirm email" is off), it sends
-// them to "next" or the Home page instead.
+// Gives back: form errors or the email address awaiting a verification code.
 //
 // The rules (Change 17) are checkSignupFields() in src/lib/validation.ts, the
 // same function the form runs in the browser: mobile = 11 digits starting
@@ -86,7 +84,6 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
   const birthdayText = readText(formData, "birthday");
   const email = readText(formData, "email").toLowerCase();
   const password = readPassword(formData, "password");
-  const next = safeNextPath(formData.get("next"));
   const values = { full_name: fullName, mobile, birthday: birthdayText, email };
 
   // Check every field first, so the person sees all problems at once
@@ -99,6 +96,11 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
   const cleanMobile = normalizePhMobile(mobile);
   const birthday = parseBirthdayInput(birthdayText);
 
+  // Check the Auth setting before sending a signup that could bypass the code.
+  if (!(await signupConfirmationIsOn())) {
+    return { error: "Email verification is unavailable. Please try again later.", values };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -106,9 +108,6 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
     options: {
       // Saved on the auth user as "metadata"; the sign-up trigger reads it
       data: { full_name: fullName, mobile: cleanMobile, birthday },
-      // Where the "confirm your email" link sends them (only used when
-      // "Confirm email" is on). /auth/confirm logs them in, then goes to next.
-      emailRedirectTo: `${getSiteUrl()}/auth/confirm?next=${encodeURIComponent(next ?? "/")}`,
     },
   });
 
@@ -125,16 +124,39 @@ export async function signUp(_previous: AuthFormState, formData: FormData): Prom
     };
   }
 
-  // "Confirm email" is off: they're logged in already
+  // Catch a hosted project with signup confirmation accidentally disabled.
   if (data.session) {
-    redirect(next ?? "/");
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: "Email verification is unavailable. Please contact the cafe.", values };
   }
 
-  // "Confirm email" is on: they must click the link in the email first
-  return {
-    success: `Almost done! We've sent a link to ${email}. Click it to confirm your email and log in. Check your spam folder if you can't see it.`,
-    values,
-  };
+  return { verificationEmail: email };
+}
+
+// Verifies the submitted signup email and code, then resumes the requested page.
+export async function verifySignupCode(_previous: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const email = readText(formData, "email").toLowerCase();
+  const token = readText(formData, "code");
+  if (!isValidEmail(email) || !isSignupVerificationCode(token)) {
+    return { fieldErrors: { code: "Enter the six-digit code from your email." } };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+  if (error) return { error: "That code could not be verified. Check it or request a new code." };
+  redirect(safeNextPath(formData.get("next")) ?? "/");
+}
+
+// Requests another code for an email that already started password signup.
+export async function resendSignupCode(_previous: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const email = readText(formData, "email").toLowerCase();
+  if (!isValidEmail(email)) return { error: "Enter a valid email address." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({ email, type: "signup" });
+  return error
+    ? { error: friendlyAuthError(error) }
+    : { success: "Check your inbox for the new code." };
 }
 
 // ---------------------------------------------------------------------------

@@ -42,6 +42,8 @@
 //     isn't set up), /login?error=google-failed explains it
 
 import { isAuthPKCECodeVerifierMissingError, type EmailOtpType } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import { deleteGoogleIntent, deleteGoogleProof, deleteProofCookieOptions, signDeleteProof, verifyDeleteProof } from "@/lib/auth/delete-reauth";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { isBrandNewGoogleAccount, readGoogleMode, type GoogleMode } from "@/lib/auth/login-portal";
@@ -75,6 +77,11 @@ export async function GET(request: NextRequest) {
   const isPasswordReset = type === "recovery" || next === "/reset-password";
 
   const supabase = await createClient();
+  // Only an OAuth callback tied to the initiating account can grant deletion proof.
+  if (params.get("flow") === "delete-google") {
+    redirect(await confirmGoogleDeletion(supabase, code, flowId));
+  }
+
   // null = it worked; otherwise what went wrong. A link with no code at all
   // (e.g. Supabase sent ?error_code=otp_expired because the link was too old)
   // counts as expired.
@@ -204,4 +211,34 @@ async function deleteNewGoogleAccount(userId: string): Promise<void> {
   } catch (error) {
     console.error("Could not remove the new Google account:", error instanceof Error ? error.message : error);
   }
+}
+
+// Exchanges a deletion-specific Google code and grants proof only to the same account.
+async function confirmGoogleDeletion(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  code: string | null,
+  flowId: string | null,
+): Promise<string> {
+  const failed = "/account/profile?deleteGoogle=failed";
+  const store = await cookies();
+  const intent = store.get(deleteGoogleIntent)?.value;
+  store.delete(deleteGoogleIntent);
+  const { data: before } = await supabase.auth.getUser();
+
+  if (!code || !before.user || !verifyDeleteProof(intent, deleteGoogleIntent, before.user.id)) {
+    return failed;
+  }
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code, flowId ? { flowId } : undefined);
+  if (error || !data.user) return failed;
+  if (data.user.id !== before.user.id) {
+    await supabase.auth.signOut({ scope: "local" });
+    return "/login";
+  }
+
+  const { data: claims } = await supabase.auth.getClaims();
+  const sessionId = claims?.claims.session_id;
+  if (typeof sessionId !== "string") return failed;
+  store.set(deleteGoogleProof, signDeleteProof(deleteGoogleProof, data.user.id, sessionId), deleteProofCookieOptions);
+  return "/account/profile?deleteGoogle=verified";
 }

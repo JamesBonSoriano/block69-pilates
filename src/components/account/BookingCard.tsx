@@ -57,14 +57,18 @@ import { CancelBookingButton } from "./CancelBookingButton";
 // (the page reads the clock once, during a real visit, and passes it to
 // every card so they all agree), and (Version 1.7) how the cafe cancelled
 // it, or null.
-// Gives back: an <li> with the card.
+// Gives back: a read-only receipt view or a card with eligible actions.
 export function BookingCard({
   booking,
   nowMs,
+  manage,
+  receiptId,
   cafeCancel = null,
 }: {
   booking: MyBookingListItem;
   nowMs: number;
+  manage: boolean;
+  receiptId: string | null;
   cafeCancel?: MyCafeCancellation | null;
 }) {
   const date = formatClassDate(booking.class_date);
@@ -92,23 +96,12 @@ export function BookingCard({
     booking.status === "confirmed" && booking.change_rule !== "late_payment"
       ? booking.change_rule
       : null;
-  // The status badge. Version 1.5: once the time to move a cafe-cancelled
-  // class is over, it says "Class cancelled" (not a green "Confirmed").
-  // Version 1.6: a rejected transfer says "Payment rejected" (not "Expired").
-  // Version 1.7: a booking the cafe cancelled says so.
-  const badge: { label: string; variant: BadgeVariant } = cafeCancel
-    ? { label: "Cancelled by the cafe", variant: "error" }
-    : booking.payment_rejected
-      ? { label: "Payment rejected", variant: "error" }
-      : rule === "move_window_ended"
-        ? { label: "Class cancelled", variant: "neutral" }
-        : bookingStatusBadge(booking.status);
+  const badge = clientBookingBadge(booking, cafeCancel);
   // Version 1.6: the pending (hourglass) icon while the cafe checks a transfer
   const checking = booking.status === "awaiting_verification";
 
   return (
-    <li>
-      <Card className="flex flex-col gap-3">
+    <Card className="flex flex-col gap-3">
         {/* Date + time on the left, status badge on the right */}
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -156,17 +149,18 @@ export function BookingCard({
             rule={rule}
             transferHref={transferHref}
             nowMs={nowMs}
+            manage={manage}
           />
         )}
 
         {/* Buttons for a confirmed booking that can still change */}
-        {rule &&
+        {manage && rule &&
           rule !== "free_transfer" &&
           rule !== "move_window_ended" &&
           rule !== "started" && (
             <div className="flex flex-col gap-2">
               <div className="flex gap-3">
-                {transferHref && (
+                {manage && transferHref && (
                   <ButtonLink
                     href={transferHref}
                     variant="secondary"
@@ -200,11 +194,16 @@ export function BookingCard({
             </div>
           )}
 
+        {/* The receipt endpoint verifies payment ownership before generating the PDF. */}
+        {receiptId && (
+          <ButtonLink href={`/account/payments/${receiptId}/pdf`} variant="secondary" className="self-start">
+            Download receipt (PDF)
+          </ButtonLink>
+        )}
         <p className="text-[11px] text-muted">
           Booking {bookingReference(booking.booking_id)}
         </p>
-      </Card>
-    </li>
+    </Card>
   );
 }
 
@@ -218,11 +217,13 @@ function StatusPart({
   rule,
   transferHref,
   nowMs,
+  manage,
 }: {
   booking: MyBookingListItem;
   rule: MyBookingListItem["change_rule"];
   transferHref: string | null;
   nowMs: number;
+  manage: boolean;
 }) {
   // "Nov 30": the last day of the free move (Version 1.5), if there is one
   const moveBy = booking.move_by ? formatMoveBy(booking.move_by, nowMs) : null;
@@ -240,7 +241,7 @@ function StatusPart({
             {moveBy && <span className="mt-1 block">Move by {moveBy}.</span>}
           </span>
         </p>
-        {transferHref && (
+        {manage && transferHref && (
           <ButtonLink href={transferHref} className="sm:self-start">
             Pick a new class
           </ButtonLink>
@@ -269,7 +270,7 @@ function StatusPart({
           The cafe couldn&apos;t approve your payment, so this seat was let go.
           {booking.is_upcoming ? " You can book and pay again." : ""}
         </p>
-        {booking.is_upcoming && (
+        {manage && booking.is_upcoming && (
           <ButtonLink
             // Step 2 again for the same class (with the same mat choice). If it
             // can't be booked any more, that page says so and offers others.
@@ -304,9 +305,7 @@ function StatusPart({
             Your seat is held for about {minutes} more minute
             {minutes === 1 ? "" : "s"}.
           </p>
-          <ButtonLink href={`/book/pay/${booking.booking_id}`}>
-            Pay now
-          </ButtonLink>
+          {manage && <ButtonLink href={`/book/pay/${booking.booking_id}`}>Pay now</ButtonLink>}
         </div>
       );
     }
@@ -338,7 +337,7 @@ function StatusPart({
               ? "Your payment came in after your seat hold expired, so this seat couldn't be confirmed. Move to another class for free."
               : "Your payment came in after your seat hold expired, so this seat couldn't be confirmed. The cafe will contact you to sort it out."}
           </p>
-          {transferHref && (
+          {manage && transferHref && (
             <ButtonLink href={transferHref} className="sm:self-start">
               <ArrowRightLeft aria-hidden="true" className="size-4" />
               Move to another class
@@ -412,4 +411,18 @@ function CafeCancelNote({ cancel }: { cancel: MyCafeCancellation }) {
       <span>{words}</span>
     </p>
   );
+}
+
+// Gives the table and the details card the same status wording.
+export function clientBookingBadge(booking: MyBookingListItem, cafeCancel?: MyCafeCancellation | null): {
+  label: string;
+  variant: BadgeVariant;
+} {
+  return cafeCancel
+    ? { label: "Cancelled by the cafe", variant: "error" }
+    : booking.payment_rejected
+      ? { label: "Payment rejected", variant: "error" }
+      : booking.status === "confirmed" && booking.change_rule === "move_window_ended"
+        ? { label: "Class cancelled", variant: "neutral" }
+        : bookingStatusBadge(booking.status);
 }

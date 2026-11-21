@@ -418,6 +418,7 @@ export type Database = {
           provider: Database["public"]["Enums"]["payment_provider"]
           screenshot_path: string | null
           status: Database["public"]["Enums"]["payment_status"]
+          transaction_reference: string | null
           updated_at: string
           verified_by: string | null
         }
@@ -432,6 +433,7 @@ export type Database = {
           provider: Database["public"]["Enums"]["payment_provider"]
           screenshot_path?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          transaction_reference?: string | null
           updated_at?: string
           verified_by?: string | null
         }
@@ -446,6 +448,7 @@ export type Database = {
           provider?: Database["public"]["Enums"]["payment_provider"]
           screenshot_path?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          transaction_reference?: string | null
           updated_at?: string
           verified_by?: string | null
         }
@@ -701,6 +704,10 @@ export type Database = {
           voucher_expires_at: string
         }[]
       }
+      admin_cancel_class_for_email: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       admin_cancel_session: { Args: { p_session_id: string }; Returns: number }
       admin_change_rule: {
         Args: {
@@ -736,6 +743,15 @@ export type Database = {
           status: Database["public"]["Enums"]["booking_status"]
           total: number
         }[]
+      }
+      admin_create_dated_class: {
+        Args: {
+          p_capacity: number
+          p_date: string
+          p_end: string
+          p_start: string
+        }
+        Returns: string
       }
       admin_create_promo: {
         Args: {
@@ -855,6 +871,7 @@ export type Database = {
           p_from?: string
           p_limit?: number
           p_method?: string
+          p_offset?: number
           p_provider?: string
           p_search?: string
           p_status?: string
@@ -971,6 +988,7 @@ export type Database = {
           p_limit?: number
           p_offset?: number
           p_search?: string
+          p_sort?: string
           p_start_time?: string
           p_statuses?: string[]
           p_when?: string
@@ -1047,6 +1065,22 @@ export type Database = {
         Returns: {
           new_booking_id: string
           overridden: boolean
+        }[]
+      }
+      admin_upcoming_classes: {
+        Args: { p_page: number }
+        Returns: {
+          capacity: number
+          date: string
+          end_time: string
+          has_started: boolean
+          page_number: number
+          seats_left: number
+          seats_taken: number
+          session_id: string
+          start_time: string
+          status: Database["public"]["Enums"]["session_status"]
+          total_count: number
         }[]
       }
       admin_update_session: {
@@ -1126,6 +1160,12 @@ export type Database = {
           total: number
         }[]
       }
+      bookable_class_months: {
+        Args: never
+        Returns: {
+          month_start: string
+        }[]
+      }
       booking_closes_at: {
         Args: { p_date: string; p_start_time: string }
         Returns: string
@@ -1171,6 +1211,12 @@ export type Database = {
           has_bookings: boolean
         }[]
       }
+      close_my_account_verified: {
+        Args: { p_user_id: string }
+        Returns: {
+          has_bookings: boolean
+        }[]
+      }
       confirm_free_booking: {
         Args: { p_booking_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]
@@ -1189,6 +1235,7 @@ export type Database = {
         }[]
       }
       deactivate_my_account: { Args: never; Returns: undefined }
+      expire_ended_manual_transfers: { Args: never; Returns: number }
       find_usable_voucher: {
         Args: { p_code: string; p_user_id: string }
         Returns: {
@@ -1376,6 +1423,7 @@ export type Database = {
           kind: string
         }[]
       }
+      my_booking_receipt_id: { Args: { p_booking_id: string }; Returns: string }
       my_seat_status: {
         Args: { p_session_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["booking_status"]
@@ -1422,6 +1470,7 @@ export type Database = {
           p_booking_id: string
           p_method: Database["public"]["Enums"]["payment_method"]
           p_screenshot_path: string
+          p_transaction_reference: string
         }
         Returns: Database["public"]["Enums"]["booking_status"]
       }

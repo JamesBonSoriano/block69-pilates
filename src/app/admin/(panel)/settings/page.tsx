@@ -21,16 +21,16 @@
 // LIVE DATA, never cached. Protection: proxy + requireAdmin() + the
 // database's own admin checks.
 
-import { TriangleAlert } from "lucide-react";
+import { Pencil, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
+import { AdminDialogButton } from "@/components/admin/AdminDialogButton";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminCard, AdminLoadError, AdminLoading, AdminPage, AdminPageHeader } from "@/components/admin/AdminUi";
 import { DrinkOptionsField } from "@/components/admin/DrinkOptionsField";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
 import { saveSettings } from "@/lib/admin/setup-actions";
@@ -40,8 +40,6 @@ import type { Json } from "@/types/database";
 
 export const metadata: Metadata = { title: "Settings · Admin" };
 
-// The id of the settings form (the header's Save button sends it too).
-const FORM_ID = "settings-form";
 
 // Every text setting on this page: its key, label, field type and help text.
 // The key is also the field's name and id (so the placeholder links work).
@@ -95,12 +93,6 @@ export default function AdminSettingsPage() {
         overline="Mat Pilates admin"
         title="Settings"
         intro="Cafe details, links and payment details the website shows."
-        actions={
-          // Sends the form below (form="settings-form"), so it can sit up here
-          <Button type="submit" form={FORM_ID}>
-            Save changes
-          </Button>
-        }
       />
       <Suspense fallback={<AdminLoading label="the settings" />}>
         <SettingsBody />
@@ -135,8 +127,9 @@ async function SettingsBody() {
   const field = (item: TextField) => {
     const value = text(settings, item.key);
     return (
+      <SettingEditor key={item.key} fieldKey={item.key} label={item.label} summary={value}
+        className={item.wide ? "sm:col-span-2" : undefined}>
       <Input
-        key={item.key}
         label={item.label}
         name={item.key}
         type={item.type ?? "text"}
@@ -144,8 +137,8 @@ async function SettingsBody() {
         required={item.required}
         maxLength={item.key === "cafe_address" ? 200 : item.type === "url" ? 300 : 80}
         hint={isPlaceholder(value) ? "Still a placeholder: please type the real value." : item.hint}
-        className={item.wide ? "sm:col-span-2" : undefined}
       />
+      </SettingEditor>
     );
   };
 
@@ -178,8 +171,6 @@ async function SettingsBody() {
         </div>
       )}
 
-      <AdminActionForm id={FORM_ID} action={saveSettings} submitLabel="Save changes" footerNote="Everything on this page is saved together.">
-        <input type="hidden" name="form" value="settings" />
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
           <div className="flex flex-col gap-5">
             {/* ---- Cafe details ---- */}
@@ -201,7 +192,9 @@ async function SettingsBody() {
                 Guests pick one upsized drink when they book. It shows on the Dashboard class cards and the booking
                 details.
               </p>
-              <DrinkOptionsField initial={drinks} />
+              <SettingEditor fieldKey="drink_options" label="Drink options" summary={drinks.join(", ")}>
+                <DrinkOptionsField key={JSON.stringify(drinks)} initial={drinks} />
+              </SettingEditor>
             </AdminCard>
           </div>
 
@@ -216,6 +209,7 @@ async function SettingsBody() {
                 </div>
                 <Badge variant="warning">Test mode</Badge>
               </div>
+              <SettingEditor fieldKey="manual_payment_enabled" label="Manual transfer backup" summary={settings.manual_payment_enabled === true ? "On" : "Off"}>
               <Checkbox
                 name="manual_payment_enabled"
                 defaultChecked={settings.manual_payment_enabled === true}
@@ -229,6 +223,7 @@ async function SettingsBody() {
                   </>
                 }
               />
+              </SettingEditor>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{PAYMENT_FIELDS.map(field)}</div>
               <p className="text-xs text-muted">
                 These are the CAFE&apos;s own accounts, shown so clients can pay you. Clients&apos; card or bank numbers
@@ -262,6 +257,7 @@ async function SettingsBody() {
               </p>
               {/* Version 1.5 (C8): how long a free move lasts after the cafe
                   cancels a class. The database checks it (1 to 365 days). */}
+              <SettingEditor fieldKey="reschedule_window_days" label="Rescheduling window (days)" summary={String(settings.reschedule_window_days ?? 30)}>
               <Input
                 label="Rescheduling window (days)"
                 name="reschedule_window_days"
@@ -274,10 +270,10 @@ async function SettingsBody() {
                 defaultValue={typeof settings.reschedule_window_days === "number" ? settings.reschedule_window_days : 30}
                 hint="When you cancel a class, booked clients can move for free until this many days after the cancellation (or after the class date, if that is later). After that the move is no longer offered."
               />
+              </SettingEditor>
             </AdminCard>
           </div>
         </div>
-      </AdminActionForm>
     </>
   );
 }
@@ -293,4 +289,32 @@ function text(settings: Record<string, Json>, key: string): string {
 // Takes: the text. Gives back: true if it has words in [square brackets].
 function isPlaceholder(value: string): boolean {
   return /\[[^\]]+\]/.test(value);
+}
+
+// Shows the saved setting and opens a pencil dialog that submits only this key.
+function SettingEditor({ fieldKey, label, summary, className, children }: {
+  fieldKey: string;
+  label: string;
+  summary: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div id={fieldKey} className={className}>
+      <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-admin-line px-3 py-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold">{label}</p>
+          <p className="break-words text-sm text-muted">{summary || "Not set"}</p>
+        </div>
+        <AdminDialogButton label={<Pencil aria-hidden="true" className="size-4" />}
+          srLabel={`Edit ${label}`} title={`Edit ${label}`} className="shrink-0 px-3">
+          <AdminActionForm action={saveSettings} submitLabel="Save changes">
+            <input type="hidden" name="form" value="settings_field" />
+            <input type="hidden" name="setting_key" value={fieldKey} />
+            {children}
+          </AdminActionForm>
+        </AdminDialogButton>
+      </div>
+    </div>
+  );
 }

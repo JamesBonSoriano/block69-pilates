@@ -2,7 +2,7 @@
 // Run with: npm run test:unit
 //
 // What it proves:
-//   - only this month and next month can be shown (also across a new year)
+//   - scheduled months remain available across a new year
 //   - month ranges are right, including February and leap years
 //   - a month in the address that isn't allowed (or is junk) is ignored
 //   - Version 1.5: the ▶ arrow's address really asks for next month
@@ -11,9 +11,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { addMonths, allowedMonth, bookableMonths, formatMonth, monthArrowHref, monthOf, monthRange } from '../../src/lib/month.ts';
 
-test('this month and next month, also across the new year', () => {
-  assert.deepEqual(bookableMonths('2026-10-23'), ['2026-10', '2026-11']);
-  assert.deepEqual(bookableMonths('2026-12-31'), ['2026-12', '2027-01']);
+test('scheduled months are sorted and deduplicated across the new year', () => {
+  assert.deepEqual(bookableMonths('2026-10-23', ['2026-11']), ['2026-10', '2026-11']);
+  assert.deepEqual(bookableMonths('2026-12-31', ['2027-03', '2027-01', '2026-11', '2027-01']), ['2026-12', '2027-01', '2027-03']);
   assert.equal(monthOf('2026-10-29'), '2026-10');
   assert.equal(addMonths('2027-01', -1), '2026-12');
 });
@@ -26,7 +26,7 @@ test('first and last day of a month', () => {
 });
 
 test('only an allowed month from the address is used', () => {
-  const months = bookableMonths('2026-10-23');
+  const months = bookableMonths('2026-10-23', ['2026-11']);
   assert.equal(allowedMonth('2026-11', months), '2026-11');
   assert.equal(allowedMonth('2026-12', months), null); // two months ahead: not allowed
   assert.equal(allowedMonth('2026-09', months), null); // the past
@@ -60,9 +60,9 @@ test('the arrow drops the old date and React action fields', () => {
 
 test('the month the arrow asks for is the month the page shows', () => {
   // The page reads ?show_month= and accepts it when it's next month
-  const months = bookableMonths('2026-11-02');
+  const months = bookableMonths('2026-12-02', ['2026-12', '2027-01']);
   const asked = new URL(monthArrowHref('/book', [['month', months[0]]], months[1]), 'http://x').searchParams.get('show_month');
-  assert.equal(allowedMonth(asked, months), '2026-12');
+  assert.equal(allowedMonth(asked, months), '2027-01');
 });
 
 test('month names for the navigator', () => {

@@ -252,3 +252,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 export function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
 }
+
+// Checks the six-digit code format before sending it to Supabase for verification.
+export function isSignupVerificationCode(value: string): boolean {
+  return /^[0-9]{6}$/.test(value);
+}

@@ -6,12 +6,17 @@
 //     the bookings and payments of a deleted account are kept
 // Run with: npm run test:db   (see supabase/tests/README.md)
 
+import { readFileSync } from "node:fs";
+
 export const title = 'Change 17: birthday edits, email sync, Delete account';
 
 // Runs every check in this file.
 // Takes: the toolbox from helpers.mjs. Gives back: nothing (results go to t.check).
 export default async function run(t) {
   const { check, q, one, as } = t;
+
+  // The server calls this after password or Google verification.
+  const close = (id) => as('server', 'select * from public.close_my_account_verified($1)', [id]);
 
   const A = await t.addUser('A');
   const B = await t.addUser('B');
@@ -57,7 +62,7 @@ export default async function run(t) {
   let list = await blockers('A');
   check('An upcoming class blocks it', 'upcoming_class x1', list.length === 1 && list[0].kind === 'upcoming_class' && list[0].how_many === 1,
     JSON.stringify(list));
-  r = await t.attempt('A', 'select * from public.close_my_account()');
+  r = await close(A);
   check('Delete with an upcoming class', 'refused, says to cancel first', !r.ok && /cancel it in My Bookings/.test(r.err), r.err);
 
   // A seat on hold blocks it too
@@ -79,7 +84,7 @@ export default async function run(t) {
   await q(`insert into public.vouchers (code, percent_off, owner_id, source, uses_left, expires_at)
            values ('HALF-DELTST', 50, $1, 'cancellation', 1, now() + interval '30 days')`, [A]);
   await q(`insert into public.notifications (user_id, booking_id, kind) values ($1, $2, 'booking_confirmed')`, [A, booking]);
-  r = await as('A', 'select * from public.close_my_account()');
+  r = await close(A);
   check('A (who has bookings) deletes their account', 'has_bookings = true', r.ok && r.row.has_bookings === true, r.ok ? JSON.stringify(r.row) : r.err);
   const gone = await profile(A);
   check('Profile blanked and deactivated', 'Deleted user, no email/mobile/birthday, inactive',
@@ -105,7 +110,7 @@ export default async function run(t) {
   check('Their login can\'t be fully deleted (bookings keep the row): soft delete instead', 'refused',
     !r.ok && /violates foreign key/.test(r.err), r.err ?? 'DELETED');
 
-  r = await t.attempt('A', 'select * from public.close_my_account()');
+  r = await close(A);
   check('Delete twice', 'refused', !r.ok, r.err);
   r = await t.attempt('admin', 'select public.admin_set_user_active($1, true)', [A]);
   check('Admin tries to reactivate a deleted account', 'refused', !r.ok && /deleted their account/.test(r.err), r.err);
@@ -113,7 +118,7 @@ export default async function run(t) {
   check('Admin tries to make a deleted account an admin', 'refused', !r.ok && /deleted their account/.test(r.err), r.err);
 
   // Someone who never booked
-  r = await as('N', 'select * from public.close_my_account()');
+  r = await close(N);
   check('N (never booked) deletes their account', 'has_bookings = false', r.ok && r.row.has_bookings === false, r.ok ? JSON.stringify(r.row) : r.err);
   r = await deleteLogin(N);
   const nProfile = await one('select count(*)::int as n from public.profiles where id = $1', [N]);
@@ -125,7 +130,16 @@ export default async function run(t) {
   // ===========================================================================
   r = await t.attempt('guest', 'select * from public.close_my_account()');
   check('Guest', 'refused', !r.ok, r.err);
-  r = await t.attempt('admin', 'select * from public.close_my_account()');
+  // Stage 1 leaves the old site working. Stage 2 is tested in this disposable database only.
+  const preserved = await t.attempt("B", "select * from public.close_my_account()");
+  check("Stage 1 keeps the legacy caller working", "allowed", preserved.ok, preserved.err);
+  await t.q(readFileSync(new URL("../rollout/v18_revoke_legacy_account_closure.sql", import.meta.url), "utf8"));
+  // Clients cannot bypass fresh verification through either database function.
+  for (const sql of ['select * from public.close_my_account()', 'select * from public.close_my_account_verified($1)']) {
+    const denied = await t.attempt('B', sql, sql.includes('$1') ? [B] : []);
+    check('Direct client account closure', 'permission denied', !denied.ok && /permission denied/.test(denied.err), denied.err);
+  }
+  r = await close(admin);
   check('Admin (staff) account', 'refused', !r.ok && /Staff accounts/.test(r.err), r.err);
   check('Admin is still active', 'active', (await profile(admin)).is_active === true, String((await profile(admin)).is_active));
 }

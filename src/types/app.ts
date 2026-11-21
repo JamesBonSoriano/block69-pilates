@@ -226,6 +226,7 @@ export type AdminBookingPayment = {
   status: PaymentStatus;
   paymongo_ref: string | null;
   has_screenshot: boolean;
+  transaction_reference: string | null; // May be absent on older manual transfers.
   verified_by_name: string | null; // the admin who recorded or checked it
   paid_at: string | null;
   created_at: string;

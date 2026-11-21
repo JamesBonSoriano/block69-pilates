@@ -3,9 +3,8 @@
 // Part G, the transfer page. The result goes to ClassDayPicker
 // (src/components/booking/ClassDayPicker.tsx).
 //
-// It only ORGANISES the classes the page loaded (today to the end of next
-// month, from get_open_sessions()). Which classes can be booked is decided by
-// the database (is_bookable, seats_left, state), never here.
+// The picker organizes dated classes for the selected month. The database
+// determines which classes are bookable and how many seats remain.
 
 import type { PickerDay, PickerMonths } from "@/components/booking/ClassDayPicker";
 import { seatBadge } from "@/lib/booking-rules";
@@ -16,7 +15,7 @@ import type { OpenSession } from "@/types/app";
 // What buildClassPicker() needs.
 type ClassPickerInput = {
   sessions: OpenSession[]; // the classes, earliest first
-  months: readonly [string, string]; // this month and next month ("YYYY-MM")
+  months: readonly string[]; // current month and future months with open seats
   askedMonth: string | null | undefined; // ?show_month= / ?month= from the address
   askedDate: string | null | undefined; // ?date= from the address
   pickedSessionId: string | null | undefined; // ?session= from the address
@@ -38,12 +37,7 @@ export type ClassPicker = {
 
 // Builds the month navigator, the chips and the classes for one month.
 // Takes: the input above.
-// Gives back: the ClassPicker above. The month shown is, in order:
-//   1. the month the address asked for (if it's this month or next month)
-//   2. the month of the class already picked (?session=)
-//   3. this month, if anything in it can still be booked
-//   4. otherwise next month, if it has classes (e.g. on the 31st, after the cutoff)
-//   5. otherwise this month (it then says "no classes yet")
+// Gives back: the selected month, neighboring scheduled months, and date chips.
 // The date chip shown first: ?date= (if that date has classes), else the
 // picked class's date, else the first date with a free seat, else the first date.
 export function buildClassPicker({
@@ -66,7 +60,7 @@ export function buildClassPicker({
   const month =
     allowedMonth(askedMonth, months) ??
     (picked ? allowedMonth(monthOf(picked.date), months) : null) ??
-    (has(months[0], true) ? months[0] : has(months[1], false) ? months[1] : months[0]);
+    (months.find((candidate) => has(candidate, true)) ?? months[0]);
 
   // The shown month's classes, grouped by date
   const inMonth = sessions.filter((s) => monthOf(s.date) === month);
@@ -81,13 +75,14 @@ export function buildClassPicker({
     days[0]?.date ??
     null;
 
+  // Jump over months without bookable classes while keeping the current month reachable.
+  const index = months.indexOf(month);
   return {
     months: {
       current: month,
       label: formatMonth(month),
-      // Only this month and next month: each one points to the other
-      previous: month === months[1] ? months[0] : null,
-      next: month === months[0] ? months[1] : null,
+      previous: months[index - 1] ?? null,
+      next: months[index + 1] ?? null,
     },
     days,
     initialDate,

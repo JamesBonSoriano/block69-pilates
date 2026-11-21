@@ -125,7 +125,7 @@ async function AppointmentView({ params }: { params: PageProps<"/admin/appointme
         }
       />
 
-      <AppointmentNotices booking={booking} manageHref={manageHref} />
+      <AppointmentNotices booking={booking} nowMs={nowMs} manageHref={manageHref} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <div className="flex flex-col gap-5">

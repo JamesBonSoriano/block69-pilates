@@ -9,12 +9,16 @@
 //   - clients and guests can't run keep_classes_open()
 // Run with: npm run test:db   (see supabase/tests/README.md)
 
+import { readFileSync } from 'node:fs';
+
 export const title = 'Version 1.7: classes open by themselves (pattern trigger, nightly job)';
 
 // Runs every check in this file.
 // Takes: the toolbox from helpers.mjs. Gives back: nothing (results go to t.check).
 export default async function run(t) {
   const { check, one, as, attempt } = t;
+  // This historical suite reenables Version 1.7 only in its disposable database.
+  await t.q(readFileSync(new URL("../migrations/20261117000002_v17_schedule.sql", import.meta.url), "utf8"));
   await t.addUser('A');
   await t.addUser('admin', { admin: true });
 

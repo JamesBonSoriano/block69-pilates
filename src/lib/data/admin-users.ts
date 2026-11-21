@@ -53,20 +53,25 @@ export async function getUserMessages(
   userId: string,
   page: number,
   perPage = 10,
-): Promise<{ rows: CommunicationRow[]; total: number }> {
-  if (!isUuid(userId)) return { rows: [], total: 0 };
+): Promise<{ rows: CommunicationRow[]; total: number; page: number }> {
+  if (!isUuid(userId)) return { rows: [], total: 0, page: 1 };
   await io();
   const supabase = await createClient();
-  const first = (Math.max(1, page) - 1) * perPage;
-  // count: "exact" = also tell us how many rows match in all (for the pages)
-  const { data, error, count } = await supabase
+  // Clamp old page links against the current count before asking for the range.
+  const { count, error: countError } = await supabase.from("communications")
+    .select("id", { count: "exact", head: true }).eq("user_id", userId);
+  if (countError) throw new Error(countError.message);
+  const total = count ?? 0;
+  const current = Math.min(Math.max(1, page), Math.max(1, Math.ceil(total / perPage)));
+  const first = (current - 1) * perPage;
+  const { data, error } = await supabase
     .from("communications")
-    .select("*", { count: "exact" })
+    .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: false }).order("id")
     .range(first, first + perPage - 1);
   if (error) {
     throw new Error(`Could not load the messages: ${error.message}`);
   }
-  return { rows: data, total: count ?? 0 };
+  return { rows: data, total, page: current };
 }

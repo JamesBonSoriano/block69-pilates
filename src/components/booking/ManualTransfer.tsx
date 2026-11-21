@@ -22,6 +22,7 @@
 
 import { ImageUp, Send } from "lucide-react";
 import { startTransition, useActionState, useId, useState, type ChangeEvent, type FormEvent } from "react";
+import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
@@ -98,6 +99,12 @@ export function ManualTransfer({
       setProblem("Please add a screenshot of your transfer.");
       return;
     }
+    // Read the typed reference before starting the private upload.
+    const reference = String(new FormData(event.currentTarget).get("transaction_reference") ?? "").trim();
+    if (!reference) {
+      setProblem("Enter the transaction reference from your transfer receipt.");
+      return;
+    }
     setProblem("");
     setUploading(true);
     // e.g. "<user id>/<booking id>-1729651234567.jpg": a new name every
@@ -118,6 +125,7 @@ export function ManualTransfer({
     formData.set("booking_id", bookingId);
     formData.set("method", method);
     formData.set("screenshot_path", path);
+    formData.set("transaction_reference", reference);
     startTransition(() => formAction(formData));
   }
 
@@ -153,6 +161,7 @@ export function ManualTransfer({
         />
       </RadioGroup>
 
+      <Input label="Transaction reference" name="transaction_reference" required maxLength={100} autoComplete="off" />
       {/* The screenshot: the real file input is hidden, the label is the button */}
       <div className="flex flex-col gap-1.5">
         <span className="text-xs font-semibold text-brown">Screenshot of your transfer</span>

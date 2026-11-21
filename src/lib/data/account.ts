@@ -207,3 +207,39 @@ export async function getMyProfileExtras(
     memberSince: data.created_at,
   };
 }
+
+// Returns the paid receipt ID for this client's booking, including earlier moves.
+export async function getMyBookingReceiptId(bookingId: string): Promise<string | null> {
+  if (!isUuid(bookingId)) return null;
+  await io();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_booking_receipt_id", { p_booking_id: bookingId });
+  if (error) throw new Error(`Could not load your booking receipt: ${error.message}`);
+  return data;
+}
+
+// Reads just one My Bookings page and the exact count for its tab.
+export async function getMyBookingPage(upcoming: boolean, page: number, pageSize: number) {
+  await io();
+  const supabase = await createClient();
+  const offset = (page - 1) * pageSize;
+  const { data, count, error } = await supabase.rpc("get_my_bookings", undefined, { count: "exact" })
+    .eq("is_upcoming", upcoming)
+    .order("class_date", { ascending: upcoming })
+    .order("start_time", { ascending: upcoming })
+    .order("created_at", { ascending: upcoming })
+    .order("booking_id", { ascending: upcoming })
+    .range(offset, offset + pageSize - 1);
+  if (error) throw new Error(`Could not load your bookings: ${error.message}`);
+  return { rows: data as MyBookingListItem[], count: count ?? 0 };
+}
+
+// Finds one row in the existing client-only My Bookings list.
+export async function getMyBookingListItem(bookingId: string | undefined): Promise<MyBookingListItem | null> {
+  if (!bookingId || !isUuid(bookingId)) return null;
+  await io();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_bookings").eq("booking_id", bookingId).maybeSingle();
+  if (error) throw new Error(`Could not load your booking: ${error.message}`);
+  return data as MyBookingListItem | null;
+}

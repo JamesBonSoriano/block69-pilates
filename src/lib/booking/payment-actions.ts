@@ -185,6 +185,11 @@ export async function submitManualTransfer(_previous: PaymentState, formData: Fo
   const bookingId = readText(formData, "booking_id");
   const method = readText(formData, "method");
   const screenshotPath = readText(formData, "screenshot_path");
+  // Check the reference before changing any checkout state.
+  const reference = readText(formData, "transaction_reference");
+  if (!reference || reference.length > 100 || /\p{Cc}/u.test(reference)) {
+    return { error: "Enter the transaction reference from your transfer receipt (1 to 100 characters)." };
+  }
   if (!isUuid(bookingId)) return { error: "Sorry, we couldn't find that booking." };
   if (method !== "gcash" && method !== "bpi") return { error: "Please pick GCash or BPI." };
 
@@ -207,6 +212,7 @@ export async function submitManualTransfer(_previous: PaymentState, formData: Fo
     p_booking_id: bookingId,
     p_method: method,
     p_screenshot_path: screenshotPath,
+    p_transaction_reference: reference,
   });
   if (error) return { error: friendlyDatabaseError(error) };
 

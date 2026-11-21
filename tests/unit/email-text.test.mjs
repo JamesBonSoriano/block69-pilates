@@ -14,7 +14,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adminMessageEmail, cafeCancelEmail, confirmationEmail, emailChangedAlert, emailSignOff, rescheduleEmail } from '../../src/lib/email-text.ts';
+import { adminMessageEmail, cafeCancelEmail, confirmationEmail, emailChangedAlert, emailSignOff, rescheduleEmail, wholeClassCancelledEmail } from '../../src/lib/email-text.ts';
 
 const cafe = { name: 'Block 69 Cafe', address: '444 Kamagong St., Comembo, Taguig City', email: 'block69cafe@gmail.com' };
 
@@ -87,4 +87,20 @@ test('cafe cancel email: what the client got, for each choice', () => {
   assert.ok(refunded.text.includes('refunded your payment'));
   assert.ok(!refunded.text.includes('Reason'), 'the admin reason is never in the email');
   assert.ok(refunded.text.endsWith('block69cafe@gmail.com'));
+});
+
+// Each class cancellation notice explains the matching payment outcome.
+test('whole-class cancellation distinguishes paid, checking, and unpaid holds', () => {
+  const label = 'January 10 at 12:00 PM';
+  const variants = [
+    ['class_cancelled', /free re-schedule/],
+    ['class_cancelled_checking', /still being checked/],
+    ['class_cancelled_hold_released', /unpaid seat hold was released/],
+  ];
+  for (const [kind, text] of variants) {
+    const email = wholeClassCancelledEmail(label, kind, cafe);
+    assert.match(email.subject, /cancelled/);
+    assert.ok(email.text.includes(label));
+    assert.match(email.text, text);
+  }
 });

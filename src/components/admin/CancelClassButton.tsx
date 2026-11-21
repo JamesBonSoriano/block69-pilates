@@ -74,13 +74,13 @@ export function CancelClassButton({ sessionId, classLabel, bookedCount, classNam
               {state.done.bookedCount === 0
                 ? "Nobody was booked in it. It no longer shows as open for booking."
                 : `${state.done.bookedCount} booking${state.done.bookedCount === 1 ? " was" : "s were"} holding a seat. ` +
-                  "Those clients keep their bookings and will see a free re-schedule in My Bookings, with the last day to use it."}
+                  "Check My Bookings for each client’s next step. Contact any walk-in guests directly."}
             </p>
-            {state.done.bookedCount > 0 && (
-              <FormMessage tone="info">
-                Emails aren&apos;t sent yet (they come in a later step), so please message the booked clients
-                yourself. Walk-in guests can only be reached by phone.
-              </FormMessage>
+            {state.done.emailSent > 0 && (
+              <FormMessage tone="success">Cancellation emails sent: {state.done.emailSent}.</FormMessage>
+            )}
+            {state.done.emailFailed > 0 && (
+              <FormMessage tone="error">Cancellation emails not sent: {state.done.emailFailed}. Contact those clients directly.</FormMessage>
             )}
             <Button fullWidth onClick={() => dialogRef.current?.close()}>
               Done

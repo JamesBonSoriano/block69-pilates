@@ -48,6 +48,7 @@ export type AdminPaymentFilters = {
   to?: string;
   search?: string; // client name, email, PayMongo reference, booking code
   limit?: number; // default 200
+  offset?: number; // rows skipped when paging through Earnings
 };
 
 // Loads the payments for the Payments page.
@@ -69,6 +70,7 @@ export async function getAdminPayments(
     p_limit: filters.limit ?? 200,
     // Version 1.7 (migration 26): PayMongo vs GCash / BPI transfer
     p_provider: filters.provider || undefined,
+    p_offset: filters.offset,
   });
   if (error) {
     throw new Error(`Could not load the payments: ${error.message}`);
@@ -108,17 +110,26 @@ export async function getBillingSummary(): Promise<AdminBillingSummary> {
   return data[0];
 }
 
-// Loads every voucher: the promo codes and the personal 50% codes.
-// Takes: nothing.
-// Gives back: the vouchers, newest first. Throws if Supabase can't be reached.
-export async function getAdminVouchers(): Promise<AdminVoucher[]> {
+// Counts and pages one voucher list independently, including beyond the API row cap.
+export async function getAdminVouchers(source: "promo" | "cancellation", requestedPage: number, pageSize: number) {
   await io();
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_list_vouchers");
-  if (error) {
-    throw new Error(`Could not load the vouchers: ${error.message}`);
-  }
-  return data as AdminVoucher[];
+  // With the count first, stale page addresses can be clamped without a range error.
+  const query = (head = false) => {
+    const result = supabase.rpc("admin_list_vouchers", undefined, { count: "exact", head })
+      .eq("source", source);
+    return source === "cancellation" ? result.eq("percent_off", 50) : result;
+  };
+  const { count, error: countError } = await query(true);
+  if (countError) throw new Error(countError.message);
+  const total = count ?? 0;
+  const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
+  if (!total) return { rows: [], total, page };
+  const offset = (page - 1) * pageSize;
+  const { data, error } = await query()
+    .order("created_at", { ascending: false }).order("voucher_id").range(offset, offset + pageSize - 1);
+  if (error) throw new Error(error.message);
+  return { rows: data as AdminVoucher[], total, page };
 }
 
 // Loads the accounts for the Users page (and the Dashboard's new clients).

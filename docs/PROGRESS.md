@@ -47,6 +47,23 @@ Short status only. Full details of every step (files, tests, checks, old notes) 
 - Prompt D schedule: "Open classes" card removed, "Add class time" -> "Add class"; a trigger opens 9 weeks when the pattern is saved and removes never-booked future classes on a day/time change or Off; pg_cron `block69-keep-classes-open` at 00:05 Manila (migration 28 `v17_schedule`, job confirmed active). Both migrations pushed, types regenerated
 - Last checks: `test:db` 888/888, `test:unit` 69/69, `tsc` / `lint` / `build` clean
 
+## Version 1.8
+
+- Batch 1 (PDF pp. 1–3, 5–6): Next.js 16.4.6, test-only PayMongo guard, verified account deletion, and typed signup email codes.
+- Account-closure migration passed locally (890/890); it changes function access only. Live push needs separate approval. Unit tests 70/70; TypeScript, lint and build passed.
+- Pending provider checks: PayMongo test key/webhook, Google OAuth branding (the provider is on), and hosted OTP template, SMTP and Confirm email (currently off).
+- Batch 2 (PDF pp. 4, 7–8, 15–16): dated classes, future-month booking, five-row lists, owned receipts and scrollable policy dialogs.
+- Batch 3 (PDF pp. 9–14): manual transfer proof and cutoff, booking sort and Done, action emails, and five-row Earnings pages.
+- Verified account closure is staged: server function in migrations; legacy revoke held in supabase/rollout until after deployment.
+- Batch 4 (PDF pp. 16–22): voucher dialogs and paging, live content preview, user editing and recovery, settings pencils.
+- Final verification (2026-11-21 Manila): DB 921/921, unit 71/71, TypeScript, lint and Next.js 16.4.6 production build passed.
+- Read-only linked history matched through 20261117000002. Pending migrations are 20261121000001 through 20261121000005. The legacy closure revoke is outside the push.
+- The linked database had one ended appointment eligible for the manual-transfer expiry and no future eligible appointments at the snapshot. Its nightly generator was active at 00:05 Manila and the manual-transfer expiry job was absent.
+- Rollout: apply closure stage 1 before deploying; revoke the legacy closure only after the updated app is verified. Pause manual-transfer submissions for the reference migration and app cutover.
+- The production build served HTTP on port 3023. Home, signup, policies and admin login returned 200. Both booking URLs returned the class-loading fallback against the linked database. Protected admin URLs redirected to login. Browser access was unavailable, so neither viewport nor the Next.js warning was visually checked.
+- Calendar follow-up: both booking requests hit the same server error. PostgREST could not find public.bookable_class_months(), which is added by 20261121000002. All five migrations applied in disposable Postgres and the focused Version 1.8 suite passed 27/27. Local Supabase status confirmed Docker and Podman are unavailable, so the app-facing retest remains pending.
+- End-to-end Auth, email and recovery need isolated Supabase Auth with test inboxes and SMTP. Staff email changes use replacement-inbox confirmation. PayMongo test checkout needs a test key, webhook signing secret and reachable test endpoint.
+
 ## Next
 - **You:** click-through Prompt C + D at 390px and 1440px (admin cancel all 3 choices on a test booking, then My Bookings / bell / My Vouchers as that client; Schedule add / edit / Off a class time); try Change email once and read the `Change email (send code) failed:` line in the `npm run dev` terminal
 - **You:** click-through Version 1.6 admin (Appointments chips, eye / pencil, PDF, re-schedule, reject; Earnings) at 390px and 1440px

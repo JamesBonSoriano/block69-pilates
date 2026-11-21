@@ -294,8 +294,8 @@ export default async function run(t) {
   // ===========================================================================
   t.section('Manual transfer: submit_manual_payment');
   // ===========================================================================
-  const submit = (actor, bookingId, method, path) =>
-    as(actor, 'select public.submit_manual_payment($1, $2, $3) as s', [bookingId, method, path]);
+  const submit = (actor, bookingId, method, path, reference = 'TEST-REFERENCE') =>
+    as(actor, 'select public.submit_manual_payment($1, $2, $3, $4) as s', [bookingId, method, path, reference]);
   r = await book('A', S[13], { mat: true });
   const man = r.row.booking_id;
   const refM = newRef();
@@ -314,11 +314,14 @@ export default async function run(t) {
   await q(`update public.settings set value = 'true' where key = 'manual_payment_enabled'`);
   check('Manual transfers turned off by the admin', 'refused', !r.ok && r.err.includes('turned off'), r.err);
 
+  // A screenshot on its own does not qualify as a new submission.
+  r = await submit('A', man, 'bpi', pathA, '   ');
+  check('Manual transfer without a reference', 'refused', !r.ok && /reference/.test(r.err), r.err);
   r = await submit('A', man, 'bpi', pathA);
   const manual = await one(`select * from public.payments where booking_id = $1 and provider = 'manual'`, [man]);
   check('A submits a BPI transfer with their screenshot', 'awaiting_verification; manual pending payment of 550 with the screenshot',
     r.ok && (await status(man)) === 'awaiting_verification' && manual?.status === 'pending'
-      && manual.amount === '550.00' && manual.screenshot_path === pathA,
+      && manual.amount === '550.00' && manual.screenshot_path === pathA && manual.transaction_reference === "TEST-REFERENCE",
     r.ok ? `${await status(man)}, ${manual?.status}, ${manual?.amount}` : r.err);
   check('The PayMongo checkout opened before', 'expired', (await paymentFor(refM)).status === 'expired', (await paymentFor(refM)).status);
   check('The seat stays held while the cafe checks', '3 seats left', (await seatsLeft(S[13])) === 3, await seatsLeft(S[13]));

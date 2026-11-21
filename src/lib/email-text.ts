@@ -180,3 +180,20 @@ export function emailChangedAlert(
     text: `${lines.join("\n")}\n${emailSignOff(cafe)}`,
   };
 }
+
+// Explains what happens to the booking and payment after a whole-class cancellation.
+export function wholeClassCancelledEmail(
+  classLabel: string,
+  kind: "class_cancelled" | "class_cancelled_checking" | "class_cancelled_hold_released",
+  cafe: EmailCafe,
+): EmailText {
+  const next = {
+    class_cancelled: "See My Account > My Bookings for your free re-schedule and its deadline.",
+    class_cancelled_checking: "Your transfer is still being checked. Contact the cafe if you already sent money and need help.",
+    class_cancelled_hold_released: "Your unpaid seat hold was released. Check My Bookings or contact the cafe if you already paid.",
+  };
+  return {
+    subject: "Your Mat Pilates class was cancelled",
+    text: `The cafe cancelled the Mat Pilates class on ${classLabel}.\n\n${next[kind]}\n${emailSignOff(cafe)}`,
+  };
+}

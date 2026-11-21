@@ -39,6 +39,7 @@ import { GENERIC_ERROR, friendlyDatabaseError } from "@/lib/database-errors";
 import {
   cafeCancelEmail,
   rescheduleEmail,
+  wholeClassCancelledEmail,
   type CafeCancelDetails,
 } from "@/lib/email-text";
 import {
@@ -114,13 +115,27 @@ export async function cancelClass(
   const supabase = await createClient();
   if (!(await isAdmin(supabase))) return { error: NOT_ADMIN };
 
-  const { data, error } = await supabase.rpc("admin_cancel_session", {
+  const { data, error } = await supabase.rpc("admin_cancel_class_for_email", {
     p_session_id: sessionId,
   });
   if (error) {
     return { error: friendlyDatabaseError(error) };
   }
-  return { done: { bookedCount: data ?? 0 } };
+  // The cancellation returns only the clients affected by this successful transition.
+  const result = data as {
+    bookedCount: number; classDate: string; startTime: string; endTime: string;
+    recipients: { user_id: string; booking_id: string; kind: Parameters<typeof wholeClassCancelledEmail>[1] }[];
+  };
+  const cafe = await cafeDetails();
+  const classLabel = `${formatClassDate(result.classDate).full} · ${formatTimeRange(result.startTime, result.endTime)}`;
+  const deliveries = await Promise.allSettled(result.recipients.map((recipient) =>
+    cafe ? sendLogged(supabase, {
+      userId: recipient.user_id, bookingId: recipient.booking_id, kind: "message",
+      email: wholeClassCancelledEmail(classLabel, recipient.kind, cafe), replyTo: cafe.email, refreshPage: false,
+    }) : Promise.resolve({ saved: undefined }),
+  ));
+  const emailSent = deliveries.filter((delivery) => delivery.status === "fulfilled" && delivery.value.saved).length;
+  return { done: { bookedCount: result.bookedCount, emailSent, emailFailed: deliveries.length - emailSent } };
 }
 
 // ---------------------------------------------------------------------------
@@ -204,7 +219,7 @@ export async function cancelAppointment(
       : null,
   });
 
-  refresh();
+  // Keep the action result in the open dialog until the admin reads it.
   return {
     done: {
       message: CANCEL_MESSAGES[outcome],
@@ -257,6 +272,7 @@ async function sendCafeCancelEmail(
       cafe,
     ),
     replyTo: cafe.email,
+    refreshPage: false,
   });
   return result.saved
     ? { sent: true, note: `Email sent to ${booking.guest_email}.` }
@@ -330,7 +346,7 @@ export async function rescheduleBooking(
     reason,
   );
 
-  refresh();
+  // Keep the action result in the open dialog until the admin reads it.
   return {
     done: {
       message: `Re-scheduled to ${newClass}. The client was notified in their account.`,
@@ -384,6 +400,7 @@ async function sendRescheduleEmail(
       cafe,
     ),
     replyTo: cafe.email,
+    refreshPage: false,
   });
   return result.saved
     ? { sent: true, note: `Email sent to ${newBooking.guest_email}.` }

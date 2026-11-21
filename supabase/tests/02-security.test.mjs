@@ -131,8 +131,8 @@ export default async function run(t) {
       and has_function_privilege($1, p.oid, 'execute')
     order by 1`, [role])).map((x) => x.name);
   const guestFns = await callable('anon');
-  check('Functions a guest can call', 'get_open_sessions, is_admin, seats_left',
-    guestFns.join(', ') === 'get_open_sessions, is_admin, seats_left', guestFns.join(', '));
+  check('Functions a guest can call', 'bookable_class_months, get_open_sessions, is_admin, seats_left',
+    guestFns.join(', ') === 'bookable_class_months, get_open_sessions, is_admin, seats_left', guestFns.join(', '));
   const clientFns = await callable('authenticated');
   const expectedClientFns = [
     // migration 9 (admin daily pages) adds admin_class_rosters, admin_dashboard_summary,
@@ -156,7 +156,7 @@ export default async function run(t) {
     'admin_update_settings', 'admin_update_user', 'admin_user_bookings', 'admin_walkin_booking',
     // migration 16 (Change 17) adds close_my_account and my_account_deletion_blockers
     // (Delete account: each only touches the caller's own account)
-    'book_seat', 'cancel_my_booking', 'check_voucher', 'close_my_account', 'confirm_free_booking', 'deactivate_my_account', 'generate_sessions',
+    'book_seat', 'cancel_my_booking', 'check_voucher', 'confirm_free_booking', 'deactivate_my_account', 'generate_sessions',
     // migration 6 (booking pages): read only the caller's own bookings
     // migration 8 (My Account) adds get_my_bookings, get_my_payments, get_my_vouchers
     // migration 12 (client revisions) adds get_my_notifications, mark_my_notifications_read
@@ -169,7 +169,10 @@ export default async function run(t) {
     // migration 17 (Version 1.4) adds reactivate_my_account (the caller's own account only)
     'reactivate_my_account', 'release_my_hold', 'save_online_checkout',
     'seats_left', 'start_online_payment', 'submit_manual_payment', 'transfer_my_booking',
-  ];
+    // Version 1.8 adds dated scheduling and owned booking receipts.
+    'admin_create_dated_class', 'admin_upcoming_classes', 'bookable_class_months', 'my_booking_receipt_id',
+    'admin_cancel_class_for_email', 'close_my_account',
+  ].sort();
   check('Functions a logged-in user can call (admin_* check is_admin inside)', `${expectedClientFns.length} public functions, no private helpers`,
     clientFns.join(', ') === expectedClientFns.join(', '), clientFns.join(', '));
 

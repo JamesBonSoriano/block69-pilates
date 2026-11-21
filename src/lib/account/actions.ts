@@ -34,6 +34,8 @@ import { emailChangeErrorMessage, logEmailChangeError } from "@/lib/auth/email-c
 import { friendlyAuthError } from "@/lib/auth/errors";
 import { checkCurrentPassword } from "@/lib/auth/password-check";
 import { safeNextPath } from "@/lib/auth/safe-next";
+import { cookies } from "next/headers";
+import { deleteGoogleIntent, deleteGoogleProof, deleteProofCookieOptions, signDeleteProof, verifyDeleteProof } from "@/lib/auth/delete-reauth";
 import { hasPasswordLogin } from "@/lib/auth/sign-in-methods";
 import { cancelTiming } from "@/lib/booking-rules";
 import { loadMyBookings } from "@/lib/data/account";
@@ -503,13 +505,12 @@ export async function reactivateAccount(_previous: AccountFormState, formData: F
 }
 
 // Deletes the person's own account (the approach you approved).
-// Takes: the previous state, and the form: confirm_text (must be "DELETE")
-// and password (only for accounts that have a password).
+// Takes: form state and the current password, or an explicit Google confirmation.
 // Gives back: an error (including what to do first, e.g. "cancel your
 // upcoming class"), or (when it works) logs them out and sends them to
 // /login with a "your account was deleted" message.
 // Steps:
-//   1. the checks: "DELETE" typed, the current password right (if any)
+//   1. verify the current password or complete a fresh Google sign-in
 //   2. close_my_account() (migration 16): refuses if anything is still going
 //      on, otherwise blanks the profile, deactivates it, turns off their
 //      codes and deletes their notifications; tells us if they ever booked
@@ -518,12 +519,7 @@ export async function reactivateAccount(_previous: AccountFormState, formData: F
 //      cafe; nobody can log in), a full delete if they never booked
 //   4. log out on this device, go to /login
 export async function deleteAccount(_previous: AccountFormState, formData: FormData): Promise<AccountFormState> {
-  const confirmText = readText(formData, "confirm_text");
   const password = readPassword(formData, "password");
-
-  if (confirmText !== "DELETE") {
-    return { fieldErrors: { confirm_text: 'Please type DELETE (in capital letters) to confirm.' } };
-  }
 
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -539,6 +535,29 @@ export async function deleteAccount(_previous: AccountFormState, formData: FormD
     if (check === "error") return { error: "We couldn't check your password right now. Please try again in a few minutes." };
   }
 
+  // Google-only clients must come back through the deletion-specific callback.
+  if (!hasPasswordLogin(user)) {
+    const cookieStore = await cookies();
+    const { data: claimData } = await supabase.auth.getClaims();
+    const sessionId = claimData?.claims.session_id;
+    if (typeof sessionId !== "string") return { error: LOGGED_OUT_ERROR };
+
+    if (!verifyDeleteProof(cookieStore.get(deleteGoogleProof)?.value, deleteGoogleProof, user.id, sessionId)) {
+      if (!process.env.SUPABASE_SECRET_KEY) return { error: "Deleting accounts is unavailable right now." };
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${getSiteUrl()}/auth/confirm?flow=delete-google`,
+          queryParams: { prompt: "select_account" },
+        },
+      });
+      if (error || !data.url) return { error: "Google confirmation could not start. Please try again." };
+      cookieStore.set(deleteGoogleIntent, signDeleteProof(deleteGoogleIntent, user.id), deleteProofCookieOptions);
+      redirect(data.url);
+    }
+    cookieStore.delete(deleteGoogleProof);
+  }
+
   // The secret key is needed for step 3: check it's set up BEFORE changing anything
   let service: ReturnType<typeof createServiceClient>;
   try {
@@ -549,7 +568,7 @@ export async function deleteAccount(_previous: AccountFormState, formData: FormD
   }
 
   // --- 2. Close the account in the database (it says what to do first, if anything)
-  const { data, error } = await supabase.rpc("close_my_account");
+  const { data, error } = await service.rpc("close_my_account_verified", { p_user_id: user.id });
   if (error) {
     return { error: friendlyDatabaseError(error) };
   }

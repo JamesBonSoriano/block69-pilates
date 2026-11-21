@@ -19,6 +19,7 @@ import "server-only"; // never sent to the browser
 import { io } from "next/cache";
 import { connection } from "next/server";
 import { createPublicClient } from "@/lib/supabase/public";
+import { allowedMonth, bookableMonths, monthOf, monthRange } from "@/lib/month";
 import { voucherLabel } from "@/lib/booking-rules";
 import type { VoucherPreview } from "@/lib/booking/form-state";
 import { createClient } from "@/lib/supabase/server";
@@ -184,4 +185,22 @@ export async function findMySessionBooking(
   }
   const row = data[0];
   return row ? { bookingId: row.booking_id, status: row.status } : null;
+}
+
+// Loads navigator months and one month of live seat details.
+export async function getBookingCalendar(today: string, requested: string | null | undefined, selected?: string | null) {
+  await connection();
+  const supabase = createPublicClient();
+  const { data, error } = await supabase.rpc("bookable_class_months");
+  if (error) throw new Error(`Could not load class months: ${error.message}`);
+
+  const scheduled = data.map(({ month_start }) => monthOf(month_start));
+  const months = bookableMonths(today, scheduled);
+  const explicit = allowedMonth(requested, months);
+  const picked = !explicit && selected ? await loadSession(selected) : null;
+  const pickedMonth = picked?.is_bookable ? allowedMonth(monthOf(picked.date), months) : null;
+  const month = explicit ?? pickedMonth ?? scheduled[0] ?? months[0];
+  const { first, last } = monthRange(month);
+  const sessions = await getBookingSessions({ from: first, to: last });
+  return { months, month, sessions };
 }

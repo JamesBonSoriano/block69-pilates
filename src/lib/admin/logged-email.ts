@@ -51,6 +51,7 @@ export async function sendLogged(
     bookingId: string | null;
     email: EmailText;
     replyTo: string;
+    refreshPage?: boolean; // Keep one-time action results mounted until read.
   },
 ): Promise<AdminSaveState> {
   // No SMTP keys yet: say so, and don't fill the history with failed tries
@@ -83,7 +84,7 @@ export async function sendLogged(
   });
   if (finishError) console.error("Could not finish the message log:", finishError.message);
 
-  refresh();
+  if (message.refreshPage !== false) refresh();
   if (!result.ok) {
     return { error: `The email wasn't sent: ${result.error} It shows as "Failed" in the history.` };
   }

@@ -25,6 +25,7 @@ export type BookingFilterValues = {
   status: string; // a STATUS_CHIPS key, e.g. "all" or "pending"
   date: string; // "YYYY-MM-DD" or ""
   time: string; // "09:00:00" or ""
+  sort: "newest" | "oldest"; // default to the newest booking timestamp
   when: "upcoming" | "past" | "all";
 };
 
@@ -38,6 +39,7 @@ export function bookingsHref(values: BookingFilterValues): string {
   if (values.date) params.set("date", values.date);
   if (values.time) params.set("time", values.time);
   // Version 1.7: "all" (all dates) is the default, so only other choices go in the address
+  if (values.sort === "oldest") params.set("sort", values.sort);
   if (values.when !== "all") params.set("when", values.when);
   const query = params.toString();
   return query ? `/admin/appointments?${query}` : "/admin/appointments";
@@ -102,7 +104,7 @@ export function BookingFilters({
       </nav>
 
       {/* Search + date + time + when. action = this same page. */}
-      <Form action="/admin/appointments" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto] lg:items-end">
+      <Form action="/admin/appointments" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_auto] lg:items-end">
         {/* Keep the chosen status chip when searching */}
         {values.status !== "all" && <input type="hidden" name="status" value={values.status} />}
         <Input
@@ -117,6 +119,10 @@ export function BookingFilters({
           // show other clients' names
           autoComplete="off"
         />
+        <Select label="Sort" name="sort" defaultValue={values.sort} options={[
+          { value: "newest", label: "Newest booked" },
+          { value: "oldest", label: "Oldest booked" },
+        ]} />
         <Input label="Class date" name="date" type="date" defaultValue={values.date} />
         <Select
           label="Class time"

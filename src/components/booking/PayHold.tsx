@@ -28,6 +28,7 @@ import { useActionState, useEffect, useState } from "react";
 import { BookingAside, BookingColumns } from "@/components/booking/BookingLayout";
 import { HoldExpired } from "@/components/booking/HoldExpired";
 import { ManualTransfer } from "@/components/booking/ManualTransfer";
+import { PolicyDialogLink } from "@/components/booking/PolicyDialog";
 import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { RadioGroup, RadioOption } from "@/components/ui/RadioGroup";
@@ -213,19 +214,12 @@ export function PayHold({
             </details>
           )}
 
-          <p className="pb-2 text-center text-[11px] leading-relaxed text-muted">
+          <div className="pb-2 text-center text-[11px] leading-relaxed text-muted">
             There are no cash refunds. See the{" "}
-            <a
-              href="/policies#cancellation"
-              target="_blank"
-              rel="noopener"
-              className="font-semibold text-brown underline underline-offset-2"
-            >
+            <PolicyDialogLink section="cancellation" className="font-semibold text-brown underline underline-offset-2">
               cancellation policy
-              <span className="sr-only"> (opens in a new tab)</span>
-            </a>
-            .
-          </p>
+            </PolicyDialogLink>.
+          </div>
         </div>
 
         <BookingAside

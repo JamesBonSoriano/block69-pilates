@@ -18,7 +18,7 @@ export const emptyAttendanceState: AttendanceState = {};
 // What cancelClass() answers (the Cancel class box).
 export type CancelClassState = {
   error?: string;
-  done?: { bookedCount: number }; // how many bookings were holding a seat
+  done?: { bookedCount: number; emailSent: number; emailFailed: number };
 };
 
 // The starting state of the Cancel class box.

@@ -70,6 +70,13 @@ export default async function run(t) {
   const moved = r.row?.id;
   check('A moves their late-paid booking 6 hours before the old class', 'a new booking',
     r.ok && !!moved, r.err ?? 'no id');
+  // A moved booking's receipt stays with the original payment and its owner.
+  const ownReceipt = await attempt('A', 'select public.my_booking_receipt_id($1) as id', [moved]);
+  const otherReceipt = await attempt('B', 'select public.my_booking_receipt_id($1) as id', [moved]);
+  const originalReceipt = await attempt('A', 'select public.my_booking_receipt_id($1) as id', [late]);
+  check('Moved booking finds its original receipt', 'same paid receipt', Boolean(ownReceipt.row?.id)
+    && ownReceipt.row.id === originalReceipt.row?.id, ownReceipt.row?.id);
+  check('Another client cannot find the receipt', 'null', otherReceipt.row?.id === null, otherReceipt.row?.id);
   check('Old booking', 'transferred', (await status(late)) === 'transferred', await status(late));
   check('New booking', 'confirmed', moved && (await status(moved)) === 'confirmed', moved && await status(moved));
   const fresh = await one('select transferred_from, total, mat_rental from public.bookings where id = $1', [moved]);

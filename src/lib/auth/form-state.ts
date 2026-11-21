@@ -15,6 +15,8 @@ export type AuthFormState = {
   values?: Partial<Record<string, string>>;
   // A success message (e.g. "Check your email"); the form shows it instead of the fields
   success?: string;
+  // The signup address that must confirm its verification code.
+  verificationEmail?: string;
 };
 
 // The starting state of every form: nothing to show yet.

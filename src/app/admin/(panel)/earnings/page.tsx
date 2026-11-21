@@ -25,6 +25,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
+import { AdminPagination } from "@/components/admin/AdminPagination";
 import { AdminCard, AdminLoadError, AdminLoading, AdminPage, AdminPageHeader, StatCard } from "@/components/admin/AdminUi";
 import { EarningsByWeek, type WeekEarnings } from "@/components/admin/EarningsChart";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
@@ -45,6 +46,8 @@ export const metadata: Metadata = { title: "Earnings · Admin" };
 
 // How many weeks the earnings bars show.
 const WEEKS_SHOWN = 8;
+// Payments per list page; the independent earnings summaries still use every payment.
+const PAYMENTS_PER_PAGE = 5;
 
 // The status filter choices (the database refuses anything else). The
 // method choices are EARNINGS_METHOD_OPTIONS (Version 1.7).
@@ -82,7 +85,11 @@ export default function AdminEarningsPage({ searchParams }: PageProps<"/admin/ea
 // Takes: the searchParams promise. Gives back: the cards and the list.
 async function EarningsBody({ searchParams }: { searchParams: PageProps<"/admin/earnings">["searchParams"] }) {
   await requireAdmin();
-  const values = readFilters(await searchParams);
+  const params = await searchParams;
+  const values = readFilters(params);
+  const askedPage = Number(firstParam(params.page));
+  const requestedPage = Number.isSafeInteger(askedPage) && askedPage > 0 && askedPage <= 429496730 ? askedPage : 1;
+  let page = requestedPage;
 
   // The earnings range: from the Monday WEEKS_SHOWN - 1 weeks ago, to today
   const today = manilaDateString(nowForThisVisit());
@@ -94,20 +101,23 @@ async function EarningsBody({ searchParams }: { searchParams: PageProps<"/admin/
   let summary: AdminBillingSummary;
   let earnings: AdminEarningRow[];
   let list: { rows: AdminPayment[]; totalMatches: number };
+  // Keep the same filters on every page, including when a stale page becomes empty.
+  const filters = {
+    view: "all" as const, search: values.q, ...earningsMethodFilter(values.method),
+    status: values.status, from: values.from, to: values.to,
+    limit: PAYMENTS_PER_PAGE,
+  };
   try {
     [summary, earnings, list] = await Promise.all([
       getBillingSummary(),
       getEarnings(earningsFrom, today),
-      getAdminPayments({
-        view: "all",
-        search: values.q,
-        // Version 1.7: the Method choice becomes a provider and / or method
-        ...earningsMethodFilter(values.method),
-        status: values.status,
-        from: values.from,
-        to: values.to,
-      }),
+      getAdminPayments({ ...filters, offset: (page - 1) * PAYMENTS_PER_PAGE }),
     ]);
+    if (page > 1 && !list.rows.length) {
+      const first = await getAdminPayments(filters);
+      page = Math.max(1, Math.ceil(first.totalMatches / PAYMENTS_PER_PAGE));
+      list = page === 1 ? first : await getAdminPayments({ ...filters, offset: (page - 1) * PAYMENTS_PER_PAGE });
+    }
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);
@@ -146,16 +156,14 @@ async function EarningsBody({ searchParams }: { searchParams: PageProps<"/admin/
       {/* ---- The payments table, with filters ---- */}
       <PaymentFilters values={values} />
 
-      <p role="status" className="text-xs text-muted">
-        {list.totalMatches > list.rows.length
-          ? `${list.totalMatches} payments · showing the newest ${list.rows.length}. Narrow the filters to see the rest.`
-          : `${list.totalMatches} payment${list.totalMatches === 1 ? "" : "s"}`}
-      </p>
-
       {list.rows.length === 0 ? (
         <AdminCard className="text-sm text-muted">No payments match these filters.</AdminCard>
       ) : (
-        <PaymentList payments={list.rows} />
+        <>
+          <PaymentList payments={list.rows} />
+          <AdminPagination page={page} perPage={PAYMENTS_PER_PAGE} total={list.totalMatches}
+            noun={list.totalMatches === 1 ? "payment" : "payments"} label="Earnings pages" hrefFor={(n) => earningsPageHref(values, n)} />
+        </>
       )}
     </>
   );
@@ -387,3 +395,11 @@ function earningsByWeek(rows: AdminEarningRow[], firstMonday: string, count: num
   });
 }
 
+
+// Carries all payment filters into each Earnings page link.
+function earningsPageHref(values: PaymentFilterValues, page: number): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) if (value) query.set(key, value);
+  if (page > 1) query.set("page", String(page));
+  return query.size ? `/admin/earnings?${query}` : "/admin/earnings";
+}

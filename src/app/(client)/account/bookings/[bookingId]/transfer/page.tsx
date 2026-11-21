@@ -3,7 +3,7 @@
 // in the Cancel box, "Pick a new class" when the cafe cancelled a class, and
 // "Move to another class" for a late payment.
 // Layout (Change 17, Part G): the same as booking step 1. A month navigator
-// (◀ October 2026 ▶, this month and next month), date chips for the dates
+// (◀ October 2026 ▶, scheduled months), date chips for the dates
 // that have classes, that date's classes below, and the summary card on the
 // right (phone: the sticky bar) with "Move my booking". Above it: the
 // "Moving this booking" card and the once-only note.
@@ -40,13 +40,12 @@ import { requireClient } from "@/lib/auth/user";
 import { buildClassPicker } from "@/lib/booking/class-picker";
 import { bookingStatusBadge } from "@/lib/booking-rules";
 import { getMyBookings } from "@/lib/data/account";
-import { getBookingSessions } from "@/lib/data/booking";
+import { getBookingCalendar } from "@/lib/data/booking";
 import { getPublicSettings } from "@/lib/data/settings";
 import { formatClassDate, formatMoveBy, formatPeso, formatTimeRange, manilaDateString } from "@/lib/format";
-import { bookableMonths, monthRange } from "@/lib/month";
 import { nowForThisVisit } from "@/lib/server-clock";
 import { isUuid } from "@/lib/validation";
-import type { MyBookingListItem, OpenSession } from "@/types/app";
+import type { MyBookingListItem } from "@/types/app";
 
 // Version 1.7: the word the client sees is "Re-schedule" (the route stays /transfer)
 export const metadata = { title: "Re-schedule a booking" };
@@ -79,20 +78,19 @@ async function TransferContent({
   await requireClient(`/account/bookings/${bookingId}/transfer`);
   const query = await searchParams;
 
-  // Today in the Philippines, and the two months that can be booked
+  // Today in the Philippines
   // (requireClient() has waited for a real visit, so reading the clock is fine)
   const nowMs = nowForThisVisit();
   const today = manilaDateString(nowMs);
-  const months = bookableMonths(today);
 
   let bookings: MyBookingListItem[];
-  let sessions: OpenSession[];
+  // The same calendar navigation is available when moving an existing booking.
+  let calendar: Awaited<ReturnType<typeof getBookingCalendar>>;
   let settings;
   try {
-    [bookings, sessions, settings] = await Promise.all([
+    [bookings, calendar, settings] = await Promise.all([
       getMyBookings(),
-      // Today to the end of next month, like booking step 1
-      getBookingSessions({ from: today, to: monthRange(months[1]).last }),
+      getBookingCalendar(today, firstParam(query.show_month) ?? firstParam(query.month)),
       getPublicSettings(),
     ]);
   } catch (error) {
@@ -144,10 +142,11 @@ async function TransferContent({
   }
   unavailable.set(booking.session_id, "Your booking");
 
+  const { sessions, months, month } = calendar;
   const picker = buildClassPicker({
     sessions,
     months,
-    askedMonth: firstParam(query.show_month) ?? firstParam(query.month),
+    askedMonth: month,
     askedDate: firstParam(query.date),
     pickedSessionId: null,
     unavailable,
@@ -211,7 +210,7 @@ async function TransferContent({
           radioName="session_id"
           reloadAction={`/account/bookings/${booking.booking_id}/transfer`}
           reloadMethod="get"
-          emptyText={`There are no classes in ${picker.months.label} yet. Try the other month, or message us with Chat With Us.`}
+          emptyText={`There are no classes in ${picker.months.label} yet. Try another month, or message us with Chat With Us.`}
         />
       </TransferForm>
     </div>

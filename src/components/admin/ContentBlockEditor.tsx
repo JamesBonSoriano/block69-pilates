@@ -11,6 +11,7 @@
 // "use client" = the preview changes as the admin types.
 
 import { useState } from "react";
+import { useContentPreview } from "@/components/admin/ContentSectionPreview";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -32,6 +33,7 @@ const FILL_IN = /\{([a-z_]+)\}/g;
 // Takes: the props above.
 // Gives back: the form with the two boxes, the preview and the Save button.
 export function ContentBlockEditor({ contentId, idPrefix, title, body, hint, fillIns }: ContentBlockEditorProps) {
+  const setPreview = useContentPreview();
   const [text, setText] = useState(body);
   const [heading, setHeading] = useState(title);
 
@@ -39,10 +41,6 @@ export function ContentBlockEditor({ contentId, idPrefix, title, body, hint, fil
   const used = [...`${heading}\n${text}`.matchAll(FILL_IN)].map((match) => match[1]);
   const unknown = [...new Set(used.filter((name) => !(name in fillIns)))];
   const hasPlaceholder = /\[[^\]]+\]/.test(`${heading}\n${text}`);
-
-  // The text with every known fill-in word swapped for its value
-  const preview = (value: string) =>
-    value.replace(FILL_IN, (whole, name: string) => (name in fillIns ? fillIns[name] : whole));
 
   return (
     <AdminActionForm action={saveContent} submitLabel="Save" buttonVariant="secondary" className="gap-3">
@@ -52,7 +50,10 @@ export function ContentBlockEditor({ contentId, idPrefix, title, body, hint, fil
         name="title"
         id={`${idPrefix}-title`}
         value={heading}
-        onChange={(event) => setHeading(event.target.value)}
+        onChange={(event) => {
+          setHeading(event.target.value);
+          setPreview(contentId, { title: event.target.value });
+        }}
         maxLength={200}
       />
       <Textarea
@@ -60,7 +61,10 @@ export function ContentBlockEditor({ contentId, idPrefix, title, body, hint, fil
         name="body"
         id={`${idPrefix}-body`}
         value={text}
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => {
+          setText(event.target.value);
+          setPreview(contentId, { body: event.target.value });
+        }}
         rows={Math.min(12, Math.max(3, text.split("\n").length + 1))}
         maxLength={6000}
         hint={hint}
@@ -76,13 +80,6 @@ export function ContentBlockEditor({ contentId, idPrefix, title, body, hint, fil
           The website doesn&apos;t know {unknown.map((name) => `{${name}}`).join(", ")}, so it will show exactly as
           typed. Check the spelling against the fill-in words list.
         </p>
-      )}
-      {used.length > 0 && (
-        <div className="rounded-xl bg-admin-bg px-3.5 py-3 text-xs">
-          <p className="mb-1 font-semibold text-brown">Preview with today&apos;s settings</p>
-          {heading && <p className="font-semibold">{preview(heading)}</p>}
-          <p className="whitespace-pre-line text-muted">{preview(text)}</p>
-        </div>
       )}
     </AdminActionForm>
   );

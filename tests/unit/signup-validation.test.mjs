@@ -156,3 +156,12 @@ test('the whole sign-up form: good details pass, bad ones are all reported', () 
   assert.deepEqual(Object.keys(errors).sort(), ['birthday', 'email', 'full_name', 'mobile', 'password']);
   assert.match(errors.email, /Gmail|Yahoo/);
 });
+
+// Signup verification accepts leading zeros and rejects non-ASCII or malformed codes.
+test("signup verification requires exactly six ASCII digits", async () => {
+  const { isSignupVerificationCode } = await import("../../src/lib/validation.ts");
+  assert.equal(isSignupVerificationCode("012345"), true);
+  for (const code of ["12345", "1234567", "12 345", "abc123", "１２３４５６"]) {
+    assert.equal(isSignupVerificationCode(code), false);
+  }
+});

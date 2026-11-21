@@ -79,7 +79,7 @@ async function BookingsResults({ searchParams }: { searchParams: PageProps<"/adm
   const chip = STATUS_CHIPS.find((item) => item.key === values.status) ?? STATUS_CHIPS[0];
   // Which page (?page=2); anything else = page 1
   const pageParam = Number(firstParam(params.page));
-  const page = Number.isInteger(pageParam) && pageParam > 1 ? pageParam : 1;
+  const page = Number.isSafeInteger(pageParam) && pageParam > 1 && pageParam <= 429496730 ? pageParam : 1;
 
   // The same filters for every page; only where to start changes
   const filters = {
@@ -88,6 +88,7 @@ async function BookingsResults({ searchParams }: { searchParams: PageProps<"/adm
     date: values.date,
     startTime: values.time,
     when: values.when,
+    sort: values.sort,
   };
 
   let result: { rows: AdminBookingListItem[]; totalMatches: number };
@@ -172,6 +173,7 @@ function readFilters(params: Record<string, string | string[] | undefined>): Boo
   const when = firstParam(params.when);
   return {
     q,
+    sort: firstParam(params.sort) === "oldest" ? "oldest" : "newest",
     status: STATUS_CHIPS.some((chip) => chip.key === status) ? status : "all",
     date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "",
     // "09:00" or "09:00:00"

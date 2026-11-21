@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useId, useRef } from "react";
 import { cancelBooking } from "@/lib/account/actions";
 import { emptyCancelBookingState } from "@/lib/account/form-state";
+import { PolicyDialogLink } from "@/components/booking/PolicyDialog";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { cancelExplanation } from "@/lib/booking-rules";
@@ -152,14 +153,9 @@ export function CancelBookingButton({
                 Keep my booking
               </Button>
             </div>
-            <a
-              href="/policies#cancellation"
-              target="_blank"
-              className="text-xs font-semibold text-brown underline underline-offset-2"
-            >
+            <PolicyDialogLink section="cancellation" className="text-xs font-semibold text-brown underline underline-offset-2">
               Read the full cancellation policy
-              <span className="sr-only"> (opens in a new tab)</span>
-            </a>
+            </PolicyDialogLink>
           </form>
         )}
       </dialog>

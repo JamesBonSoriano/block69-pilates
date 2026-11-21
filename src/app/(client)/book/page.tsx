@@ -3,12 +3,12 @@
 // button on Home and About Us, and "Pick a class" / "Change" on step 2
 // (/book?session=<id>&mat=yes picks that class and the mat tick again).
 // Layout (Change 17, Part F, like the reference design): a MONTH NAVIGATOR
-// (◀ October 2026 ▶, this month and next month only), a row of DATE CHIPS
+// (◀ October 2026 ▶, months with scheduled classes), a row of DATE CHIPS
 // for the dates that have classes, and the picked date's classes under them
 // (ClassDayPicker). Plus the "Booking details" card (Date, Session, What to
 // bring with the Rent a mat tick, Book Now). On phones that card is
 // the sticky bottom bar, and "What to bring" is listed under the classes.
-// The class days come from the dated classes (made from schedule_templates),
+// The class days come from the dated classes entered by the admin,
 // never typed in here.
 //
 // The address can carry: ?session=<id> (a picked class), ?mat=yes,
@@ -47,21 +47,18 @@ import { firstParam } from "@/lib/auth/safe-next";
 import { sendAdminsAway } from "@/lib/auth/user";
 import { buildClassPicker } from "@/lib/booking/class-picker";
 import { fillSettings, splitLines } from "@/lib/content-text";
-import { getBookingSessions } from "@/lib/data/booking";
+import { getBookingCalendar } from "@/lib/data/booking";
 import { getPageContent } from "@/lib/data/content";
-import { getWeeklySchedule } from "@/lib/data/schedule";
 import { getPublicSettings } from "@/lib/data/settings";
-import { formatClassDate, formatTime, formatTimeRange, formatWeekdays, manilaDateString } from "@/lib/format";
+import { formatClassDate, formatTime, formatTimeRange, manilaDateString } from "@/lib/format";
 import { pageMetadata } from "@/lib/metadata";
-import { bookableMonths, monthRange } from "@/lib/month";
 import { nowForThisVisit } from "@/lib/server-clock";
-import type { OpenSession } from "@/types/app";
 
 // Tab title, Google description and link preview for this page.
 export const metadata = pageMetadata({
   title: "Book a class",
   description:
-    "Pick a Mindful Mat Pilates class at Block 69 Cafe, Taguig. See live seats left for this month and next month and book online.",
+    "Pick a Mindful Mat Pilates class at Block 69 Cafe, Taguig. See live seats left for scheduled classes and book online.",
   path: "/book",
 });
 
@@ -72,12 +69,10 @@ export const metadata = pageMetadata({
 // database), then the live class picker inside <Suspense>.
 export default async function BookPage({ searchParams }: PageProps<"/book">) {
   // Cached data (the same for everyone), loaded at the same time
-  const [settings, schedule, content] = await Promise.all([
+  const [settings, content] = await Promise.all([
     getPublicSettings(),
-    getWeeklySchedule(),
     getPageContent("booking"),
   ]);
-  const classDays = formatWeekdays(schedule.map((day) => day.weekday));
   // What to bring (site_content booking/what_to_bring): one item per line,
   // with {fill-in} words like {mat_price} swapped for the settings values
   const whatToBring = splitLines(fillSettings(content.what_to_bring?.body, settings));
@@ -89,8 +84,7 @@ export default async function BookPage({ searchParams }: PageProps<"/book">) {
         title="Pick a class"
         intro={
           <>
-            Online booking for a class closes at {formatTime(settings.cutoffTime)} on class day
-            {classDays && <>. Classes run {classDays}</>}.
+            Online booking for a class closes at {formatTime(settings.cutoffTime)} on class day.
           </>
         }
       />
@@ -134,16 +128,14 @@ async function SessionPicker({
   // Admin accounts don't book (they use the admin Walk-in page instead)
   await sendAdminsAway();
 
-  // Today in the Philippines, and the two months that can be booked
+  // Today in the Philippines
   // (connection() = a real visit, so reading the clock here is fine)
   await connection();
   const today = manilaDateString(nowForThisVisit());
-  const months = bookableMonths(today);
-
-  let sessions: OpenSession[];
+  // The database finds bookable months and only loads the selected month.
+  let calendar: Awaited<ReturnType<typeof getBookingCalendar>>;
   try {
-    // Both months in one go: today to the end of next month
-    sessions = await getBookingSessions({ from: today, to: monthRange(months[1]).last });
+    calendar = await getBookingCalendar(today, firstParam(params.show_month) ?? firstParam(params.month), picked);
   } catch (error) {
     // Next.js uses special "errors" internally to pause rendering until a
     // visitor arrives. Those must be passed on, not treated as real errors.
@@ -165,10 +157,11 @@ async function SessionPicker({
 
   // Which month and date to show, and the chips and classes for it
   // (src/lib/booking/class-picker.ts)
+  const { sessions, months, month } = calendar;
   const picker = buildClassPicker({
     sessions,
     months,
-    askedMonth: firstParam(params.show_month) ?? firstParam(params.month),
+    askedMonth: month,
     askedDate: firstParam(params.date),
     pickedSessionId: picked,
   });
@@ -196,7 +189,7 @@ async function SessionPicker({
             initialSessionId={picker.preselectedId}
             radioName="session"
             reloadAction="/book"
-            emptyText={`There are no classes in ${picker.months.label} yet. Try the other month, or message us with Chat With Us.`}
+            emptyText={`There are no classes in ${picker.months.label} yet. Try another month, or message us with Chat With Us.`}
           />
 
           {/* Phones: what to bring, under the classes (on laptops it's in
@@ -222,7 +215,7 @@ async function SessionPicker({
           note={
             anyBookable
               ? "Includes an upsized matcha or coffee. Next: your details. You'll need to log in or sign up to book."
-              : `Every class in ${picker.months.label} is full or closed. Try the other month, or check back soon.`
+              : `Every class in ${picker.months.label} is full or closed. Try another month, or check back soon.`
           }
         />
       </BookingColumns>

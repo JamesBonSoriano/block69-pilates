@@ -19,6 +19,17 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 // (then the caller just tries, as before, so a slow network never blocks
 // a working Google sign-in).
 export async function googleSignInIsOn(): Promise<boolean | null> {
+  const settings = await readAuthSettings();
+  return settings ? settings.external?.google === true : null;
+}
+
+// Checks that Supabase will require a code before creating a signup session.
+export async function signupConfirmationIsOn(): Promise<boolean> {
+  return (await readAuthSettings())?.mailer_autoconfirm === false;
+}
+
+// Reads public Auth settings once per request, without logging credentials.
+async function readAuthSettings(): Promise<{ external?: Record<string, boolean>; mailer_autoconfirm?: boolean } | null> {
   const { url, publishableKey } = getSupabaseEnv();
   try {
     const response = await fetch(`${url}/auth/v1/settings`, {
@@ -27,8 +38,7 @@ export async function googleSignInIsOn(): Promise<boolean | null> {
       signal: AbortSignal.timeout(5_000), // never wait more than 5 seconds
     });
     if (!response.ok) return null;
-    const settings = (await response.json()) as { external?: Record<string, boolean> };
-    return settings.external?.google === true;
+    return await response.json();
   } catch {
     return null;
   }

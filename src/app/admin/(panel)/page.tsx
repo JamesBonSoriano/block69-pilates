@@ -11,7 +11,6 @@
 //     "View all" link to Schedule), each with who is booked and what to
 //     prepare (Version 1.6: no Cancel class button; that is on Schedule only)
 //   - "Needs action": payments to check, late payments, and classes whose
-//     attendance hasn't been marked (each opens the appointment's manage page)
 //   - an overview grid (Version 1.4): one small card per admin page
 //     (Appointments, Earnings, Schedule, Users, Content) with its key
 //     numbers and a "View full" link (Version 1.6 names)
@@ -43,7 +42,6 @@ import {
   formatManilaDateTime,
   formatPeso,
   formatTime,
-  formatTimeRange,
   manilaDateString,
 } from "@/lib/format";
 import { nowForThisVisit } from "@/lib/server-clock";
@@ -85,7 +83,7 @@ async function Dashboard() {
 
   let summary: AdminDashboardSummary;
   let sessions: AdminSession[];
-  let needsAction: AdminBookingListItem[];
+  let pendingActions: { rows: AdminBookingListItem[]; totalMatches: number };
   let rosters: AdminRosterItem[];
   let upcoming: { rows: AdminBookingListItem[]; totalMatches: number };
   let clients: { rows: AdminUser[]; totalMatches: number };
@@ -97,7 +95,7 @@ async function Dashboard() {
     // weeks ahead (next classes), the bookings that need the admin, and the
     // numbers for the overview cards (next confirmed bookings, client
     // accounts, page text)
-    [sessions, { rows: needsAction }, upcoming, clients, content] = await Promise.all([
+    [sessions, pendingActions, upcoming, clients, content] = await Promise.all([
       getAdminSessions(addDays(today, -7), addDays(today, 14)),
       searchAdminBookings({ statuses: ["awaiting_verification", "paid_needs_action"], when: "all", limit: 20 }),
       searchAdminBookings({ statuses: ["confirmed"], when: "upcoming", limit: 2 }),
@@ -115,8 +113,8 @@ async function Dashboard() {
   const shown = shownSessions(sessions, today);
   const todays = shown.filter((session) => session.date === today);
   const next = shown.filter((session) => session.date > today);
-  const toMark = sessions.filter((session) => session.to_mark > 0);
-  const needsCount = summary.awaiting_verification + summary.paid_needs_action;
+  // Use the same cutoff-aware pending counts as Appointments.
+  const { rows: needsAction, totalMatches: needsCount } = pendingActions;
   const firstName = admin.fullName.split(" ")[0] || "there";
 
   return (
@@ -139,9 +137,9 @@ async function Dashboard() {
         />
         <StatCard
           label="Needs action"
-          value={String(needsCount + summary.to_mark_classes)}
-          note={needsCount + summary.to_mark_classes === 0 ? "All clear" : "to review (see below)"}
-          tone={needsCount + summary.to_mark_classes > 0 ? "alert" : "normal"}
+          value={String(needsCount)}
+          note={needsCount === 0 ? "All clear" : "to review (see below)"}
+          tone={needsCount > 0 ? "alert" : "normal"}
         />
         <StatCard
           label="This week"
@@ -197,15 +195,15 @@ async function Dashboard() {
 
       {/* ---- Needs action ---- */}
       <section aria-labelledby="needs-heading">
-        <AdminCard className={needsCount + toMark.length > 0 ? "flex flex-col gap-3 border-error/40" : "flex flex-col gap-3"}>
+        <AdminCard className={needsCount > 0 ? "flex flex-col gap-3 border-error/40" : "flex flex-col gap-3"}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="needs-heading" className="text-[15px] font-semibold lg:text-base">
-              Needs action ({needsCount + toMark.length})
+              Needs action ({needsCount})
             </h2>
             <span className="text-xs text-muted">Handled items leave this list</span>
           </div>
 
-          {needsCount + toMark.length === 0 && (
+          {needsCount === 0 && (
             <p className="text-sm text-muted">Nothing needs you right now.</p>
           )}
 
@@ -235,31 +233,6 @@ async function Dashboard() {
                 </li>
               );
             })}
-            {toMark.map((session) => (
-              <li key={session.session_id}>
-                {/* Attendance is marked on each appointment's manage page
-                    (Version 1.4 removed the Attendance list), so open that
-                    class's confirmed appointments (Version 1.6 chip) */}
-                <Link
-                  href={`/admin/appointments?status=confirmed&date=${session.date}&time=${session.start_time}`}
-                  className="flex flex-col gap-1.5 rounded-xl border border-admin-line px-3.5 py-3 text-sm hover:bg-admin-bg sm:flex-row sm:items-center sm:gap-3"
-                >
-                  <Badge variant="neutral" className="self-start sm:self-auto">
-                    Mark attendance
-                  </Badge>
-                  <span className="flex-1">
-                    <b className="font-semibold">
-                      {formatClassDate(session.date).short} · {formatTimeRange(session.start_time, session.end_time)}
-                    </b>
-                    <span className="text-muted">
-                      {" "}
-                      · {session.to_mark} guest{session.to_mark === 1 ? "" : "s"} not marked yet
-                    </span>
-                  </span>
-                  <span className="text-xs font-semibold text-brown underline underline-offset-2">Open appointments</span>
-                </Link>
-              </li>
-            ))}
           </ul>
 
           {needsCount > 0 && (
